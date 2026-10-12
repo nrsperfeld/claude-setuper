@@ -21,7 +21,8 @@ export function criarCtx(flags = {}) {
     templates: path.join(RAIZ, 'templates'),
     home,
     homeReal: os.homedir(),
-    plataforma: process.platform, // 'darwin' | 'linux' | 'win32'
+    plataforma: flags.plataforma || process.platform, // 'darwin' | 'linux' | 'win32' (override só pra testes)
+    win: (flags.plataforma || process.platform) === 'win32',
     dryRun: !!flags.dryRun,
     semApps: !!flags.semApps, // não instala aplicativos (só escreve arquivos). Usado em testes.
     sim: !!flags.sim, // aceita todos os defaults sem perguntar
@@ -47,6 +48,14 @@ export function criarCtx(flags = {}) {
       ctx.log('$', cmd, args.join(' '));
       if (ctx.dryRun && !opts.sempre) return '';
       try {
+        if (process.platform === 'win32') {
+          const linha = [cmd, ...args].map(aspasWin).join(' ');
+          const { stdout } = await execFileP('cmd.exe', ['/d', '/s', '/c', `"${linha}"`], {
+            env: { ...process.env, ...opts.env }, windowsVerbatimArguments: true,
+            maxBuffer: 50 * 1024 * 1024, timeout: opts.timeout ?? 15 * 60 * 1000, cwd: opts.cwd,
+          });
+          return (stdout || '').trim();
+        }
         const { stdout } = await execFileP(cmd, args, {
           env: { ...process.env, HOME: ctx.homeReal, ...opts.env },
           maxBuffer: 50 * 1024 * 1024,
@@ -66,7 +75,9 @@ export function criarCtx(flags = {}) {
       ctx.log('$ (visível)', cmd, args.join(' '));
       if (ctx.dryRun) return Promise.resolve(0);
       return new Promise((res, rej) => {
-        const p = spawn(cmd, args, { stdio: 'inherit', env: { ...process.env, ...opts.env }, shell: opts.shell });
+        const p = process.platform === 'win32'
+          ? spawn('cmd.exe', ['/d', '/s', '/c', `"${[cmd, ...args].map(aspasWin).join(' ')}"`], { stdio: 'inherit', env: { ...process.env, ...opts.env }, windowsVerbatimArguments: true })
+          : spawn(cmd, args, { stdio: 'inherit', env: { ...process.env, ...opts.env }, shell: opts.shell });
         p.on('exit', (c) => (c === 0 || opts.ignorarErro ? res(c) : rej(new Error(`${cmd} saiu com código ${c}`))));
         p.on('error', rej);
       });
@@ -74,11 +85,30 @@ export function criarCtx(flags = {}) {
 
     async existeComando(nome) {
       try {
-        await execFileP('/bin/sh', ['-c', `command -v ${nome}`], { env: process.env });
+        if (process.platform === 'win32') await execFileP('where.exe', [nome], { env: process.env });
+        else await execFileP('/bin/sh', ['-c', `command -v ${nome}`], { env: process.env });
         return true;
       } catch {
         return false;
       }
+    },
+
+    // Caminho com barras normais, que funciona em bash, cmd e PowerShell.
+    posix(p) {
+      return String(p).replace(/\\/g, '/');
+    },
+
+    // Pastas de dados por sistema (respeitam --home nos testes).
+    appData() {
+      if (ctx.win) return flags.home ? path.join(ctx.home, 'AppData', 'Roaming') : (process.env.APPDATA || path.join(ctx.home, 'AppData', 'Roaming'));
+      return path.join(ctx.home, 'Library', 'Application Support');
+    },
+    localAppData() {
+      if (ctx.win) return flags.home ? path.join(ctx.home, 'AppData', 'Local') : (process.env.LOCALAPPDATA || path.join(ctx.home, 'AppData', 'Local'));
+      return path.join(ctx.home, 'Library', 'Application Support');
+    },
+    desktop() {
+      return path.join(ctx.home, 'Desktop');
     },
 
     existe(p) {
@@ -143,6 +173,7 @@ export function criarCtx(flags = {}) {
     async abrirUrl(url) {
       ctx.log('abrir', url);
       if (ctx.dryRun) return;
+      if (ctx.win) return ctx.run('cmd.exe', ['/c', 'start', '""', url.replace(/&/g, '^&')], { ignorarErro: true });
       const cmd = ctx.plataforma === 'darwin' ? 'open' : 'xdg-open';
       await ctx.run(cmd, [url], { ignorarErro: true });
     },
@@ -159,6 +190,12 @@ export function criarCtx(flags = {}) {
     },
   };
   return ctx;
+}
+
+function aspasWin(a) {
+  a = String(a);
+  if (a === '""') return a;
+  return /[\s&|<>^()"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a;
 }
 
 function lerJson(p, padrao) {

@@ -32,6 +32,9 @@ export async function instalar(ctx) {
   const vault = ctx.resp.vault || path.join(ctx.home, 'Documents', 'Segundo Cérebro');
   ctx.resp.vault = vault;
   ctx.resp.data = new Date().toLocaleDateString('pt-BR');
+  ctx.resp.comoAbrir = ctx.plataforma === 'darwin' ? 'pelo Maestri (o aplicativo com o canvas)' : 'pelo atalho "Claude" na sua Área de Trabalho';
+  // Versão do "trabalho" segura pra ir dentro de aspas em bash e cmd.
+  ctx.resp.trabalhoSeguro = String(ctx.resp.trabalho || '').replace(/["'`$%&|<>^!\\]/g, ' ').replace(/\s+/g, ' ').trim() || 'o meu trabalho do dia a dia';
   ctx.resp.autonomiaTexto = {
     cauteloso: 'Pergunte antes de qualquer ação que altere arquivos ou rode comandos. Prefira explicar o que vai fazer e esperar o ok.',
     equilibrado: 'Faça o básico sozinho (ler, escrever, organizar) e pergunte só no que for difícil de desfazer ou que mude a direção do trabalho.',
@@ -54,9 +57,9 @@ export async function instalar(ctx) {
     ctx.mesclarJson(path.join(d, 'settings.json'), {
       permissions: { allow: nivel.allow, deny: DENY, defaultMode: nivel.defaultMode },
       hooks: {
-        SessionStart: [{ hooks: [{ type: 'command', command: `node "${path.join(d, 'hooks', 'cerebro-inicio.cjs')}"`, timeout: 10 }] }],
-        Stop: [{ hooks: [{ type: 'command', command: `node "${path.join(d, 'hooks', 'cerebro-fim.cjs')}"`, timeout: 10 }] }],
-        PostToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command: `node "${path.join(d, 'hooks', 'cerebro-nota.cjs')}"`, timeout: 10 }] }],
+        SessionStart: [{ hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-inicio.cjs'))}"`, timeout: 10 }] }],
+        Stop: [{ hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-fim.cjs'))}"`, timeout: 10 }] }],
+        PostToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-nota.cjs'))}"`, timeout: 10 }] }],
       },
       env: { CLAUDE_SETUPER_VAULT: vault },
     });

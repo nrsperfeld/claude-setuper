@@ -16,6 +16,6 @@ Três coisas que você pode fazer agora:
 
 1. Abra a nota [[Painel do Claude]]. Ela mostra automaticamente o que o Claude anotou de mais recente.
 2. Crie uma nota em `2. ÁREAS/` sobre o seu trabalho, com o que quiser contar. O Claude vai ler.
-3. Fale com o Claude pelo Maestri (o aplicativo com o canvas) e peça: "guarda uma decisão: ...". Depois volte aqui e veja a nota aparecer em `CLAUDE/decisões/`.
+3. Fale com o Claude {{comoAbrir}} e peça: "guarda uma decisão: ...". Depois volte aqui e veja a nota aparecer em `CLAUDE/decisões/`.
 
 Montado pelo Claude Setuper em {{data}}.

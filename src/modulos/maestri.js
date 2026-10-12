@@ -64,7 +64,7 @@ export function montarWorkspace(ctx) {
 
   // Script que abre o Claude e, só na primeira vez, manda a apresentação.
   const abrir = path.join(ctx.pastaSetuper, 'abrir-claude.sh');
-  ctx.escrever(abrir, ctx.template('maestri/abrir-claude.sh', { marcador: path.join(ctx.claudeDir, '.setuper-saudou') }));
+  ctx.escrever(abrir, ctx.template('maestri/abrir-claude.sh', { marcador: path.join(ctx.claudeDir, '.setuper-saudou'), trabalho: ctx.resp.trabalhoSeguro ?? ctx.resp.trabalho }));
   if (!ctx.dryRun) fs.chmodSync(abrir, 0o755);
 
   const agora = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');

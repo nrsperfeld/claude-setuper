@@ -17,12 +17,18 @@ const PLUGINS = [
 export function dirConfigObsidian(ctx) {
   if (ctx.plataforma === 'darwin') return path.join(ctx.home, 'Library/Application Support/obsidian');
   if (ctx.plataforma === 'linux') return path.join(process.env.XDG_CONFIG_HOME || path.join(ctx.home, '.config'), 'obsidian');
-  return path.join(process.env.APPDATA || ctx.home, 'obsidian');
+  return path.join(ctx.appData(), 'obsidian');
+}
+
+function appInstalado(ctx) {
+  if (ctx.plataforma === 'darwin') return ctx.existe('/Applications/Obsidian.app');
+  if (ctx.win) return ['Programs\\Obsidian\\Obsidian.exe', 'Obsidian\\Obsidian.exe'].some((r) => ctx.existe(path.join(ctx.localAppData(), r))) || ctx.existe('C:\\Program Files\\Obsidian\\Obsidian.exe');
+  return false;
 }
 
 export async function verificar(ctx) {
   const vault = ctx.estado.respostas?.vault || path.join(ctx.home, 'Documents', 'Segundo Cérebro');
-  const temApp = ctx.plataforma === 'darwin' ? ctx.existe('/Applications/Obsidian.app') : await ctx.existeComando('obsidian');
+  const temApp = appInstalado(ctx) || (await ctx.existeComando('obsidian'));
   const reg = ctx.lerJson(path.join(dirConfigObsidian(ctx), 'obsidian.json'), { vaults: {} });
   const registrado = Object.values(reg.vaults || {}).some((v) => nfc(v.path) === nfc(vault));
   const itens = [
@@ -85,6 +91,13 @@ export async function instalar(ctx) {
 }
 
 async function instalarApp(ctx) {
+  if (ctx.win) {
+    if (appInstalado(ctx)) return ui.ok('Obsidian já está instalado');
+    if (ctx.semApps) return;
+    const { winget } = await import('./base.js');
+    await ui.tarefa('Instalando o Obsidian, o seu segundo cérebro', 'Obsidian instalado', () => winget(ctx, 'Obsidian.Obsidian'), { demora: 'uns 2 minutos, é normal' });
+    return;
+  }
   if (ctx.plataforma === 'darwin') {
     if (ctx.existe('/Applications/Obsidian.app')) return ui.ok('Obsidian já está instalado');
     if (ctx.semApps) return;
@@ -119,16 +132,18 @@ export function registrarVault(ctx, vault) {
 }
 
 async function abrirEConfiar(ctx, vault) {
-  if (ctx.semApps || ctx.dryRun || ctx.plataforma !== 'darwin') return;
+  if (ctx.semApps || ctx.dryRun || (ctx.plataforma !== 'darwin' && !ctx.win)) return;
   // Obsidian aberto não relê o obsidian.json: fecha antes de abrir.
-  await ctx.run('pkill', ['-x', 'Obsidian'], { ignorarErro: true });
+  if (ctx.win) await ctx.run('taskkill', ['/IM', 'Obsidian.exe', '/F'], { ignorarErro: true });
+  else await ctx.run('pkill', ['-x', 'Obsidian'], { ignorarErro: true });
   await new Promise((r) => setTimeout(r, 2000));
   ui.pausa('O Obsidian vai abrir e perguntar se você confia nos plugins', [
     'Clica no botão da direita: "Confiar no autor e habilitar plugins".',
     'Os plugins são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.',
     'Eu espero você clicar.',
   ]);
-  await ctx.run('open', ['-a', 'Obsidian'], { ignorarErro: true });
+  if (ctx.win) await ctx.abrirUrl(`obsidian://open?path=${encodeURIComponent(vault)}`);
+  else await ctx.run('open', ['-a', 'Obsidian'], { ignorarErro: true });
   const cli = await ctx.existeComando('obsidian');
   if (!cli) {
     ui.info('Quando terminar, ative também o "Command line interface" nas Configurações do Obsidian (General). Sigo em frente.');

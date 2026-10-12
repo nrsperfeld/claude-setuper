@@ -7,12 +7,13 @@ export const id = 'rotinas';
 export const nome = 'Rotinas automáticas';
 export const descricao = 'Revisão semanal do cérebro e backup diário das suas notas';
 export const padrao = true;
-export const plataformas = ['darwin', 'linux'];
+export const plataformas = ['darwin', 'linux', 'win32'];
 
 const ROTINAS = [
-  { id: 'revisao-semanal', nome: 'Revisão semanal do cérebro', script: 'revisao-semanal.sh', cron: { dia: 1, hora: 9 } },
-  { id: 'backup-diario', nome: 'Backup diário das notas', script: 'backup-diario.sh', cron: { hora: 21 } },
+  { id: 'revisao-semanal', nome: 'Revisão semanal do cérebro', script: 'revisao-semanal', cron: { dia: 1, hora: 9 } },
+  { id: 'backup-diario', nome: 'Backup diário das notas', script: 'backup-diario', cron: { hora: 21 } },
 ];
+const ext = (ctx) => (ctx.win ? '.cmd' : '.sh');
 
 function dirLaunch(ctx) {
   return path.join(ctx.home, 'Library', 'LaunchAgents');
@@ -21,7 +22,7 @@ function dirLaunch(ctx) {
 export async function verificar(ctx) {
   return ROTINAS.map((r) => ({
     item: r.nome,
-    ok: ctx.plataforma === 'darwin' ? ctx.existe(path.join(dirLaunch(ctx), `com.claude-setuper.${r.id}.plist`)) : ctx.existe(path.join(ctx.pastaSetuper, 'rotinas', r.script)),
+    ok: ctx.plataforma === 'darwin' ? ctx.existe(path.join(dirLaunch(ctx), `com.claude-setuper.${r.id}.plist`)) : ctx.existe(path.join(ctx.pastaSetuper, 'rotinas', r.script + ext(ctx))),
   }));
 }
 
@@ -31,10 +32,17 @@ export async function instalar(ctx) {
   const dir = path.join(ctx.pastaSetuper, 'rotinas');
   await ui.tarefa('Agendando a revisão semanal e o backup diário', 'Rotinas agendadas', async () => {
     for (const r of ROTINAS) {
-      const script = path.join(dir, r.script);
-      ctx.copiarTemplate(`rotinas/${r.script}`, script, { vault, logs: path.join(ctx.pastaSetuper, 'rotinas') });
-      if (!ctx.dryRun) fs.chmodSync(script, 0o755);
-      if (ctx.plataforma === 'darwin') {
+      const script = path.join(dir, r.script + ext(ctx));
+      ctx.copiarTemplate(`rotinas/${r.script}${ext(ctx)}`, script, { vault, logs: path.join(ctx.pastaSetuper, 'rotinas'), hoje: '' });
+      if (!ctx.dryRun && !ctx.win) fs.chmodSync(script, 0o755);
+      if (ctx.win) {
+        if (ctx.dryRun || ctx.semApps) continue;
+        const hora = String(r.cron.hora).padStart(2, '0') + ':00';
+        const args = ['/Create', '/F', '/TN', `Claude Setuper\\${r.id}`, '/TR', `"${script}"`, '/ST', hora];
+        if (r.cron.dia != null) args.push('/SC', 'WEEKLY', '/D', 'MON');
+        else args.push('/SC', 'DAILY');
+        await ctx.run('schtasks', args, { ignorarErro: true });
+      } else if (ctx.plataforma === 'darwin') {
         const plist = path.join(dirLaunch(ctx), `com.claude-setuper.${r.id}.plist`);
         ctx.escrever(plist, ctx.template('rotinas/launchd.plist', { id: r.id, script, dia: r.cron.dia ?? '', hora: r.cron.hora, logs: dir, comDia: r.cron.dia != null ? `<key>Weekday</key><integer>${r.cron.dia}</integer>` : '' }));
         if (!ctx.dryRun && !ctx.semApps) {
@@ -69,7 +77,9 @@ export async function instalar(ctx) {
 export async function remover(ctx) {
   fs.rmSync(path.join(ctx.pastaSetuper, 'rotinas'), { recursive: true, force: true });
   for (const r of ROTINAS) {
-    if (ctx.plataforma === 'darwin') {
+    if (ctx.win) {
+      await ctx.run('schtasks', ['/Delete', '/F', '/TN', `Claude Setuper\\${r.id}`], { ignorarErro: true });
+    } else if (ctx.plataforma === 'darwin') {
       const plist = path.join(dirLaunch(ctx), `com.claude-setuper.${r.id}.plist`);
       await ctx.run('launchctl', ['unload', plist], { ignorarErro: true });
       fs.rmSync(plist, { force: true });

@@ -6,20 +6,25 @@ const fs = require('node:fs');
 let entrada = {};
 try { entrada = JSON.parse(fs.readFileSync(0, 'utf8') || '{}'); } catch {}
 
-const vault = process.env.CLAUDE_SETUPER_VAULT;
-const fp = entrada.tool_input?.file_path || '';
-if (!vault || !fp.startsWith(vault + '/')) process.exit(0);
+const norm = (s) => String(s || '').replace(/\\/g, '/').replace(/\/+$/, '');
+const vaultBruto = process.env.CLAUDE_SETUPER_VAULT;
+const vault = norm(vaultBruto);
+const eq = (a, b) => (process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b);
+const dentroDe = (fp, base) => (process.platform === 'win32' ? norm(fp).toLowerCase().startsWith((base + '/').toLowerCase()) : norm(fp).startsWith(base + '/'));
+const fpBruto = entrada.tool_input?.file_path || '';
+const fp = norm(fpBruto);
+if (!vaultBruto || !dentroDe(fp, vault)) process.exit(0);
 
-const dentro = fp.startsWith(vault + '/CLAUDE/');
+const dentro = dentroDe(fp, vault + '/CLAUDE');
 if (!dentro) {
   if (fp.includes('/.obsidian/')) process.exit(0);
-  console.error(`Você escreveu em ${fp}, que fica fora de CLAUDE/. O resto do segundo cérebro é da pessoa. Desfaça essa alteração (restaure o conteúdo anterior) e, se a informação importa, grave em ${vault}/CLAUDE/ na subpasta certa.`);
+  console.error(`Você escreveu em ${fpBruto}, que fica fora de CLAUDE/. O resto do segundo cérebro é da pessoa. Desfaça essa alteração (restaure o conteúdo anterior) e, se a informação importa, grave em ${vaultBruto}/CLAUDE/ na subpasta certa.`);
   process.exit(2);
 }
 
 if (!fp.endsWith('.md') || fp.endsWith('/README.md')) process.exit(0);
 let txt = '';
-try { txt = fs.readFileSync(fp, 'utf8'); } catch { process.exit(0); }
+try { txt = fs.readFileSync(fpBruto, 'utf8'); } catch { process.exit(0); }
 
 const problemas = [];
 if (txt.trimStart().startsWith('---')) problemas.push('tem frontmatter (---), e as notas do cérebro não levam');

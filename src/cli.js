@@ -55,11 +55,6 @@ export async function main(argv) {
 async function instalar(ctx, flags) {
   ui.abertura('Claude Setuper', `versão ${VERSAO}${ctx.dryRun ? '  (modo de teste, nada vai ser alterado)' : ''}`);
 
-  if (ctx.plataforma === 'win32') {
-    ui.erro('Por enquanto o Claude Setuper funciona no Mac e no Linux. No Windows, use o WSL.');
-    return;
-  }
-
   await wizard(ctx);
   const ids = flags.modulos ? flags.modulos.split(',') : ctx.resp.modulos;
   const lista = modulosParaPlataforma(ids, ctx.plataforma);
@@ -92,11 +87,14 @@ async function instalar(ctx, flags) {
   }
   if (ctx.assistido) gravarRelatorio(ctx, falhas);
 
-  const fim = lista.some((m) => m.id === 'maestri') && !falhas.some((m) => m.id === 'maestri');
+  const okMaestri = lista.some((m) => m.id === 'maestri') && !falhas.some((m) => m.id === 'maestri');
+  const okAtalho = lista.some((m) => m.id === 'atalho') && !falhas.some((m) => m.id === 'atalho');
   ui.encerramento(
-    fim
+    okMaestri
       ? `Pronto, ${ctx.resp.nome}. O Maestri está abrindo com o Claude e as suas notas do lado. Vai lá.`
-      : `Pronto, ${ctx.resp.nome}. Abra o Terminal e digite ${c.bold('claude')} pra começar.`,
+      : okAtalho
+        ? `Pronto, ${ctx.resp.nome}. O Claude está abrindo numa janela nova, e deixei um atalho "Claude" na sua Área de Trabalho pra próxima vez.`
+        : `Pronto, ${ctx.resp.nome}. Abra o Terminal e digite ${c.bold('claude')} pra começar.`,
   );
 }
 
@@ -131,6 +129,7 @@ function parse(argv) {
     else if (a === '--assistido') flags.assistido = true;
     else if (a === '--help' || a === '-h') flags.help = true;
     else if (a === '--home') flags.home = argv[++i];
+    else if (a === '--plataforma') flags.plataforma = argv[++i];
     else if (a === '--modulos') flags.modulos = argv[++i];
     else if (!a.startsWith('-')) cmd = a;
   }

@@ -13,6 +13,10 @@ export async function verificar(ctx) {
     itens.push({ item: 'Ferramentas da Apple (Xcode CLT)', ok: !!(await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true })) });
     itens.push({ item: 'Homebrew', ok: await ctx.existeComando('brew'), dica: 'rode o instalador de novo' });
   }
+  if (ctx.win) {
+    itens.push({ item: 'winget (instalador do Windows)', ok: await ctx.existeComando('winget'), dica: 'instale o "Instalador de Aplicativo" pela Microsoft Store' });
+    itens.push({ item: 'Git Bash (vem com o Git)', ok: await ctx.existeComando('bash') || ctx.existe('C:\\Program Files\\Git\\bin\\bash.exe'), dica: 'winget install -e --id Git.Git' });
+  }
   itens.push({ item: 'Node', ok: await ctx.existeComando('node') });
   itens.push({ item: 'git', ok: await ctx.existeComando('git') });
   itens.push({ item: 'Claude Code', ok: await ctx.existeComando('claude') });
@@ -57,20 +61,42 @@ async function homebrew(ctx) {
   ui.ok('Homebrew instalado');
 }
 
+export async function winget(ctx, id) {
+  await ctx.run('winget', ['install', '-e', '--id', id, '--silent', '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity'], { ignorarErro: true, timeout: 20 * 60 * 1000 });
+  atualizarPathWindows();
+}
+
+// Programas recém-instalados não entram no PATH do processo atual; acrescenta os lugares comuns.
+function atualizarPathWindows() {
+  if (process.platform !== 'win32') return;
+  const extras = [
+    'C:\\Program Files\\nodejs', 'C:\\Program Files\\Git\\cmd', 'C:\\Program Files\\Git\\bin', 'C:\\Program Files\\GitHub CLI',
+    `${process.env.LOCALAPPDATA}\\Programs\\Git\\cmd`, `${process.env.APPDATA}\\npm`, `${process.env.USERPROFILE}\\.local\\bin`,
+    `${process.env.LOCALAPPDATA}\\Microsoft\\WinGet\\Links`,
+  ];
+  for (const e of extras) if (!process.env.PATH.includes(e)) process.env.PATH = `${e};${process.env.PATH}`;
+}
+
 async function node(ctx) {
   if (await ctx.existeComando('node')) return ui.ok('Node já está instalado');
   if (ctx.semApps) return;
   await ui.tarefa('Instalando o Node', 'Node instalado', async () => {
     if (ctx.plataforma === 'darwin') await ctx.run('brew', ['install', 'node']);
+    else if (ctx.win) await winget(ctx, 'OpenJS.NodeJS.LTS');
     else await ctx.runVisivel('/bin/bash', ['-c', 'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs']);
   }, { demora: 'uns 2 minutos, é normal' });
 }
 
 async function git(ctx) {
-  if (await ctx.existeComando('git')) return;
+  if (await ctx.existeComando('git')) {
+    // No Windows o Claude Code precisa do Git Bash, que vem junto com o Git.
+    if (ctx.win && !(await ctx.existeComando('bash')) && !ctx.existe('C:\\Program Files\\Git\\bin\\bash.exe') && !ctx.semApps) await winget(ctx, 'Git.Git');
+    return;
+  }
   if (ctx.semApps) return;
   await ui.tarefa('Instalando o git', 'git instalado', async () => {
     if (ctx.plataforma === 'darwin') await ctx.run('brew', ['install', 'git']);
+    else if (ctx.win) await winget(ctx, 'Git.Git');
     else await ctx.runVisivel('/bin/bash', ['-c', 'sudo apt-get install -y git']);
   });
 }
@@ -79,10 +105,15 @@ async function claudeCode(ctx) {
   if (await ctx.existeComando('claude')) return ui.ok('Claude Code já está instalado');
   if (ctx.semApps) return;
   await ui.tarefa('Instalando o Claude Code', 'Claude Code instalado', async () => {
-    const script = await (await fetch('https://claude.ai/install.sh')).text();
-    await ctx.run('/bin/bash', ['-c', script]);
-    const local = `${ctx.homeReal}/.local/bin`;
-    if (!process.env.PATH.includes(local)) process.env.PATH = `${local}:${process.env.PATH}`;
+    if (ctx.win) {
+      await ctx.run('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'irm https://claude.ai/install.ps1 | iex'], { ignorarErro: true, timeout: 10 * 60 * 1000 });
+      atualizarPathWindows();
+    } else {
+      const script = await (await fetch('https://claude.ai/install.sh')).text();
+      await ctx.run('/bin/bash', ['-c', script]);
+      const local = `${ctx.homeReal}/.local/bin`;
+      if (!process.env.PATH.includes(local)) process.env.PATH = `${local}:${process.env.PATH}`;
+    }
     if (!(await ctx.existeComando('claude'))) await ctx.run('npm', ['install', '-g', '@anthropic-ai/claude-code']);
   }, { demora: 'quase lá' });
 }

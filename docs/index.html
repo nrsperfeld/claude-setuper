@@ -15,6 +15,8 @@
   .sub { font-size:20px; color:var(--mut); margin:0 0 36px }
   .btn { display:inline-block; background:var(--acc); color:#111; font-weight:700; padding:16px 26px; border-radius:12px; text-decoration:none; font-size:18px }
   .btn:hover { filter:brightness(1.08) }
+  .btn2 { background:var(--card); color:var(--fg); border:1px solid var(--line) }
+  .botoes { display:flex; gap:12px; flex-wrap:wrap }
   .alt { color:var(--mut); font-size:15px; margin-top:12px }
   code { background:var(--card); border:1px solid var(--line); padding:2px 7px; border-radius:6px; font-size:15px }
   pre { background:var(--card); border:1px solid var(--line); padding:14px 16px; border-radius:10px; overflow:auto; font-size:14px }
@@ -30,29 +32,35 @@
 <body>
 <main>
   <h1>Claude Setuper</h1>
-  <p class="sub">Instala e configura o Claude no seu Mac em uns 10 minutos. Com um segundo cérebro que lembra de você, e sem precisar entender de tecnologia.</p>
+  <p class="sub">Instala e configura o Claude no seu computador em uns 10 minutos. Com um segundo cérebro que lembra de você, e sem precisar entender de tecnologia.</p>
 
-  <a class="btn" href="Claude%20Setuper.command" download>Baixar o instalador para Mac</a>
-  <p class="alt">Depois de baixar: dois cliques no arquivo <code>Claude Setuper.command</code>. Se o Mac reclamar que não conhece o desenvolvedor, clique com o botão direito nele → <b>Abrir</b> → <b>Abrir</b>.</p>
+  <div class="botoes">
+    <a class="btn" href="Claude%20Setuper.bat" download>Baixar para Windows</a>
+    <a class="btn btn2" href="Claude%20Setuper.command" download>Baixar para Mac</a>
+  </div>
+  <p class="alt"><b>Windows:</b> dois cliques no arquivo <code>Claude Setuper.bat</code>. Se aparecer "O Windows protegeu o computador", clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>.<br>
+  <b>Mac:</b> dois cliques no arquivo <code>Claude Setuper.command</code>. Se o Mac reclamar que não conhece o desenvolvedor, clique com o botão direito nele → <b>Abrir</b> → <b>Abrir</b>.</p>
 
   <h2>O que vai acontecer</h2>
   <ol class="passos">
     <li><b>Uma janela preta vai abrir.</b> É o Terminal. Faz parte, não fecha. Ele vai falando em português o que está fazendo.</li>
     <li><b>Ele faz três perguntas:</b> como você quer ser chamado, com o que você trabalha, e se prefere que o Claude pergunte antes de fazer as coisas ou faça e avise.</li>
     <li><b>Ele instala tudo sozinho</b> e só te chama quando precisar de um clique seu: a senha do Mac, entrar na sua conta do Claude, confirmar um botão. Ele espera o tempo que for.</li>
-    <li><b>No fim, o Maestri abre</b> com o Claude já conversando com você e umas notas explicativas do lado. Daí em diante é só pedir.</li>
+    <li><b>No fim, o Claude abre</b> já conversando com você. No Mac isso acontece dentro do Maestri, um painel com notas explicativas do lado. No Windows abre numa janela própria, com um atalho "Claude" na Área de Trabalho pra próxima vez.</li>
   </ol>
 
   <h2>O que fica instalado</h2>
   <div class="card"><b>Claude Code</b> O Claude no seu computador, já sabendo quem você é e como você gosta de trabalhar.</div>
   <div class="card"><b>Segundo cérebro (Obsidian)</b> Uma pasta de notas que o Claude lê antes de trabalhar e alimenta quando termina: decisões, correções, padrões e onde cada projeto parou. Com o tempo ele para de repetir erro e lembra do que você já decidiu.</div>
-  <div class="card"><b>Maestri</b> O painel onde você conversa com o Claude. Parece um quadro com post-its, não uma tela preta.</div>
+  <div class="card"><b>Maestri (só no Mac)</b> O painel onde você conversa com o Claude. Parece um quadro com post-its, não uma tela preta. No Windows, o Claude abre pelo atalho da Área de Trabalho.</div>
   <div class="card"><b>GitHub, Chrome e Vercel</b> Pra guardar o trabalho com histórico, deixar o Claude usar o seu navegador e colocar páginas na internet com um pedido.</div>
   <div class="card"><b>Comandos prontos</b> Pacotes pro seu tipo de trabalho: escrita, negócios, pesquisa, conteúdo ou programação. E ferramentas que você já usa, como Notion, Figma e Canva.</div>
   <div class="card"><b>Rotinas</b> Revisão semanal do cérebro e backup diário das suas notas, sem você lembrar de nada.</div>
 
   <h2>Se preferir o comando</h2>
-  <p class="mut">Abra o Terminal (⌘ + espaço, digite Terminal) e cole:</p>
+  <p class="mut">No Windows, abra o PowerShell (botão direito no menu Iniciar → Terminal) e cole:</p>
+  <pre>powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.ps1 | iex"</pre>
+  <p class="mut">No Mac, abra o Terminal (⌘ + espaço, digite Terminal) e cole:</p>
   <pre>curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash</pre>
 
   <h2>Depois de instalado</h2>
@@ -64,7 +72,7 @@
 
   <h2>Precisa ter</h2>
   <ul>
-    <li>Um Mac com macOS 15 ou mais novo (o Maestri precisa de Apple Silicon). No Linux funciona sem Maestri e sem Chrome.</li>
+    <li>Windows 10 ou 11 atualizado (com a Microsoft Store), ou um Mac com macOS 15 ou mais novo. No Linux funciona sem Maestri.</li>
     <li>Uma conta do Claude paga (Pro ou Max). O instalador abre a página pra criar se você não tiver.</li>
     <li>Uns 10 minutos e a senha do seu Mac.</li>
   </ul>

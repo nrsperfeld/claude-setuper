@@ -4,7 +4,7 @@ Instala e configura o Claude Code do zero, em português, pra quem não é de te
 
 - **Claude Code** instalado e logado, com `CLAUDE.md` já dizendo quem ela é e como gosta de trabalhar, permissões no nível que ela escolheu.
 - **Segundo cérebro no Obsidian**: cofre montado, plugins instalados, pasta `CLAUDE/` com feedback, decisões, padrões, descobertas e projetos. Hooks fazem o Claude ler o cérebro ao começar e anotar ao terminar.
-- **Maestri** aberto no fim com o Claude se apresentando e notas explicativas do lado.
+- **Maestri** (Mac) aberto no fim com o Claude se apresentando e notas explicativas do lado. No Windows e no Linux, um atalho "Claude" na Área de Trabalho e o Claude aberto ao lado do cofre.
 - **GitHub** (uma ou duas contas), **Chrome** (extensão do Claude) e **Vercel** (publicar sites).
 - **Pacotes de comandos** por tipo de uso (escrita, negócios, pesquisa, conteúdo, programação) e **ferramentas conectadas** (Notion, Figma, Canva...).
 - **Rotinas**: revisão semanal do cérebro e backup diário das notas.
@@ -13,9 +13,15 @@ Página pra mandar pra pessoa: `https://nrsperfeld.github.io/claude-setuper/`
 
 ## Instalar
 
-Dois cliques no arquivo `Claude Setuper.command` (baixado da página), ou no Terminal:
+Dois cliques no arquivo baixado da página (`Claude Setuper.bat` no Windows, `Claude Setuper.command` no Mac), ou pelo terminal:
+
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.ps1 | iex"
+```
 
 ```bash
+# Mac e Linux
 curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash
 ```
 
@@ -45,7 +51,10 @@ Um CLI em Node (`src/`) com um wizard de três perguntas e dez módulos que roda
 | `pacotes` | skills por tipo de uso |
 | `mcps` | catálogo em `templates/mcps/catalogo.json` via `claude mcp add` |
 | `rotinas` | launchd (Mac) ou cron (Linux) |
-| `maestri` | instala o app e semeia `~/.maestri` com o workspace "Meu Claude" |
+| `maestri` | (Mac) instala o app e semeia `~/.maestri` com o workspace "Meu Claude" |
+| `atalho` | (Windows e Linux) atalho "Claude" na Área de Trabalho que abre o Claude com a saudação |
+
+No Windows, os aplicativos vêm pelo `winget` (Git, Node, GitHub CLI, Obsidian, Chrome), o Claude Code pelo `install.ps1` oficial, e as rotinas pelo Agendador de Tarefas (`schtasks`). Os hooks são Node puro e rodam igual nos três sistemas.
 
 Os textos que a pessoa vê estão em `templates/`. É ali que se mexe pra mudar a voz.
 
@@ -57,7 +66,7 @@ node bin/claude-setuper.js --sim --sem-apps --home ./.setuper-test/home
 node bin/claude-setuper.js doctor --home ./.setuper-test/home
 ```
 
-`--home` aponta uma "casa" falsa; `--sem-apps` não instala nada, só escreve os arquivos; `--dry-run` nem escreve.
+`--home` aponta uma "casa" falsa; `--sem-apps` não instala nada, só escreve os arquivos; `--dry-run` nem escreve; `--plataforma win32` exercita os ramos do Windows em outro sistema (só a lógica, não os comandos).
 
 ## Pegadinhas conhecidas
 
@@ -65,6 +74,8 @@ node bin/claude-setuper.js doctor --home ./.setuper-test/home
 - Na primeira abertura de um cofre com plugins da comunidade o Obsidian pede um clique de confiança. Não dá pra pular; o instalador espera e o `doctor` avisa se faltar.
 - Caminhos com acento vêm do Obsidian em outra forma Unicode; toda comparação usa NFC.
 - O Maestri lê `~/.maestri` só ao abrir. O módulo fecha o app se estiver rodando antes de semear o workspace.
-- O arquivo `.command` não é assinado; o macOS avisa na primeira abertura (botão direito → Abrir). Assinar com conta de desenvolvedor Apple resolve.
+- O arquivo `.command` não é assinado; o macOS avisa na primeira abertura (botão direito → Abrir). Assinar com conta de desenvolvedor Apple resolve. No Windows, o `.bat` dispara o SmartScreen ("Mais informações" → "Executar assim mesmo").
+- No Windows o Claude Code precisa do Git Bash; o módulo base instala o Git pelo winget antes do Claude.
+- A versão Windows foi exercitada só com plataforma simulada num Mac. O primeiro teste numa máquina Windows de verdade ainda está pendente.
 
 Licença MIT.
