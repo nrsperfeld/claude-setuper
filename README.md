@@ -9,14 +9,14 @@ Instala e configura o Claude Code do zero, em português, pra quem não é de te
 - **Pacotes de comandos** por tipo de uso (escrita, negócios, pesquisa, conteúdo, programação) e **ferramentas conectadas** (Notion, Figma, Canva...).
 - **Rotinas**: revisão semanal do cérebro e backup diário das notas.
 
-Página pra mandar pra pessoa: `https://{{USUARIO}}.github.io/claude-setuper/`
+Página pra mandar pra pessoa: `https://nrsperfeld.github.io/claude-setuper/`
 
 ## Instalar
 
 Dois cliques no arquivo `Claude Setuper.command` (baixado da página), ou no Terminal:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/{{REPO}}/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash
 ```
 
 Depois:

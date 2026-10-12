@@ -1,10 +1,10 @@
 #!/bin/bash
 # Claude Setuper — instalador de uma linha.
-#   curl -fsSL https://raw.githubusercontent.com/{{REPO}}/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash
 # Garante o mínimo (Xcode CLT, Homebrew, Node), baixa o Setuper e entrega pro wizard em português.
 set -e
 
-REPO="${CLAUDE_SETUPER_REPO:-{{REPO}}}"
+REPO="${CLAUDE_SETUPER_REPO:-nrsperfeld/claude-setuper}"
 DEST="$HOME/Claude Setuper/app"
 
 bold()  { printf '\033[1m%s\033[0m\n' "$1"; }

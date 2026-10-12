@@ -8,6 +8,6 @@ echo "  Claude Setuper"
 echo "  Vou começar a instalação. Não feche esta janela."
 echo
 sleep 1
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/{{REPO}}/main/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh)"
 echo
 echo "  Pode fechar esta janela."
