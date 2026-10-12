@@ -60,6 +60,8 @@
   <h2>Se preferir o comando</h2>
   <p class="mut">No Windows, abra o PowerShell (botão direito no menu Iniciar → Terminal) e cole:</p>
   <pre>powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.ps1 | iex"</pre>
+  <p class="mut">Se no Windows o instalador normal travar, existe uma versão de reserva num arquivo só, que faz tudo direto do PowerShell:</p>
+  <pre>powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/fallback-windows.ps1 | iex"</pre>
   <p class="mut">No Mac, abra o Terminal (⌘ + espaço, digite Terminal) e cole:</p>
   <pre>curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash</pre>
 

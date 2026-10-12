@@ -25,6 +25,21 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash
 ```
 
+### Reserva para Windows (um arquivo só)
+
+Se o caminho normal falhar numa máquina Windows, `fallback-windows.ps1` faz a instalação inteira sozinho, sem o wizard em Node. Ele baixa os templates do repositório e escreve tudo direto:
+
+```powershell
+# pergunta nome, trabalho e autonomia
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/fallback-windows.ps1 | iex"
+
+# sem perguntas
+irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/fallback-windows.ps1 -OutFile setup.ps1
+powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Nome "Maria" -Trabalho "tenho uma loja de roupas" -Autonomia equilibrado
+```
+
+Parâmetros: `-Pacotes escrita,negocios,pesquisa,criador,dev`, `-SemVercel`, `-SemChrome`, `-SemGitHub`, `-SemRotinas`. Com `-Teste` ele não instala nada e gera os arquivos numa pasta temporária (dá pra rodar até no Mac com `pwsh`). Ele grava `estado.json`, então o `claude-setuper doctor` funciona depois se o app em Node for instalado.
+
 Depois:
 
 ```
