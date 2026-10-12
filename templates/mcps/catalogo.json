@@ -1,0 +1,51 @@
+[
+  {
+    "id": "notion",
+    "nome": "Notion",
+    "hint": "ler e escrever nas suas páginas do Notion",
+    "transporte": "http",
+    "url": "https://mcp.notion.com/mcp",
+    "login": "No primeiro uso, digite /mcp dentro do Claude e autorize o Notion no navegador."
+  },
+  {
+    "id": "figma",
+    "nome": "Figma",
+    "hint": "ler designs e gerar código a partir deles",
+    "transporte": "http",
+    "url": "https://mcp.figma.com/mcp",
+    "login": "No primeiro uso, digite /mcp dentro do Claude e autorize o Figma no navegador."
+  },
+  {
+    "id": "canva",
+    "nome": "Canva",
+    "hint": "criar e editar artes no Canva",
+    "transporte": "http",
+    "url": "https://mcp.canva.com/mcp",
+    "login": "No primeiro uso, digite /mcp dentro do Claude e autorize o Canva."
+  },
+  {
+    "id": "github",
+    "nome": "GitHub (avançado)",
+    "hint": "abrir issues, PRs e ler repositórios",
+    "transporte": "http",
+    "url": "https://api.githubcopilot.com/mcp/",
+    "login": "No primeiro uso, digite /mcp dentro do Claude e autorize o GitHub.",
+    "pacotes": ["dev"]
+  },
+  {
+    "id": "context7",
+    "nome": "Context7 (documentação de código)",
+    "hint": "documentação atualizada de bibliotecas",
+    "transporte": "stdio",
+    "comando": ["npx", "-y", "@upstash/context7-mcp"],
+    "pacotes": ["dev"]
+  },
+  {
+    "id": "playwright",
+    "nome": "Playwright (testar sites)",
+    "hint": "abrir e testar páginas automaticamente",
+    "transporte": "stdio",
+    "comando": ["npx", "-y", "@playwright/mcp@latest"],
+    "pacotes": ["dev"]
+  }
+]

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.claude-setuper.{{id}}</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/bash</string><string>{{script}}</string></array>
+  <key>StartCalendarInterval</key>
+  <dict>{{comDia}}<key>Hour</key><integer>{{hora}}</integer><key>Minute</key><integer>0</integer></dict>
+  <key>StandardOutPath</key><string>{{logs}}/{{id}}.log</string>
+  <key>StandardErrorPath</key><string>{{logs}}/{{id}}.log</string>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+</dict>
+</plist>

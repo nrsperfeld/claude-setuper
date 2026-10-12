@@ -1,0 +1,155 @@
+// Obsidian: instala o app, monta o vault com CLAUDE/, plugins e registra no app. Validado em 12/10/2026.
+import path from 'node:path';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import { ui } from '../ui.js';
+
+export const id = 'obsidian';
+export const nome = 'Segundo cérebro (Obsidian)';
+export const descricao = 'Instala o Obsidian e monta o cofre de notas que o Claude vai alimentar';
+export const padrao = true;
+
+const PLUGINS = [
+  { repo: 'blacksmithgu/obsidian-dataview', id: 'dataview' },
+  { repo: 'SilentVoid13/Templater', id: 'templater-obsidian' },
+];
+
+export function dirConfigObsidian(ctx) {
+  if (ctx.plataforma === 'darwin') return path.join(ctx.home, 'Library/Application Support/obsidian');
+  if (ctx.plataforma === 'linux') return path.join(process.env.XDG_CONFIG_HOME || path.join(ctx.home, '.config'), 'obsidian');
+  return path.join(process.env.APPDATA || ctx.home, 'obsidian');
+}
+
+export async function verificar(ctx) {
+  const vault = ctx.estado.respostas?.vault || path.join(ctx.home, 'Documents', 'Segundo Cérebro');
+  const temApp = ctx.plataforma === 'darwin' ? ctx.existe('/Applications/Obsidian.app') : await ctx.existeComando('obsidian');
+  const reg = ctx.lerJson(path.join(dirConfigObsidian(ctx), 'obsidian.json'), { vaults: {} });
+  const registrado = Object.values(reg.vaults || {}).some((v) => nfc(v.path) === nfc(vault));
+  const itens = [
+    { item: 'Obsidian instalado', ok: temApp },
+    { item: 'Cofre com pasta CLAUDE/', ok: ctx.existe(path.join(vault, 'CLAUDE', 'projetos')) },
+    { item: 'Cofre registrado no Obsidian', ok: registrado },
+    { item: 'Plugins Dataview e Templater', ok: PLUGINS.every((p) => ctx.existe(path.join(vault, '.obsidian', 'plugins', p.id, 'main.js'))) },
+  ];
+  if (await ctx.existeComando('obsidian')) {
+    const out = await ctx.run('obsidian', ['plugin', 'id=dataview', `vault=${path.basename(vault)}`], { ignorarErro: true, sempre: true, timeout: 15000 });
+    itens.push({ item: 'Plugins habilitados (clique de confiança)', ok: /enabled\s+true/.test(out), dica: 'abra o cofre e clique em "Confiar no autor e habilitar plugins"' });
+  }
+  return itens;
+}
+
+export async function instalar(ctx) {
+  const vault = ctx.resp.vault || path.join(ctx.home, 'Documents', 'Segundo Cérebro');
+  ctx.resp.vault = vault;
+
+  await instalarApp(ctx);
+
+  await ui.tarefa('Montando o seu cofre de notas', 'Cofre montado', async () => {
+    const pastas = { feedback: 'feedback', 'decisões': 'decisão', 'padrões': 'padrão', descobertas: 'descoberta', projetos: 'projeto' };
+    for (const [pasta, tag] of Object.entries(pastas)) {
+      fs.mkdirSync(path.join(vault, 'CLAUDE', pasta), { recursive: true });
+      ctx.escreverSeFaltar(path.join(vault, 'CLAUDE', pasta, 'README.md'), ctx.template('vault/README-pasta.md', { pasta, tag }));
+    }
+    for (const p of ['1. PROJETOS', '2. ÁREAS', '3. RECURSOS', '4. ARQUIVO', 'TEMPLATES', '_anexos']) fs.mkdirSync(path.join(vault, p), { recursive: true });
+    ctx.escreverSeFaltar(path.join(vault, 'Comece aqui.md'), ctx.template('vault/Comece aqui.md'));
+    ctx.escreverSeFaltar(path.join(vault, 'Painel do Claude.md'), ctx.template('vault/Painel do Claude.md'));
+    ctx.escreverSeFaltar(path.join(vault, 'TEMPLATES', 'Nota do Claude.md'), ctx.template('vault/template-nota.md'));
+    ctx.escreverSeFaltar(path.join(vault, 'CLAUDE', 'padrões', 'Como falar comigo.md'), ctx.template('vault/padrao-inicial.md'));
+
+    const obs = path.join(vault, '.obsidian');
+    ctx.escreverSeFaltar(path.join(obs, 'app.json'), { attachmentFolderPath: '_anexos', newFileLocation: 'root', useMarkdownLinks: false, alwaysUpdateLinks: true, showUnsupportedFiles: false });
+    ctx.escreverSeFaltar(path.join(obs, 'appearance.json'), { theme: 'obsidian', baseFontSize: 16, accentColor: '#c8873c', showViewHeader: true });
+    ctx.escreverSeFaltar(path.join(obs, 'core-plugins.json'), CORE_PLUGINS);
+    ctx.escreverSeFaltar(path.join(obs, 'templates.json'), { folder: 'TEMPLATES', dateFormat: 'YYYY-MM-DD', timeFormat: 'HH:mm' });
+    ctx.escreverSeFaltar(path.join(obs, 'hotkeys.json'), {});
+    ctx.mesclarJson(path.join(obs, 'community-plugins.json'), PLUGINS.map((p) => p.id));
+    ctx.escreverSeFaltar(path.join(obs, 'plugins', 'templater-obsidian', 'data.json'), { templates_folder: 'TEMPLATES', trigger_on_file_creation: false });
+  });
+
+  await ui.tarefa('Baixando os plugins do cofre', 'Plugins baixados', async (msg) => {
+    for (const p of PLUGINS) {
+      const dest = path.join(vault, '.obsidian', 'plugins', p.id);
+      if (ctx.existe(path.join(dest, 'main.js'))) continue;
+      msg(`Baixando ${p.id}`);
+      const rel = await ctx.baixarJson(`https://api.github.com/repos/${p.repo}/releases/latest`);
+      const assets = Object.fromEntries(rel.assets.map((a) => [a.name, a.browser_download_url]));
+      for (const f of ['main.js', 'manifest.json', 'styles.css']) if (assets[f]) await ctx.baixar(assets[f], path.join(dest, f));
+    }
+  });
+
+  await ui.tarefa('Registrando o cofre no Obsidian', 'Cofre registrado', async () => {
+    registrarVault(ctx, vault);
+  });
+
+  await abrirEConfiar(ctx, vault);
+}
+
+async function instalarApp(ctx) {
+  if (ctx.plataforma === 'darwin') {
+    if (ctx.existe('/Applications/Obsidian.app')) return ui.ok('Obsidian já está instalado');
+    if (ctx.semApps) return;
+    await ui.tarefa('Instalando o Obsidian, o seu segundo cérebro', 'Obsidian instalado', () => ctx.run('brew', ['install', '--cask', 'obsidian']), { demora: 'uns 2 minutos, é normal' });
+  } else if (ctx.plataforma === 'linux') {
+    if (await ctx.existeComando('obsidian')) return ui.ok('Obsidian já está instalado');
+    if (ctx.semApps) return;
+    await ui.tarefa('Instalando o Obsidian', 'Obsidian instalado', async () => {
+      const rel = await ctx.baixarJson('https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest');
+      const deb = rel.assets.find((a) => a.name.endsWith('amd64.deb'));
+      if (deb && (await ctx.existeComando('apt-get'))) {
+        const tmp = path.join(ctx.pastaSetuper, 'obsidian.deb');
+        await ctx.baixar(deb.browser_download_url, tmp);
+        await ctx.runVisivel('sudo', ['apt-get', 'install', '-y', tmp]);
+      } else if (await ctx.existeComando('flatpak')) {
+        await ctx.runVisivel('flatpak', ['install', '-y', 'flathub', 'md.obsidian.Obsidian']);
+      } else throw new Error('não achei apt nem flatpak pra instalar o Obsidian');
+    });
+  }
+}
+
+export function registrarVault(ctx, vault) {
+  const cfg = path.join(dirConfigObsidian(ctx), 'obsidian.json');
+  const data = ctx.lerJson(cfg, { vaults: {} });
+  data.vaults = data.vaults || {};
+  let vid = Object.keys(data.vaults).find((k) => nfc(data.vaults[k].path) === nfc(vault)) || crypto.randomBytes(8).toString('hex');
+  for (const v of Object.values(data.vaults)) delete v.open;
+  data.vaults[vid] = { path: vault, ts: Date.now(), open: true };
+  if (data.cli === undefined) data.cli = true;
+  ctx.escrever(cfg, JSON.stringify(data, null, 2));
+  return vid;
+}
+
+async function abrirEConfiar(ctx, vault) {
+  if (ctx.semApps || ctx.dryRun || ctx.plataforma !== 'darwin') return;
+  // Obsidian aberto não relê o obsidian.json: fecha antes de abrir.
+  await ctx.run('pkill', ['-x', 'Obsidian'], { ignorarErro: true });
+  await new Promise((r) => setTimeout(r, 2000));
+  ui.pausa('O Obsidian vai abrir e perguntar se você confia nos plugins', [
+    'Clica no botão da direita: "Confiar no autor e habilitar plugins".',
+    'Os plugins são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.',
+    'Eu espero você clicar.',
+  ]);
+  await ctx.run('open', ['-a', 'Obsidian'], { ignorarErro: true });
+  const cli = await ctx.existeComando('obsidian');
+  if (!cli) {
+    ui.info('Quando terminar, ative também o "Command line interface" nas Configurações do Obsidian (General). Sigo em frente.');
+    return;
+  }
+  const ok = await ctx.esperar(async () => {
+    const out = await ctx.run('obsidian', ['plugin', 'id=dataview', `vault=${path.basename(vault)}`], { ignorarErro: true, sempre: true, timeout: 15000 });
+    return /enabled\s+true/.test(out);
+  }, { intervalo: 4, limite: 300 });
+  if (ok) ui.ok('Plugins habilitados. Seu cofre está pronto.');
+  else ui.aviso('Não consegui confirmar o clique. Sem problema, dá pra fazer depois: o "doctor" avisa se faltar.');
+}
+
+function nfc(s) {
+  return String(s || '').normalize('NFC');
+}
+
+const CORE_PLUGINS = {
+  'file-explorer': true, 'global-search': true, switcher: true, graph: true, backlink: true, canvas: true, 'outgoing-link': true,
+  'tag-pane': true, properties: true, 'page-preview': true, 'daily-notes': false, templates: true, 'note-composer': true,
+  'command-palette': true, 'editor-status': true, bookmarks: true, outline: true, 'word-count': true, 'file-recovery': true,
+  footnotes: false, 'slash-command': false, 'markdown-importer': false, 'zk-prefixer': false, 'random-note': false, slides: false,
+  'audio-recorder': false, workspaces: false, publish: false, sync: false, webviewer: false, bases: true,
+};
