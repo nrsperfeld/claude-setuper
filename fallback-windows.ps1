@@ -69,10 +69,10 @@ function AtualizarPath {
     if ($p -and (($env:Path -split ';') -notcontains $p)) { $env:Path = "$p;$env:Path" }
   }
 }
-function Winget($id, $nome) {
+function InstalarWinget($id, $nome) {
   if ($Teste) { return }
   Passo "Instalando $nome (pode levar uns minutos, é normal)."
-  winget install -e --id $id --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null
+  & winget.exe install -e --id $id --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null
   AtualizarPath
 }
 function Esperar($cond, $segundos) {
@@ -145,14 +145,14 @@ Ok "Pronto, $Nome. Agora é comigo."
 # ---------- 1. base ----------
 Passo "1/9  Base da máquina"
 if (-not $Teste) {
-  if (-not (Tem 'winget')) {
+  if (-not (Tem 'winget.exe')) {
     Pausa "Preciso do 'Instalador de Aplicativo' da Microsoft" @('Vou abrir a Microsoft Store. Clica em Instalar (ou Atualizar), fecha a loja e roda este script de novo.')
     Start-Process 'ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1'
     Read-Host "Aperta Enter pra fechar"; exit 1
   }
-  if (-not (Tem 'git')) { Winget 'Git.Git' 'o Git' } else { Ok "Git já está instalado" }
-  if (-not (Test-Path "$env:ProgramFiles\Git\bin\bash.exe") -and -not (Tem 'bash')) { Winget 'Git.Git' 'o Git Bash' }
-  if (-not (Tem 'node')) { Winget 'OpenJS.NodeJS.LTS' 'o Node' } else { Ok "Node já está instalado" }
+  if (-not (Tem 'git')) { InstalarWinget 'Git.Git' 'o Git' } else { Ok "Git já está instalado" }
+  if (-not (Test-Path "$env:ProgramFiles\Git\bin\bash.exe") -and -not (Tem 'bash')) { InstalarWinget 'Git.Git' 'o Git Bash' }
+  if (-not (Tem 'node')) { InstalarWinget 'OpenJS.NodeJS.LTS' 'o Node' } else { Ok "Node já está instalado" }
   AtualizarPath
   if (-not (Tem 'node')) { Aviso "O Node não entrou no caminho. Fecha esta janela, abre de novo e roda o script outra vez."; exit 1 }
   if (-not (Tem 'claude')) {
@@ -213,7 +213,7 @@ Ok "CLAUDE.md, permissões, hooks e comandos do segundo cérebro no lugar"
 # ---------- 3. Obsidian ----------
 Passo "3/9  Segundo cérebro (Obsidian)"
 $obsExe = @((Join-Path $LocalAppData 'Programs\Obsidian\Obsidian.exe'), (Join-Path $LocalAppData 'Obsidian\Obsidian.exe'), "$env:ProgramFiles\Obsidian\Obsidian.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $obsExe) { Winget 'Obsidian.Obsidian' 'o Obsidian, o seu segundo cérebro' } else { Ok "Obsidian já está instalado" }
+if (-not $obsExe) { InstalarWinget 'Obsidian.Obsidian' 'o Obsidian, o seu segundo cérebro' } else { Ok "Obsidian já está instalado" }
 $pastas = [ordered]@{ feedback = 'feedback'; 'decisões' = 'decisão'; 'padrões' = 'padrão'; descobertas = 'descoberta'; projetos = 'projeto' }
 foreach ($p in $pastas.Keys) {
   $d = Join-Path (Join-Path $Vault 'CLAUDE') $p
@@ -270,7 +270,7 @@ Ok "Cofre montado em $Vault e registrado no Obsidian"
 Passo "4/9  GitHub"
 if ($SemGitHub) { Aviso "Pulado a pedido (-SemGitHub)" }
 elseif (-not $Teste) {
-  if (-not (Tem 'gh')) { Winget 'GitHub.cli' 'a ferramenta do GitHub' } else { Ok "Ferramenta do GitHub já instalada" }
+  if (-not (Tem 'gh')) { InstalarWinget 'GitHub.cli' 'a ferramenta do GitHub' } else { Ok "Ferramenta do GitHub já instalada" }
   $status = (gh auth status 2>&1 | Out-String)
   if ($status -notmatch 'Logged in') {
     $tem = Read-Host "Você já tem uma conta no GitHub? (s/n)"
@@ -301,7 +301,7 @@ Passo "5/9  Claude no Chrome"
 if ($SemChrome) { Aviso "Pulado a pedido (-SemChrome)" }
 elseif (-not $Teste) {
   $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", (Join-Path $LocalAppData 'Google\Chrome\Application\chrome.exe')) | Where-Object { Test-Path $_ } | Select-Object -First 1
-  if (-not $chrome) { Winget 'Google.Chrome' 'o Google Chrome' } else { Ok "Chrome já está instalado" }
+  if (-not $chrome) { InstalarWinget 'Google.Chrome' 'o Google Chrome' } else { Ok "Chrome já está instalado" }
   $extId = 'fcoeoabgfenejglbffodgkkbkcdhcgfn'
   $perfis = Join-Path $LocalAppData 'Google\Chrome\User Data'
   $temExt = (Test-Path $perfis) -and ((Get-ChildItem $perfis -Directory -ErrorAction SilentlyContinue | Where-Object { Test-Path (Join-Path $_.FullName "Extensions\$extId") }).Count -gt 0)

@@ -15,13 +15,13 @@ function AtualizarPath {
   }
 }
 function Tem($cmd) { return [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
-function Winget($id) { winget install -e --id $id --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null; AtualizarPath }
+function InstalarWinget($id) { & winget.exe install -e --id $id --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null; AtualizarPath }
 
 Clear-Host
 Write-Host "Claude Setuper" -ForegroundColor White
 Write-Host "Vou preparar o seu computador. Leva alguns minutos e eu aviso sempre que precisar de você."
 
-if (-not (Tem 'winget')) {
+if (-not (Tem 'winget.exe')) {
   Passo "Preciso do 'Instalador de Aplicativo' da Microsoft, que vem no Windows 10 e 11."
   Write-Host "  Vou abrir a Microsoft Store. Clica em Instalar (ou Atualizar), fecha a loja e roda este instalador de novo."
   Start-Process 'ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1'
@@ -30,10 +30,10 @@ if (-not (Tem 'winget')) {
 }
 Ok "winget pronto"
 
-if (-not (Tem 'git')) { Passo "Instalando o Git (uns 2 minutos, é normal)."; Winget 'Git.Git' }
+if (-not (Tem 'git')) { Passo "Instalando o Git (uns 2 minutos, é normal)."; InstalarWinget 'Git.Git' }
 Ok "Git pronto"
 
-if (-not (Tem 'node')) { Passo "Instalando o Node (uns 2 minutos, é normal)."; Winget 'OpenJS.NodeJS.LTS' }
+if (-not (Tem 'node')) { Passo "Instalando o Node (uns 2 minutos, é normal)."; InstalarWinget 'OpenJS.NodeJS.LTS' }
 AtualizarPath
 if (-not (Tem 'node')) { Write-Host "O Node não apareceu no caminho. Fecha esta janela, abre de novo e roda o instalador outra vez."; Read-Host "Enter pra fechar"; exit 1 }
 Ok "Node $(node -v) pronto"
