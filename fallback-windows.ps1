@@ -23,6 +23,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
+Set-StrictMode -Off
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $Repo = 'nrsperfeld/claude-setuper'
 $Utf8 = New-Object System.Text.UTF8Encoding $false
@@ -203,7 +204,9 @@ if (-not $Teste) {
   Ok "Node pronto ($(node -v))" 
   if (-not (Tem 'claude')) {
     Passo "Instalando o Claude Code."
-    try { Invoke-Expression (Invoke-RestMethod -UseBasicParsing 'https://claude.ai/install.ps1') } catch { Aviso "Instalador oficial falhou, tentando pelo npm." }
+    # Em processo separado: o instalador oficial liga Set-StrictMode e isso não pode vazar pra cá.
+    try { & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm https://claude.ai/install.ps1 | iex" } catch { Aviso "Instalador oficial falhou, tentando pelo npm." }
+    Set-StrictMode -Off
     AtualizarPath
     if (-not (Tem 'claude')) { npm install -g @anthropic-ai/claude-code | Out-Null; AtualizarPath }
   } else { Ok "Claude Code já está instalado" }
@@ -249,7 +252,8 @@ $novo = [ordered]@{
 if ($settings) {
   # Mantém o que a pessoa já tinha e acrescenta o nosso.
   foreach ($p in $settings.PSObject.Properties) { if (-not $novo.Contains($p.Name)) { $novo[$p.Name] = $p.Value } }
-  if ($settings.env) { foreach ($p in $settings.env.PSObject.Properties) { if (-not $novo.env.Contains($p.Name)) { $novo.env[$p.Name] = $p.Value } } }
+  $envAntigo = $settings.PSObject.Properties['env']
+  if ($envAntigo -and $envAntigo.Value) { foreach ($p in $envAntigo.Value.PSObject.Properties) { if (-not $novo['env'].Contains($p.Name)) { $novo['env'][$p.Name] = $p.Value } } }
 }
 Escrever $settingsPath (Json $novo)
 foreach ($s in @('decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar')) { Escrever (Join-Path (Join-Path (Join-Path $ClaudeDir 'skills') $s) 'SKILL.md') (Tpl "skills/$s.md") }
