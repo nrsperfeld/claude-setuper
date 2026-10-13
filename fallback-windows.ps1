@@ -70,10 +70,48 @@ function AtualizarPath {
   }
 }
 function InstalarWinget($id, $nome) {
-  if ($Teste) { return }
+  if ($Teste) { return $true }
   Passo "Instalando $nome (pode levar uns minutos, é normal)."
-  & winget.exe install -e --id $id --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null
+  $saida = (& winget.exe install -e --id $id --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-String)
+  $codigo = $LASTEXITCODE
+  $ultimas = ($saida -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' | '
+  if ($codigo -ne 0 -and $saida -notmatch 'already installed|já está instalado') {
+    Aviso "winget não conseguiu ($codigo): $ultimas"
+    AtualizarPath
+    return $false
+  }
+  Write-Host "    $ultimas" -ForegroundColor DarkGray
   AtualizarPath
+  return $true
+}
+
+# Reserva da reserva: baixa o instalador oficial e roda em silêncio, quando o winget falha.
+function BaixarArquivo($url, $destino) {
+  Invoke-WebRequest -UseBasicParsing $url -OutFile $destino -Headers @{ 'User-Agent' = 'claude-setuper' }
+}
+function InstalarNodeDireto {
+  Passo "Baixando o Node direto do site oficial."
+  try {
+    $lista = Invoke-RestMethod -UseBasicParsing 'https://nodejs.org/dist/index.json' -Headers @{ 'User-Agent' = 'claude-setuper' }
+    $lts = $lista | Where-Object { $_.lts } | Select-Object -First 1
+    $arq = Join-Path $PastaSetuper "node-$($lts.version)-x64.msi"
+    BaixarArquivo "https://nodejs.org/dist/$($lts.version)/node-$($lts.version)-x64.msi" $arq
+    Start-Process msiexec.exe -ArgumentList "/i `"$arq`" /qn /norestart" -Wait
+    AtualizarPath
+    return (Test-Path "$env:ProgramFiles\nodejs\node.exe")
+  } catch { Aviso "Falhou o Node direto: $($_.Exception.Message)"; return $false }
+}
+function InstalarGitDireto {
+  Passo "Baixando o Git direto do site oficial."
+  try {
+    $rel = Invoke-RestMethod -UseBasicParsing 'https://api.github.com/repos/git-for-windows/git/releases/latest' -Headers @{ 'User-Agent' = 'claude-setuper' }
+    $a = $rel.assets | Where-Object { $_.name -match '^Git-.*-64-bit\.exe$' } | Select-Object -First 1
+    $arq = Join-Path $PastaSetuper $a.name
+    BaixarArquivo $a.browser_download_url $arq
+    Start-Process $arq -ArgumentList '/VERYSILENT /NORESTART /NOCANCEL /SP- /COMPONENTS="icons,ext\reg\shellhere,assoc,assoc_sh"' -Wait
+    AtualizarPath
+    return (Test-Path "$env:ProgramFiles\Git\cmd\git.exe")
+  } catch { Aviso "Falhou o Git direto: $($_.Exception.Message)"; return $false }
 }
 function Esperar($cond, $segundos) {
   if ($Teste) { return $true }
@@ -150,11 +188,19 @@ if (-not $Teste) {
     Start-Process 'ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1'
     Read-Host "Aperta Enter pra fechar"; exit 1
   }
-  if (-not (Tem 'git')) { InstalarWinget 'Git.Git' 'o Git' } else { Ok "Git já está instalado" }
-  if (-not (Test-Path "$env:ProgramFiles\Git\bin\bash.exe") -and -not (Tem 'bash')) { InstalarWinget 'Git.Git' 'o Git Bash' }
-  if (-not (Tem 'node')) { InstalarWinget 'OpenJS.NodeJS.LTS' 'o Node' } else { Ok "Node já está instalado" }
   AtualizarPath
-  if (-not (Tem 'node')) { Aviso "O Node não entrou no caminho. Fecha esta janela, abre de novo e roda o script outra vez."; exit 1 }
+  if (-not (Tem 'git')) {
+    $okGit = InstalarWinget 'Git.Git' 'o Git'
+    if (-not (Tem 'git')) { $okGit = InstalarGitDireto }
+  }
+  if (Tem 'git') { Ok "Git pronto ($(git --version))" } else { Aviso "Não consegui instalar o Git. O Claude Code precisa dele. Veja o registro em $Log"; exit 1 }
+  if (-not (Tem 'node')) {
+    $okNode = InstalarWinget 'OpenJS.NodeJS.LTS' 'o Node'
+    if (-not (Tem 'node') -and -not (Test-Path "$env:ProgramFiles\nodejs\node.exe")) { $okNode = InstalarNodeDireto }
+  }
+  AtualizarPath
+  if (-not (Tem 'node')) { Aviso "O Node foi instalado mas esta janela ainda não o enxerga. Fecha esta janela, abre de novo e roda o mesmo comando: ele continua de onde parou."; exit 1 }
+  Ok "Node pronto ($(node -v))" 
   if (-not (Tem 'claude')) {
     Passo "Instalando o Claude Code."
     try { Invoke-Expression (Invoke-RestMethod -UseBasicParsing 'https://claude.ai/install.ps1') } catch { Aviso "Instalador oficial falhou, tentando pelo npm." }
