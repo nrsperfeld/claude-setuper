@@ -15,7 +15,7 @@ function AtualizarPath {
   }
 }
 function Tem($cmd) { return [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
-function InstalarWinget($id) { & winget.exe install -e --id $id --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null; AtualizarPath }
+function InstalarWinget($id) { & winget.exe install -e --id $id --source winget --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null; AtualizarPath }
 
 Clear-Host
 Write-Host "Claude Setuper" -ForegroundColor White

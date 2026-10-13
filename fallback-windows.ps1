@@ -72,7 +72,7 @@ function AtualizarPath {
 function InstalarWinget($id, $nome) {
   if ($Teste) { return $true }
   Passo "Instalando $nome (pode levar uns minutos, é normal)."
-  $saida = (& winget.exe install -e --id $id --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-String)
+  $saida = (& winget.exe install -e --id $id --source winget --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-String)
   $codigo = $LASTEXITCODE
   $ultimas = ($saida -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' | '
   if ($codigo -ne 0 -and $saida -notmatch 'already installed|já está instalado') {

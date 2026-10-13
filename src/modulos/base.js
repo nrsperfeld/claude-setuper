@@ -62,7 +62,7 @@ async function homebrew(ctx) {
 }
 
 export async function winget(ctx, id) {
-  await ctx.run('winget', ['install', '-e', '--id', id, '--silent', '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity'], { ignorarErro: true, timeout: 20 * 60 * 1000 });
+  await ctx.run('winget', ['install', '-e', '--id', id, '--source', 'winget', '--silent', '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity'], { ignorarErro: true, timeout: 20 * 60 * 1000 });
   atualizarPathWindows();
 }
 
