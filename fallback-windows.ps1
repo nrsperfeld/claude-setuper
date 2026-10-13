@@ -64,6 +64,13 @@ function Escrever($caminho, $texto) {
 function EscreverSeFaltar($caminho, $texto) { if (-not (Test-Path $caminho)) { Escrever $caminho $texto } }
 function Json($obj) { return ($obj | ConvertTo-Json -Depth 20) }
 function Posix($p) { return ($p -replace '\\', '/') }
+function GravarPathUsuario($pasta) {
+  # Deixa a pasta no PATH do usuário de forma permanente (novas janelas enxergam).
+  try {
+    $atual = [System.Environment]::GetEnvironmentVariable('Path', 'User')
+    if (($atual -split ';') -notcontains $pasta) { [System.Environment]::SetEnvironmentVariable('Path', ($atual.TrimEnd(';') + ';' + $pasta), 'User') }
+  } catch {}
+}
 function AtualizarPath {
   try { $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User') } catch {}
   foreach ($p in @("$env:ProgramFiles\nodejs", "$env:ProgramFiles\Git\cmd", "$env:ProgramFiles\Git\bin", "$env:ProgramFiles\GitHub CLI", "$env:APPDATA\npm", "$env:USERPROFILE\.local\bin", "$env:LOCALAPPDATA\Microsoft\WinGet\Links")) {
@@ -209,6 +216,7 @@ if (-not $Teste) {
     Set-StrictMode -Off
     AtualizarPath
     if (-not (Tem 'claude')) { npm install -g @anthropic-ai/claude-code | Out-Null; AtualizarPath }
+    foreach ($pasta in @("$env:USERPROFILE\.local\bin", "$env:APPDATA\npm")) { if (Test-Path $pasta) { GravarPathUsuario $pasta } }
   } else { Ok "Claude Code já está instalado" }
   if (-not (Tem 'claude')) { Aviso "Não consegui instalar o Claude Code. Veja o registro em $Log"; exit 1 }
   if (Logado) { Ok "Você já está logado no Claude" }

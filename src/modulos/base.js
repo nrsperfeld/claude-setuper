@@ -115,6 +115,11 @@ async function claudeCode(ctx) {
       if (!process.env.PATH.includes(local)) process.env.PATH = `${local}:${process.env.PATH}`;
     }
     if (!(await ctx.existeComando('claude'))) await ctx.run('npm', ['install', '-g', '@anthropic-ai/claude-code']);
+    if (ctx.win) {
+      // Grava .local\bin e a pasta do npm no PATH do usuário, senão janelas novas não acham o claude.
+      const pastas = [`${process.env.USERPROFILE}\\.local\\bin`, `${process.env.APPDATA}\\npm`].map((p) => p.replace(/'/g, "''"));
+      await ctx.run('powershell', ['-NoProfile', '-Command', `$a=[Environment]::GetEnvironmentVariable('Path','User'); foreach($p in @('${pastas.join("','")}')){ if((Test-Path $p) -and (($a -split ';') -notcontains $p)){ $a=$a.TrimEnd(';')+';'+$p } }; [Environment]::SetEnvironmentVariable('Path',$a,'User')`], { ignorarErro: true });
+    }
   }, { demora: 'quase lá' });
 }
 

@@ -15,6 +15,9 @@ function AtualizarPath {
   }
 }
 function Tem($cmd) { return [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
+function GravarPathUsuario($pasta) {
+  try { $atual = [System.Environment]::GetEnvironmentVariable('Path', 'User'); if (($atual -split ';') -notcontains $pasta) { [System.Environment]::SetEnvironmentVariable('Path', ($atual.TrimEnd(';') + ';' + $pasta), 'User') } } catch {}
+}
 function InstalarWinget($id) { & winget.exe install -e --id $id --source winget --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null; AtualizarPath }
 
 Clear-Host
@@ -50,6 +53,7 @@ Push-Location $Dest
 npm install --silent --no-audit --no-fund 2>$null | Out-Null
 npm link --silent 2>$null | Out-Null
 Pop-Location
+foreach ($pasta in @("$env:USERPROFILE\.local\bin", "$env:APPDATA\npm")) { if (Test-Path $pasta) { GravarPathUsuario $pasta } }
 Ok "Claude Setuper baixado"
 
 # Windows Terminal mostra os acentos e os símbolos direito; o cmd antigo nem sempre.
