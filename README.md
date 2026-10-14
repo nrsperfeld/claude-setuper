@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/inst
 No Windows, o `.bat` da página baixa e roda `fallback-windows.ps1`, que faz a instalação inteira sem o wizard em Node. Pelo terminal (PowerShell comum, sem administrador):
 
 ```powershell
-irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.0/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"
+irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.1/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"
 
 # sem perguntas
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1" -Nome "Maria" -Trabalho "tenho uma loja de roupas" -Autonomia equilibrado
@@ -91,6 +91,7 @@ node bin/claude-setuper.js doctor --home ./.setuper-test/home
 - O Maestri lê `~/.maestri` só ao abrir. O módulo fecha o app se estiver rodando antes de semear o workspace.
 - O arquivo `.command` não é assinado; o macOS avisa na primeira abertura (botão direito → Abrir). Assinar com conta de desenvolvedor Apple resolve. No Windows, o `.bat` dispara o SmartScreen ("Mais informações" → "Executar assim mesmo").
 - No Windows o Claude Code precisa do Git Bash; o módulo base instala o Git pelo winget antes do Claude.
+- Validado de ponta a ponta numa VM Windows 11 ARM64 (QEMU) em 14/10/2026: 16/16 itens da conferência final em verde com `-SemLogin -SemGitHub -SemVercel -SemChrome`. Bugs achados só lá: BOM, parâmetro `$args`, leitura de JSON sem `-Encoding UTF8`, Obsidian aberto pelo winget sobrescrevendo o registro.
 - Os `.ps1` precisam de BOM UTF-8: o Windows PowerShell 5.1 lê UTF-8 sem BOM como ANSI e quebra o parse (achado na VM de teste em 14/10/2026). Não tirar o BOM ao editar.
 - Lições do primeiro Windows real (13/10/2026): função PowerShell com o mesmo nome de um programa chama a si mesma (`Winget` × `winget`); a fonte `msstore` do winget pode falhar por certificado, então todo install vai com `--source winget`; o instalador oficial do Claude liga `Set-StrictMode` e precisa rodar em processo separado; `.local\bin` e a pasta do npm precisam ser gravados no PATH do usuário; e rodar como Administrador atrapalha.
 

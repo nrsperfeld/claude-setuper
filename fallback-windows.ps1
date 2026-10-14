@@ -34,7 +34,7 @@ param(
 $ErrorActionPreference = 'Continue'
 Set-StrictMode -Off
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
-$Versao = '1.1.0'
+$Versao = '1.1.1'
 $Repo = 'nrsperfeld/claude-setuper'
 $Utf8 = New-Object System.Text.UTF8Encoding $false
 
@@ -560,11 +560,11 @@ if (-not $Teste -and -not $baseFalhou) {
     Pausa "O Obsidian vai abrir e perguntar se você confia nos plugins" @('Clica em "Confiar no autor e habilitar plugins". São o Dataview e o Templater, os dois mais usados. Pode confiar.')
     Get-Process Obsidian -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
-    Start-Process "obsidian://open?path=$([uri]::EscapeDataString($Vault))&file=$([uri]::EscapeDataString('Comece aqui'))" -ErrorAction SilentlyContinue
+    try { Start-Process "obsidian://open?path=$([uri]::EscapeDataString($Vault))&file=$([uri]::EscapeDataString('Comece aqui'))" -ErrorAction Stop } catch {}
     Start-Sleep -Seconds 4
   }
   $atalho = Join-Path $Desktop 'Claude.cmd'
-  if (Test-Path $atalho) { Start-Process $atalho }
+  if (Test-Path $atalho) { try { Start-Process $atalho -ErrorAction Stop } catch { Aviso "Não consegui abrir o Claude daqui (sessão sem área de trabalho). Dois cliques no atalho da Área de Trabalho resolvem." } }
 }
 
 $faltam = MostrarDoctor
