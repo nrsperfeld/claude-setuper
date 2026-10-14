@@ -118,8 +118,9 @@ function InstalarNodeDireto {
   try {
     $lista = Invoke-RestMethod -UseBasicParsing 'https://nodejs.org/dist/index.json' -Headers @{ 'User-Agent' = 'claude-setuper' }
     $lts = $lista | Where-Object { $_.lts } | Select-Object -First 1
-    $arq = Join-Path $PastaSetuper "node-$($lts.version)-x64.msi"
-    BaixarArquivo "https://nodejs.org/dist/$($lts.version)/node-$($lts.version)-x64.msi" $arq
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
+    $arq = Join-Path $PastaSetuper "node-$($lts.version)-$arch.msi"
+    BaixarArquivo "https://nodejs.org/dist/$($lts.version)/node-$($lts.version)-$arch.msi" $arq
     $p = Start-Process msiexec.exe -ArgumentList "/i `"$arq`" /qn /norestart" -Wait -PassThru
     if ($p.ExitCode -ne 0) { Cinza "msiexec → código $($p.ExitCode)" }
     AtualizarPath
@@ -130,7 +131,9 @@ function InstalarGitDireto {
   Passo "Baixando o Git direto do site oficial."
   try {
     $rel = Invoke-RestMethod -UseBasicParsing 'https://api.github.com/repos/git-for-windows/git/releases/latest' -Headers @{ 'User-Agent' = 'claude-setuper' }
-    $a = $rel.assets | Where-Object { $_.name -match '^Git-.*-64-bit\.exe$' } | Select-Object -First 1
+    $padrao = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { '^Git-.*-arm64\.exe$' } else { '^Git-.*-64-bit\.exe$' }
+    $a = $rel.assets | Where-Object { $_.name -match $padrao } | Select-Object -First 1
+    if (-not $a) { $a = $rel.assets | Where-Object { $_.name -match '^Git-.*-64-bit\.exe$' } | Select-Object -First 1 }
     $arq = Join-Path $PastaSetuper $a.name
     BaixarArquivo $a.browser_download_url $arq
     $p = Start-Process $arq -ArgumentList '/VERYSILENT /NORESTART /NOCANCEL /SP-' -Wait -PassThru
