@@ -1,4 +1,4 @@
-<#
+﻿<#
 Claude Setuper — instalador para Windows num arquivo só (sem o wizard em Node).
 Faz a instalação inteira direto do PowerShell, passo a passo, e confere tudo no fim.
 

@@ -1,4 +1,4 @@
-# Claude Setuper — instalador para Windows.
+﻿# Claude Setuper — instalador para Windows.
 #   powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.ps1 | iex"
 # Garante o mínimo (winget, Git, Node), baixa o Setuper e entrega pro wizard em português.
 $ErrorActionPreference = 'Stop'

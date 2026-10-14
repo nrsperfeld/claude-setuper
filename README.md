@@ -91,6 +91,7 @@ node bin/claude-setuper.js doctor --home ./.setuper-test/home
 - O Maestri lê `~/.maestri` só ao abrir. O módulo fecha o app se estiver rodando antes de semear o workspace.
 - O arquivo `.command` não é assinado; o macOS avisa na primeira abertura (botão direito → Abrir). Assinar com conta de desenvolvedor Apple resolve. No Windows, o `.bat` dispara o SmartScreen ("Mais informações" → "Executar assim mesmo").
 - No Windows o Claude Code precisa do Git Bash; o módulo base instala o Git pelo winget antes do Claude.
+- Os `.ps1` precisam de BOM UTF-8: o Windows PowerShell 5.1 lê UTF-8 sem BOM como ANSI e quebra o parse (achado na VM de teste em 14/10/2026). Não tirar o BOM ao editar.
 - Lições do primeiro Windows real (13/10/2026): função PowerShell com o mesmo nome de um programa chama a si mesma (`Winget` × `winget`); a fonte `msstore` do winget pode falhar por certificado, então todo install vai com `--source winget`; o instalador oficial do Claude liga `Set-StrictMode` e precisa rodar em processo separado; `.local\bin` e a pasta do npm precisam ser gravados no PATH do usuário; e rodar como Administrador atrapalha.
 
 Licença MIT.
