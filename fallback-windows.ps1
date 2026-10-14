@@ -11,6 +11,7 @@ Rodar sem perguntas:
 Parâmetros:
   -Nome, -Trabalho, -Autonomia (cauteloso | equilibrado | confiante), -Pacotes (escrita,negocios,pesquisa,criador,dev)
   -SemVercel -SemChrome -SemGitHub -SemRotinas    pula essas partes
+  -SemLogin                                       não para no login do Claude (a pessoa faz depois com: claude auth login)
   -Desde N                                        começa do passo N (1 a 9)
   -Refazer                                        ignora o que já está marcado como feito e roda tudo de novo
   -Doctor                                         só confere o que está instalado e sai
@@ -25,7 +26,7 @@ param(
   [string]$Trabalho,
   [ValidateSet('cauteloso', 'equilibrado', 'confiante', '')][string]$Autonomia = '',
   [string]$Pacotes = '',
-  [switch]$SemVercel, [switch]$SemChrome, [switch]$SemGitHub, [switch]$SemRotinas,
+  [switch]$SemVercel, [switch]$SemChrome, [switch]$SemGitHub, [switch]$SemRotinas, [switch]$SemLogin,
   [int]$Desde = 1, [switch]$Refazer, [switch]$Doctor,
   [switch]$Teste, [string]$PastaTeste, [string]$SimularErro
 )
@@ -207,7 +208,7 @@ function Conferir {
   add 'git' (Tem 'git') 'rode: winget install -e --id Git.Git --source winget'
   add 'Node' (Tem 'node') 'rode o instalador de novo com -Desde 1 -Refazer'
   add 'Claude Code' (Tem 'claude') 'rode: irm https://claude.ai/install.ps1 | iex'
-  add 'Login no Claude' (Logado) 'rode: claude auth login'
+  if (-not $SemLogin) { add 'Login no Claude' (Logado) 'rode: claude auth login' }
   $pathUser = [string][System.Environment]::GetEnvironmentVariable('Path', 'User')
   add 'PATH do usuário tem .local\bin' (($pathUser -split ';') -contains "$env:USERPROFILE\.local\bin") 'rode o instalador de novo com -Desde 1 -Refazer'
   $md = Join-Path $ClaudeDir 'CLAUDE.md'
@@ -345,6 +346,7 @@ $Passos += @{ id = 'base'; n = 1; nome = 'Base da máquina'; acao = {
   if (-not (Tem 'claude')) { throw 'não consegui instalar o Claude Code' }
   Ok "Claude Code pronto ($(claude --version 2>$null))"
   if (Logado) { Ok "Você já está logado no Claude" }
+  elseif ($SemLogin) { Aviso "Login do Claude pulado (-SemLogin). Depois: claude auth login" }
   else {
     Pausa "Vou abrir o navegador pra você entrar na sua conta do Claude" @('Entra com o e-mail que você usa no Claude. Se não tem conta, cria ali mesmo.', 'Depois volta pra cá, eu continuo sozinho.')
     claude auth login
