@@ -167,7 +167,7 @@ function Elevado {
 
 # ============================================================ estado (respostas + passos feitos)
 $Estado = $null
-if (Test-Path $EstadoPath) { try { $Estado = Get-Content $EstadoPath -Raw | ConvertFrom-Json } catch { $Estado = $null } }
+if (Test-Path $EstadoPath) { try { $Estado = Get-Content $EstadoPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $Estado = $null } }
 $Resp = @{}
 $Feitos = @{}
 if ($Estado) {
@@ -216,9 +216,9 @@ function Conferir {
   $pathUser = [string][System.Environment]::GetEnvironmentVariable('Path', 'User')
   add 'PATH do usuário tem .local\bin' (($pathUser -split ';') -contains "$env:USERPROFILE\.local\bin") 'rode o instalador de novo com -Desde 1 -Refazer'
   $md = Join-Path $ClaudeDir 'CLAUDE.md'
-  add 'CLAUDE.md' ((Test-Path $md) -and ((Get-Content $md -Raw -ErrorAction SilentlyContinue) -like '*claude-setuper*')) 'rode com -Desde 2 -Refazer'
+  add 'CLAUDE.md' ((Test-Path $md) -and ((Get-Content $md -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) -like '*claude-setuper*')) 'rode com -Desde 2 -Refazer'
   $settingsOk = $false
-  try { $s = Get-Content (Join-Path $ClaudeDir 'settings.json') -Raw | ConvertFrom-Json; $settingsOk = [bool]($s.hooks.SessionStart) -and [bool]($s.env.CLAUDE_SETUPER_VAULT) } catch {}
+  try { $s = Get-Content (Join-Path $ClaudeDir 'settings.json') -Raw -Encoding UTF8 | ConvertFrom-Json; $settingsOk = [bool]($s.hooks.SessionStart) -and [bool]($s.env.CLAUDE_SETUPER_VAULT) } catch {}
   add 'settings.json com hooks e cofre' $settingsOk 'rode com -Desde 2 -Refazer'
   $hooksOk = $true
   foreach ($h in @('cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs')) { if (-not (Test-Path (Join-Path (Join-Path $ClaudeDir 'hooks') $h))) { $hooksOk = $false } }
@@ -228,7 +228,7 @@ function Conferir {
   add 'Cofre com pasta CLAUDE/' (Test-Path (Join-Path $Vault 'CLAUDE\projetos')) 'rode com -Desde 3 -Refazer'
   add 'Plugins Dataview e Templater baixados' ((Test-Path (Join-Path $Vault '.obsidian\plugins\dataview\main.js')) -and (Test-Path (Join-Path $Vault '.obsidian\plugins\templater-obsidian\main.js'))) 'rode com -Desde 3 -Refazer'
   $reg = $false
-  try { $o = Get-Content (Join-Path (Join-Path $AppData 'obsidian') 'obsidian.json') -Raw | ConvertFrom-Json; foreach ($v in $o.vaults.PSObject.Properties) { if ($v.Value.path -eq $Vault) { $reg = $true } } } catch {}
+  try { $o = Get-Content (Join-Path (Join-Path $AppData 'obsidian') 'obsidian.json') -Raw -Encoding UTF8 | ConvertFrom-Json; foreach ($v in $o.vaults.PSObject.Properties) { if ($v.Value.path -eq $Vault) { $reg = $true } } } catch {}
   add 'Cofre registrado no Obsidian' $reg 'rode com -Desde 3 -Refazer'
   if (-not $SemGitHub) {
     add 'GitHub CLI (gh)' (Tem 'gh') 'rode com -Desde 4 -Refazer'
@@ -244,7 +244,7 @@ function Conferir {
     $vOk = $false; if (Tem 'vercel') { $q = (vercel whoami 2>&1 | Out-String); $vOk = ($q -and $q -notmatch 'Error|not') }
     add 'Vercel conectada' $vOk 'rode: vercel login'
   }
-  add 'Skill /publicar' (Test-Path (Join-Path $ClaudeDir 'skills\publicar\SKILL.md')) 'rode com -Desde 6 -Refazer'
+  if (-not $SemVercel) { add 'Skill /publicar' (Test-Path (Join-Path $ClaudeDir 'skills\publicar\SKILL.md')) 'rode com -Desde 6 -Refazer' }
   if (-not $SemRotinas) {
     foreach ($r in @('revisao-semanal', 'backup-diario')) {
       $t = $false
@@ -376,7 +376,7 @@ $Passos += @{ id = 'nucleo'; n = 2; nome = 'Ensinando o Claude quem você é'; a
   foreach ($h in @('cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs')) { Escrever (Join-Path $hooksDir $h) (Tpl "hooks/$h") }
   $settingsPath = Join-Path $ClaudeDir 'settings.json'
   $settings = $null
-  if (Test-Path $settingsPath) { try { $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json } catch { $settings = $null } }
+  if (Test-Path $settingsPath) { try { $settings = Get-Content $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $settings = $null } }
   if ($settings) { Copy-Item $settingsPath "$settingsPath.antes-do-setuper" -Force }
   $novo = [ordered]@{
     permissions = [ordered]@{ allow = $allow; deny = @('Bash(rm -rf:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)', 'Write(.env)', 'Write(.env.*)'); defaultMode = $modo }
@@ -401,6 +401,8 @@ $Passos += @{ id = 'nucleo'; n = 2; nome = 'Ensinando o Claude quem você é'; a
 $Passos += @{ id = 'obsidian'; n = 3; nome = 'Segundo cérebro (Obsidian)'; acao = {
   BaixarTemplates
   if (ObsidianExe) { Ok "Obsidian já está instalado" } elseif (-not $Teste) { if (-not (InstalarWinget 'Obsidian.Obsidian' 'o Obsidian, o seu segundo cérebro')) { Aviso "O app não instalou agora; o cofre fica pronto mesmo assim" } }
+  # O instalador abre o Obsidian sozinho e ele reescreveria o obsidian.json por cima do nosso registro.
+  if (-not $Teste) { Start-Sleep -Seconds 3; Get-Process Obsidian -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue }
   $pastas = [ordered]@{ feedback = 'feedback'; 'decisões' = 'decisão'; 'padrões' = 'padrão'; descobertas = 'descoberta'; projetos = 'projeto' }
   foreach ($p in $pastas.Keys) {
     $d = Join-Path (Join-Path $Vault 'CLAUDE') $p
@@ -435,7 +437,7 @@ $Passos += @{ id = 'obsidian'; n = 3; nome = 'Segundo cérebro (Obsidian)'; acao
   }
   $cfgObs = Join-Path (Join-Path $AppData 'obsidian') 'obsidian.json'
   $reg = $null
-  if (Test-Path $cfgObs) { try { $reg = Get-Content $cfgObs -Raw | ConvertFrom-Json } catch {} }
+  if (Test-Path $cfgObs) { try { $reg = Get-Content $cfgObs -Raw -Encoding UTF8 | ConvertFrom-Json } catch {} }
   $vaults = [ordered]@{}
   $vid = $null
   if ($reg -and $reg.vaults) {
@@ -516,8 +518,9 @@ $Passos += @{ id = 'rotinas'; n = 8; nome = 'Rotinas (revisão semanal e backup 
   foreach ($r in @(@{ id = 'revisao-semanal'; hora = '09:00'; sc = @('/SC', 'WEEKLY', '/D', 'MON') }, @{ id = 'backup-diario'; hora = '21:00'; sc = @('/SC', 'DAILY') })) {
     $script = Join-Path $RotDir "$($r.id).cmd"
     Escrever $script (Tpl "rotinas/$($r.id).cmd" @{ vault = $Vault; logs = $RotDir })
-    if (-not $Teste) { if (-not (Rodar "schtasks $($r.id)" 'schtasks' (@('/Create', '/F', '/TN', "Claude Setuper\$($r.id)", '/TR', "`"$script`"", '/ST', $r.hora) + $r.sc))) { Aviso "Não consegui agendar $($r.id); o arquivo ficou em $script" } }
+    if (-not $Teste) { if (-not (Rodar "schtasks $($r.id)" 'schtasks' (@('/Create', '/F', '/TN', "Claude Setuper\$($r.id)", '/TR', "`"$script`"", '/ST', $r.hora) + $r.sc))) { $falhouAgenda = $true; Aviso "Não consegui agendar $($r.id); o arquivo ficou em $script" } }
   }
+  if ($falhouAgenda) { throw 'uma das tarefas não foi agendada (veja a linha em cinza acima)' }
   Ok "Rotinas agendadas"
 } }
 
