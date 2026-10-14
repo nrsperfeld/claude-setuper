@@ -22,6 +22,13 @@ function InstalarWinget($id) { & winget.exe install -e --id $id --source winget 
 
 Clear-Host
 Write-Host "Claude Setuper" -ForegroundColor White
+try {
+  if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "Esta janela está como Administrador. O instalador funciona melhor numa janela comum (instala tudo na sua conta)." -ForegroundColor Yellow
+    Write-Host "Aperta Enter pra seguir assim mesmo, ou fecha e abre o PowerShell normal." -ForegroundColor Yellow
+    Read-Host | Out-Null
+  }
+} catch {}
 Write-Host "Vou preparar o seu computador. Leva alguns minutos e eu aviso sempre que precisar de você."
 
 if (-not (Tem 'winget.exe')) {

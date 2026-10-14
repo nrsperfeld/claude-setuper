@@ -25,20 +25,20 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash
 ```
 
-### Reserva para Windows (um arquivo só)
+### Windows: o caminho principal é o script único
 
-Se o caminho normal falhar numa máquina Windows, `fallback-windows.ps1` faz a instalação inteira sozinho, sem o wizard em Node. Ele baixa os templates do repositório e escreve tudo direto:
+No Windows, o `.bat` da página baixa e roda `fallback-windows.ps1`, que faz a instalação inteira sem o wizard em Node. Pelo terminal (PowerShell comum, sem administrador):
 
 ```powershell
-# pergunta nome, trabalho e autonomia
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/fallback-windows.ps1 | iex"
+irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.0/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"
 
 # sem perguntas
-irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/fallback-windows.ps1 -OutFile setup.ps1
-powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Nome "Maria" -Trabalho "tenho uma loja de roupas" -Autonomia equilibrado
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1" -Nome "Maria" -Trabalho "tenho uma loja de roupas" -Autonomia equilibrado
 ```
 
-Parâmetros: `-Pacotes escrita,negocios,pesquisa,criador,dev`, `-SemVercel`, `-SemChrome`, `-SemGitHub`, `-SemRotinas`. Com `-Teste` ele não instala nada e gera os arquivos numa pasta temporária (dá pra rodar até no Mac com `pwsh`). Ele grava `estado.json`, então o `claude-setuper doctor` funciona depois se o app em Node for instalado.
+Como ele se comporta: cada passo roda isolado (um erro não derruba o resto), as respostas e os passos concluídos ficam em `Claude Setuper\estado.json` (rodar de novo continua de onde parou), e no fim ele imprime a conferência completa. Parâmetros: `-Doctor` (só confere), `-Desde N`, `-Refazer`, `-Pacotes ...`, `-SemVercel -SemChrome -SemGitHub -SemRotinas`, `-Teste` (gera os arquivos numa pasta temporária sem instalar nada; roda até no Mac com `pwsh`). Erros das ferramentas (winget, npm, schtasks) aparecem em cinza na tela e ficam no `registro-fallback.log`.
+
+Por que não `irm | iex`: não aceita parâmetros, esconde a linha do erro e depende do cache do GitHub. Por isso os links apontam pra tag de versão, não pra `main`.
 
 Depois:
 
@@ -91,6 +91,6 @@ node bin/claude-setuper.js doctor --home ./.setuper-test/home
 - O Maestri lê `~/.maestri` só ao abrir. O módulo fecha o app se estiver rodando antes de semear o workspace.
 - O arquivo `.command` não é assinado; o macOS avisa na primeira abertura (botão direito → Abrir). Assinar com conta de desenvolvedor Apple resolve. No Windows, o `.bat` dispara o SmartScreen ("Mais informações" → "Executar assim mesmo").
 - No Windows o Claude Code precisa do Git Bash; o módulo base instala o Git pelo winget antes do Claude.
-- A versão Windows foi exercitada só com plataforma simulada num Mac. O primeiro teste numa máquina Windows de verdade ainda está pendente.
+- Lições do primeiro Windows real (13/10/2026): função PowerShell com o mesmo nome de um programa chama a si mesma (`Winget` × `winget`); a fonte `msstore` do winget pode falhar por certificado, então todo install vai com `--source winget`; o instalador oficial do Claude liga `Set-StrictMode` e precisa rodar em processo separado; `.local\bin` e a pasta do npm precisam ser gravados no PATH do usuário; e rodar como Administrador atrapalha.
 
 Licença MIT.

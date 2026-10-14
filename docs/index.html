@@ -58,10 +58,9 @@
   <div class="card"><b>Rotinas</b> Revisão semanal do cérebro e backup diário das suas notas, sem você lembrar de nada.</div>
 
   <h2>Se preferir o comando</h2>
-  <p class="mut">No Windows, abra o PowerShell (botão direito no menu Iniciar → Terminal) e cole:</p>
-  <pre>powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.ps1 | iex"</pre>
-  <p class="mut">Se no Windows o instalador normal travar, existe uma versão de reserva num arquivo só, que faz tudo direto do PowerShell:</p>
-  <pre>powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/fallback-windows.ps1 | iex"</pre>
+  <p class="mut">No Windows, abra o PowerShell normal (menu Iniciar, digite PowerShell; não precisa ser como administrador) e cole a linha inteira:</p>
+  <pre>irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.0/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"</pre>
+  <p class="mut">Ele lembra onde parou: se algo travar, rode a mesma linha de novo. Pra só conferir o que está instalado: acrescente <code>-Doctor</code> no fim.</p>
   <p class="mut">No Mac, abra o Terminal (⌘ + espaço, digite Terminal) e cole:</p>
   <pre>curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash</pre>
 

@@ -7,7 +7,14 @@ echo.
 echo   Claude Setuper
 echo   Vou comecar a instalacao. Nao feche esta janela.
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.ps1 | iex"
+set "SCRIPT=%USERPROFILE%\claude-setuper.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.0/fallback-windows.ps1' -OutFile '%SCRIPT%'"
+if not exist "%SCRIPT%" (
+  echo   Nao consegui baixar o instalador. Confere a internet e tenta de novo.
+  pause >nul
+  exit /b 1
+)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" %*
 echo.
 echo   Pode fechar esta janela.
 pause >nul
