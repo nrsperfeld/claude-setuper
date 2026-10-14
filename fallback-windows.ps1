@@ -34,7 +34,7 @@ param(
 $ErrorActionPreference = 'Continue'
 Set-StrictMode -Off
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
-$Versao = '1.1.1'
+$Versao = '1.1.2'
 $Repo = 'nrsperfeld/claude-setuper'
 $Utf8 = New-Object System.Text.UTF8Encoding $false
 

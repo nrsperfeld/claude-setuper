@@ -7,7 +7,7 @@ const fs = require('node:fs');
 function lerEntrada(cb) {
   let dados = '';
   let pronto = false;
-  const fim = () => { if (pronto) return; pronto = true; let e = {}; try { e = JSON.parse(dados || '{}'); } catch {} cb(e); };
+  const fim = () => { if (pronto) return; pronto = true; let e = {}; try { e = JSON.parse(dados.replace(/^\uFEFF/, '') || '{}'); } catch {} cb(e); };
   if (process.stdin.isTTY) return fim();
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', (c) => { dados += c; });
