@@ -10,7 +10,8 @@ Rodar sem perguntas (baixa o arquivo e passa os parâmetros):
   powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Nome "Maria" -Trabalho "tenho uma loja de roupas" -Autonomia equilibrado
 
 Parâmetros: -Nome, -Trabalho, -Autonomia (cauteloso | equilibrado | confiante), -Pacotes (escrita,negocios,pesquisa,criador,dev),
-            -SemVercel, -SemChrome, -SemGitHub, -SemRotinas, -Teste (não instala nada nem faz login; só gera os arquivos numa pasta de teste)
+            -SemVercel, -SemChrome, -SemGitHub, -SemRotinas, -Desde N (retoma a partir do passo N),
+            -Teste (não instala nada nem faz login; só gera os arquivos numa pasta de teste)
 #>
 [CmdletBinding()]
 param(
@@ -19,7 +20,8 @@ param(
   [ValidateSet('cauteloso', 'equilibrado', 'confiante', '')][string]$Autonomia = '',
   [string]$Pacotes = 'escrita,negocios,pesquisa',
   [switch]$SemVercel, [switch]$SemChrome, [switch]$SemGitHub, [switch]$SemRotinas,
-  [switch]$Teste, [string]$PastaTeste
+  [switch]$Teste, [string]$PastaTeste,
+  [int]$Desde = 1   # começa deste passo (1 a 9), pulando os anteriores; útil pra retomar sem refazer
 )
 
 $ErrorActionPreference = 'Continue'
@@ -190,7 +192,8 @@ Ok "Pronto, $Nome. Agora é comigo."
 
 # ---------- 1. base ----------
 Passo "1/9  Base da máquina"
-if (-not $Teste) {
+if ($Desde -gt 1) { Aviso "Pulado (-Desde $Desde)" }
+elseif (-not $Teste) {
   if (-not (Tem 'winget.exe')) {
     Pausa "Preciso do 'Instalador de Aplicativo' da Microsoft" @('Vou abrir a Microsoft Store. Clica em Instalar (ou Atualizar), fecha a loja e roda este script de novo.')
     Start-Process 'ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1'
@@ -271,7 +274,8 @@ Ok "CLAUDE.md, permissões, hooks e comandos do segundo cérebro no lugar"
 # ---------- 3. Obsidian ----------
 Passo "3/9  Segundo cérebro (Obsidian)"
 $obsExe = @((Join-Path $LocalAppData 'Programs\Obsidian\Obsidian.exe'), (Join-Path $LocalAppData 'Obsidian\Obsidian.exe'), "$env:ProgramFiles\Obsidian\Obsidian.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $obsExe) { InstalarWinget 'Obsidian.Obsidian' 'o Obsidian, o seu segundo cérebro' } else { Ok "Obsidian já está instalado" }
+if ($Desde -gt 3) { Aviso "Instalação do app pulada (-Desde $Desde); só confiro o cofre" }
+elseif (-not $obsExe) { InstalarWinget 'Obsidian.Obsidian' 'o Obsidian, o seu segundo cérebro' } else { Ok "Obsidian já está instalado" }
 $pastas = [ordered]@{ feedback = 'feedback'; 'decisões' = 'decisão'; 'padrões' = 'padrão'; descobertas = 'descoberta'; projetos = 'projeto' }
 foreach ($p in $pastas.Keys) {
   $d = Join-Path (Join-Path $Vault 'CLAUDE') $p
@@ -326,7 +330,7 @@ Ok "Cofre montado em $Vault e registrado no Obsidian"
 
 # ---------- 4. GitHub ----------
 Passo "4/9  GitHub"
-if ($SemGitHub) { Aviso "Pulado a pedido (-SemGitHub)" }
+if ($SemGitHub -or $Desde -gt 4) { Aviso "Pulado (-SemGitHub ou -Desde)" }
 elseif (-not $Teste) {
   if (-not (Tem 'gh')) { InstalarWinget 'GitHub.cli' 'a ferramenta do GitHub' } else { Ok "Ferramenta do GitHub já instalada" }
   $status = (gh auth status 2>&1 | Out-String)
@@ -356,7 +360,7 @@ elseif (-not $Teste) {
 
 # ---------- 5. Chrome ----------
 Passo "5/9  Claude no Chrome"
-if ($SemChrome) { Aviso "Pulado a pedido (-SemChrome)" }
+if ($SemChrome -or $Desde -gt 5) { Aviso "Pulado (-SemChrome ou -Desde)" }
 elseif (-not $Teste) {
   $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", (Join-Path $LocalAppData 'Google\Chrome\Application\chrome.exe')) | Where-Object { Test-Path $_ } | Select-Object -First 1
   if (-not $chrome) { InstalarWinget 'Google.Chrome' 'o Google Chrome' } else { Ok "Chrome já está instalado" }
@@ -375,7 +379,7 @@ elseif (-not $Teste) {
 # ---------- 6. Vercel ----------
 Passo "6/9  Vercel (publicar sites)"
 Escrever (Join-Path (Join-Path (Join-Path $ClaudeDir 'skills') 'publicar') 'SKILL.md') (Tpl 'skills/publicar.md')
-if ($SemVercel) { Aviso "Pulado a pedido (-SemVercel)" }
+if ($SemVercel -or $Desde -gt 6) { Aviso "Pulado (-SemVercel ou -Desde)" }
 elseif (-not $Teste) {
   if (-not (Tem 'vercel')) { Passo "Instalando a ferramenta da Vercel."; npm install -g vercel | Out-Null; AtualizarPath }
   $quem = (vercel whoami 2>&1 | Out-String)
