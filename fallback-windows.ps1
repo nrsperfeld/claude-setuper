@@ -34,7 +34,7 @@ param(
 $ErrorActionPreference = 'Continue'
 Set-StrictMode -Off
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
-$Versao = '1.1.2'
+$Versao = '1.1.3'
 $Repo = 'nrsperfeld/claude-setuper'
 $Utf8 = New-Object System.Text.UTF8Encoding $false
 
@@ -379,7 +379,7 @@ $Passos += @{ id = 'nucleo'; n = 2; nome = 'Ensinando o Claude quem você é'; a
   if (Test-Path $settingsPath) { try { $settings = Get-Content $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $settings = $null } }
   if ($settings) { Copy-Item $settingsPath "$settingsPath.antes-do-setuper" -Force }
   $novo = [ordered]@{
-    permissions = [ordered]@{ allow = $allow; deny = @('Bash(rm -rf:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)', 'Write(.env)', 'Write(.env.*)'); defaultMode = $modo }
+    permissions = [ordered]@{ allow = $allow; deny = @('Bash(rm -rf:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)'); defaultMode = $modo }
     hooks = [ordered]@{
       SessionStart = @(@{ hooks = @(@{ type = 'command'; command = "node `"$(Posix (Join-Path $hooksDir 'cerebro-inicio.cjs'))`""; timeout = 10 }) })
       Stop         = @(@{ hooks = @(@{ type = 'command'; command = "node `"$(Posix (Join-Path $hooksDir 'cerebro-fim.cjs'))`""; timeout = 10 }) })

@@ -14,7 +14,8 @@ const NIVEIS = {
   equilibrado: { defaultMode: 'acceptEdits', allow: ['Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'WebSearch', 'WebFetch', 'Bash(git:*)', 'Bash(ls:*)', 'Bash(cat:*)', 'Bash(mkdir:*)', 'Bash(npm:*)', 'Bash(node:*)', 'Bash(python3:*)', 'Bash(open:*)', 'Bash(obsidian:*)'] },
   confiante: { defaultMode: 'auto', allow: ['Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'Bash', 'WebSearch', 'WebFetch'] },
 };
-const DENY = ['Bash(rm -rf:*)', 'Bash(sudo rm:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)', 'Write(.env)', 'Write(.env.*)'];
+// Edit(...) cobre todas as ferramentas de edição de arquivo; Write(...) em deny gera aviso no Claude Code.
+const DENY = ['Bash(rm -rf:*)', 'Bash(sudo rm:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)'];
 
 export async function verificar(ctx) {
   const d = ctx.claudeDir;

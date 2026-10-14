@@ -8,7 +8,7 @@ echo   Claude Setuper
 echo   Vou comecar a instalacao. Nao feche esta janela.
 echo.
 set "SCRIPT=%USERPROFILE%\claude-setuper.ps1"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.2/fallback-windows.ps1' -OutFile '%SCRIPT%'"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.3/fallback-windows.ps1' -OutFile '%SCRIPT%'"
 if not exist "%SCRIPT%" (
   echo   Nao consegui baixar o instalador. Confere a internet e tenta de novo.
   pause >nul

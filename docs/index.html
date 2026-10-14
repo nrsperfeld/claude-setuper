@@ -59,7 +59,7 @@
 
   <h2>Se preferir o comando</h2>
   <p class="mut">No Windows, abra o PowerShell normal (menu Iniciar, digite PowerShell; não precisa ser como administrador) e cole a linha inteira:</p>
-  <pre>irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.2/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"</pre>
+  <pre>irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.3/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"</pre>
   <p class="mut">Ele lembra onde parou: se algo travar, rode a mesma linha de novo. Pra só conferir o que está instalado: acrescente <code>-Doctor</code> no fim.</p>
   <p class="mut">No Mac, abra o Terminal (⌘ + espaço, digite Terminal) e cole:</p>
   <pre>curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash</pre>

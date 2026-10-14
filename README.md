@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/inst
 No Windows, o `.bat` da página baixa e roda `fallback-windows.ps1`, que faz a instalação inteira sem o wizard em Node. Pelo terminal (PowerShell comum, sem administrador):
 
 ```powershell
-irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.2/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"
+irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.3/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"
 
 # sem perguntas
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1" -Nome "Maria" -Trabalho "tenho uma loja de roupas" -Autonomia equilibrado
