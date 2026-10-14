@@ -81,10 +81,11 @@ function Posix($p) { return ($p -replace '\\', '/') }
 function Ultimas($texto, $n) { return ((($texto -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -Last $n) -join ' | ') }
 
 # Roda um programa, guarda a saída e, se falhar, mostra as últimas linhas. Devolve $true/$false.
-function Rodar($nome, $cmd, [string[]]$args, [switch]$Mostrar) {
+function Rodar($nome, $cmd, [string[]]$argumentos, [switch]$Mostrar) {
+  # ($args é variável automática do PowerShell; usar esse nome como parâmetro engolia os argumentos)
   if ($Teste) { return $true }
   try {
-    $saida = (& $cmd @args 2>&1 | Out-String)
+    $saida = (& $cmd @argumentos 2>&1 | Out-String)
     $codigo = $LASTEXITCODE
   } catch { $saida = $_.Exception.Message; $codigo = 1 }
   if ($Mostrar -or $codigo -ne 0) { Cinza "$nome → código $codigo. $(Ultimas $saida 2)" }
