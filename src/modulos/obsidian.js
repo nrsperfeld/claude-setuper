@@ -134,16 +134,30 @@ export function registrarVault(ctx, vault) {
 async function abrirEConfiar(ctx, vault) {
   if (ctx.semApps || ctx.dryRun || (ctx.plataforma !== 'darwin' && !ctx.win)) return;
   // Obsidian aberto não relê o obsidian.json: fecha antes de abrir.
-  if (ctx.win) await ctx.run('taskkill', ['/IM', 'Obsidian.exe', '/F'], { ignorarErro: true });
-  else await ctx.run('pkill', ['-x', 'Obsidian'], { ignorarErro: true });
-  await new Promise((r) => setTimeout(r, 2000));
+  const rodando = async () => !!(await ctx.run('pgrep', ['-x', 'Obsidian'], { ignorarErro: true, sempre: true }));
+  if (ctx.win) {
+    await ctx.run('taskkill', ['/IM', 'Obsidian.exe', '/F'], { ignorarErro: true });
+    await new Promise((r) => setTimeout(r, 2000));
+  } else {
+    // Espera fechar de verdade: um "open" enquanto o app ainda está saindo vai pro processo que está morrendo e nada abre.
+    await ctx.run('pkill', ['-x', 'Obsidian'], { ignorarErro: true });
+    if (!(await ctx.esperar(async () => !(await rodando()), { intervalo: 1, limite: 20 }))) await ctx.run('pkill', ['-9', '-x', 'Obsidian'], { ignorarErro: true });
+    await new Promise((r) => setTimeout(r, 1000));
+  }
   ui.pausa('O Obsidian vai abrir e perguntar se você confia nos plugins', [
-    'Clica no botão da direita: "Confiar no autor e habilitar plugins".',
+    'Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.',
+    'No Obsidian, clica no botão da direita: "Confiar no autor e habilitar plugins".',
     'Os plugins são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.',
-    'Eu espero você clicar.',
+    'Se o Obsidian não aparecer, abre ele você mesmo pela pasta Aplicativos. Eu espero você clicar.',
   ]);
   if (ctx.win) await ctx.abrirUrl(`obsidian://open?path=${encodeURIComponent(vault)}`);
-  else await ctx.run('open', ['-a', 'Obsidian'], { ignorarErro: true });
+  else {
+    // Confere se abriu e tenta de novo: o primeiro open depois de instalar às vezes se perde.
+    for (let i = 0; i < 3; i++) {
+      await ctx.run('open', ['-a', 'Obsidian'], { ignorarErro: true });
+      if (await ctx.esperar(rodando, { intervalo: 1, limite: 15 })) break;
+    }
+  }
   const cli = await ctx.existeComando('obsidian');
   if (!cli) {
     ui.info('Quando terminar, ative também o "Command line interface" nas Configurações do Obsidian (General). Sigo em frente.');
