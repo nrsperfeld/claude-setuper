@@ -14,6 +14,11 @@ export const PACOTES = {
   pesquisa: { nome: 'Pesquisa', hint: 'buscar na internet com fontes e resumir', skills: ['pesquisar', 'resumir'] },
   criador: { nome: 'Conteúdo', hint: 'posts, roteiros de vídeo', skills: ['post', 'roteiro'] },
   dev: { nome: 'Programação', hint: 'criar e revisar projetos de código', skills: ['projeto-novo', 'revisar-codigo'] },
+  estudo: { nome: 'Estudos', hint: 'entender matéria, plano pra prova, corrigir redação', skills: ['estudar', 'redacao'] },
+  video: { nome: 'Vídeo', hint: 'achar cortes, título, descrição e legenda', skills: ['cortes', 'titulo-video'] },
+  marketing: { nome: 'Marketing', hint: 'copy que vende e plano de campanha', skills: ['copy', 'campanha'] },
+  empresa: { nome: 'Empresa', hint: 'ler os números e decidir com conta feita', skills: ['numeros', 'analise-negocio'] },
+  elos: { nome: 'ELOS', hint: 'revisar textos na voz da ELOS', skills: ['voz-elos'], soPerfil: 'elos' },
 };
 
 export async function verificar(ctx) {

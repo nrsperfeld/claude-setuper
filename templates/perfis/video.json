@@ -1,0 +1,17 @@
+{
+  "ordem": 4,
+  "nome": "Pra edição de vídeo",
+  "hint": "cortes, roteiros, títulos, legendas",
+  "trabalho": {
+    "pergunta": "Que tipo de vídeo você edita, e em qual programa?",
+    "placeholder": "Ex.: Reels e vídeos de YouTube de um podcast, no Premiere"
+  },
+  "pacotes": [
+    "video",
+    "criador",
+    "escrita"
+  ],
+  "semModulos": [],
+  "claudeMd": "# Meu trabalho com vídeo\n\nEu edito vídeo. Pode usar os termos de edição normalmente: corte, timeline, B-roll, color, legenda, render, gancho. Quando eu mandar uma transcrição, me ajude a achar os melhores trechos pra cortes, a montar a ordem do vídeo e a escrever título, descrição e legenda. Sempre que der, entregue com timecode (minuto:segundo) pra eu achar rápido na timeline.\n",
+  "id": "video"
+}

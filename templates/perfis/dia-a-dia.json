@@ -1,0 +1,17 @@
+{
+  "ordem": 1,
+  "nome": "Pro meu trabalho no dia a dia",
+  "hint": "e-mails, textos, planilhas, pesquisa",
+  "trabalho": {
+    "pergunta": "Com o que você trabalha? Conta em uma frase.",
+    "placeholder": "Ex.: sou secretária numa clínica e cuido da agenda e dos pagamentos"
+  },
+  "pacotes": [
+    "escrita",
+    "negocios",
+    "pesquisa"
+  ],
+  "semModulos": [],
+  "claudeMd": "",
+  "id": "dia-a-dia"
+}

@@ -1,0 +1,18 @@
+{
+  "ordem": 2,
+  "nome": "Pra minha empresa",
+  "hint": "decisões, números, propostas, equipe",
+  "trabalho": {
+    "pergunta": "Me conta da sua empresa em uma frase: o que ela faz e qual o seu papel.",
+    "placeholder": "Ex.: construtora em Cape Cod, sou a dona e cuido do financeiro e dos clientes"
+  },
+  "pacotes": [
+    "empresa",
+    "negocios",
+    "escrita",
+    "pesquisa"
+  ],
+  "semModulos": [],
+  "claudeMd": "# Minha empresa\n\nEu sou dono(a) de empresa e meu tempo é curto. Comece pela recomendação e depois explique o porquê. Quando a decisão envolver dinheiro ou tempo, faça a conta antes de opinar: quanto custa, quanto volta e em quanto tempo. Se faltar número pra fazer a conta, me pergunte em vez de inventar.\n\nQuando eu pedir algo pra equipe (mensagem, procedimento, cobrança), escreva pronto pra eu mandar, no tom de quem é firme com o resultado e respeitoso com as pessoas.\n",
+  "id": "empresario"
+}

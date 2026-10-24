@@ -22,6 +22,7 @@ Claude Setuper ${VERSAO}
   claude-setuper exportar        gera um perfil a partir do setup atual
 
 Opções:
+  --perfil <id>     já escolhe o público (dia-a-dia, empresario, marketing, video, estudante, elos)
   --modulos a,b,c   só esses módulos (${MODULOS.map((m) => m.id).join(', ')})
   --sim             aceita os defaults sem perguntar
   --dry-run         mostra o que faria sem mexer em nada
@@ -135,6 +136,7 @@ function parse(argv) {
     else if (a === '--home') flags.home = argv[++i];
     else if (a === '--plataforma') flags.plataforma = argv[++i];
     else if (a === '--modulos') flags.modulos = argv[++i];
+    else if (a === '--perfil') flags.perfil = argv[++i];
     else if (!a.startsWith('-')) cmd = a;
   }
   return { cmd, flags };

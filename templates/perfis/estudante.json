@@ -1,0 +1,20 @@
+{
+  "ordem": 5,
+  "nome": "Pros estudos",
+  "hint": "escola, faculdade, cursinho, vestibular",
+  "trabalho": {
+    "pergunta": "O que você estuda? Conta em uma frase.",
+    "placeholder": "Ex.: 3º ano do ensino médio, quero passar em medicina"
+  },
+  "pacotes": [
+    "estudo",
+    "escrita",
+    "pesquisa"
+  ],
+  "semModulos": [
+    "vercel",
+    "github"
+  ],
+  "claudeMd": "# Como me ajudar nos estudos\n\nEu estou estudando. Quando eu pedir ajuda com lição, exercício ou trabalho, não me entregue a resposta pronta: me explique o caminho, faça perguntas que me levem até a resposta e confirme quando eu chegar lá. Se eu pedir a resposta pra conferir, tudo bem, mas mostre como chegou nela.\n\nQuando eu tiver prova, monte um plano com os dias que faltam e me cobre no dia seguinte. Explique com exemplos do meu dia a dia, e se eu não entender, tente outro jeito em vez de repetir a mesma explicação.\n",
+  "id": "estudante"
+}

@@ -1,0 +1,19 @@
+{
+  "ordem": 6,
+  "nome": "Pra equipe da ELOS",
+  "hint": "textos, materiais e rotinas do Instituto ELOS",
+  "trabalho": {
+    "pergunta": "Qual é a sua função na ELOS?",
+    "placeholder": "Ex.: cuido do atendimento dos alunos do Practitioner"
+  },
+  "pacotes": [
+    "elos",
+    "escrita",
+    "negocios",
+    "pesquisa",
+    "criador"
+  ],
+  "semModulos": [],
+  "claudeMd": "# Trabalho no Instituto ELOS\n\nEu faço parte da equipe do Instituto ELOS, que tem como fundador o Erick Loureiro. O tom da ELOS é caloroso, próximo e intencional, nunca frio ou corporativo.\n\nNos textos da ELOS, não use estas palavras: transformação, coaching, mindset, crenças (no sentido de autoajuda), inteligência emocional.\n\nE nada de texto com cara de IA: sem frase de efeito pra fechar parágrafo, sem \"não é X, é Y\" em série, sem travessão (use vírgula, dois-pontos ou frase nova), sem lista em que toda linha tem o mesmo formato, sem muletas como \"no fim do dia\", \"vale ressaltar\" e \"em suma\". Escreva como gente falando, explicando o porquê até o fim. Antes de entregar, releia e corte o que soar como propaganda.\n",
+  "id": "elos"
+}

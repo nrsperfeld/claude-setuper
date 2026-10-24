@@ -51,6 +51,16 @@ claude-setuper exportar    # gera um perfil sem segredos a partir do setup atual
 
 Opções úteis pra quem está ajudando alguém: `--assistido` grava um relatório em `~/Claude Setuper/relatorio.txt`; `--modulos obsidian,maestri` roda só esses; `--sim` aceita os defaults.
 
+## Perfis (pra quem é)
+
+Logo depois do nome, o Setuper pergunta pra que a pessoa vai usar o Claude, a idade e como ela se dá com tecnologia e com IA. O perfil escolhido muda a pergunta sobre o trabalho, os pacotes que já vêm marcados, os passos que entram (o estudante não instala GitHub nem Vercel) e o que vai pro CLAUDE.md. A familiaridade define quanto o Claude explica; abaixo de 18 anos some a opção "nunca pede licença" e entram cuidados com dados pessoais.
+
+Perfis: `dia-a-dia` (o generalista), `empresario`, `marketing`, `video`, `estudante`, `elos`. Cada um é um arquivo em `templates/perfis/`. Pra mandar o link pra uma turma inteira já com o perfil escolhido:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash -s -- --perfil estudante
+```
+
 ## Como funciona por dentro
 
 Um CLI em Node (`src/`) com um wizard de três perguntas e dez módulos que rodam em ordem. Cada módulo tem `verificar`, `instalar` e `remover`, e tudo é idempotente: rodar de novo nunca duplica hook nem sobrescreve o que a pessoa editou (JSONs são mesclados, arquivos de texto só são criados se faltarem).
@@ -82,6 +92,15 @@ node bin/claude-setuper.js doctor --home ./.setuper-test/home
 ```
 
 `--home` aponta uma "casa" falsa; `--sem-apps` não instala nada, só escreve os arquivos; `--dry-run` nem escreve; `--plataforma win32` exercita os ramos do Windows em outro sistema (só a lógica, não os comandos).
+
+## Testar num Mac zerado (VM)
+
+```bash
+python3 test/mac-vm/vm.py rodar                    # generalista
+python3 test/mac-vm/vm.py rodar --perfil estudante # um perfil
+```
+
+Clona uma VM macOS limpa do tart (`tahoe-limpo`), roda o `curl | bash` num terminal de verdade respondendo como uma pessoa, simula o clique das ferramentas da Apple, encerra os logins que precisam de conta real e roda o `doctor` num Terminal novo. Uns 15 a 20 minutos por rodada; log em `test/mac-vm/logs/`. Toda mudança no Setuper passa por aqui antes de ir pra alguém.
 
 ## Pegadinhas conhecidas
 

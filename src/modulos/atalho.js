@@ -3,6 +3,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { ui } from '../ui.js';
+import { apresentacao } from '../perfis.js';
 
 export const id = 'atalho';
 export const nome = 'Atalho do Claude na Área de Trabalho';
@@ -23,7 +24,7 @@ export async function instalar(ctx) {
   const vault = ctx.resp.vault || ctx.estado.respostas?.vault || '';
   await ui.tarefa('Criando o atalho do Claude na Área de Trabalho', 'Atalho criado', async () => {
     fs.mkdirSync(ctx.desktop(), { recursive: true });
-    const vars = { marcador: path.join(ctx.claudeDir, '.setuper-saudou'), nome: ctx.seguro(ctx.resp.nome, 'eu'), trabalho: ctx.seguro(ctx.resp.trabalho, 'o meu trabalho do dia a dia'), vault, vaultUrl: `obsidian://open?path=${encodeURIComponent(vault)}` };
+    const vars = { marcador: path.join(ctx.claudeDir, '.setuper-saudou'), apresentacao: apresentacao(ctx), vault, vaultUrl: `obsidian://open?path=${encodeURIComponent(vault)}` };
     ctx.escrever(atalho, ctx.template(ctx.win ? 'atalho/Claude.cmd' : 'atalho/Claude.sh', vars));
     if (!ctx.dryRun && !ctx.win) fs.chmodSync(atalho, 0o755);
   });

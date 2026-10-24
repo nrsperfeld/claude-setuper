@@ -1,0 +1,18 @@
+{
+  "ordem": 3,
+  "nome": "Pro marketing",
+  "hint": "copy, posts, campanhas, roteiros",
+  "trabalho": {
+    "pergunta": "Pra quem você faz marketing e o que você mais produz?",
+    "placeholder": "Ex.: cuido do Instagram e dos anúncios de uma rede de academias"
+  },
+  "pacotes": [
+    "marketing",
+    "criador",
+    "escrita",
+    "pesquisa"
+  ],
+  "semModulos": [],
+  "claudeMd": "# Meu trabalho com marketing\n\nEu trabalho com marketing. Antes da primeira peça de uma marca, me pergunte uma vez quem é o público e qual o objetivo, e guarde a resposta em `CLAUDE/padrões/`. Nas próximas, use o que está guardado.\n\nTexto de marketing sem cara de IA: nada de \"não é X, é Y\" em série, nada de fechar parágrafo com frase de efeito, nada de lista em que toda linha tem o mesmo formato. Escreva como uma pessoa da marca falaria com o cliente. Quando eu pedir opções, me dê três bem diferentes entre si, não três versões da mesma ideia.\n",
+  "id": "marketing"
+}

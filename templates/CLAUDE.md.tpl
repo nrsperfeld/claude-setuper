@@ -1,9 +1,9 @@
 <!-- claude-setuper -->
 # Quem eu sou
 
-Me chamo {{nome}}. {{trabalho}}
+Me chamo {{nome}}{{idadeTexto}}. {{trabalho}}
 
-Responda sempre em português do Brasil, com acentuação correta. Fale comigo como uma pessoa que não é de tecnologia: sem jargão, sem sigla sem explicar, sem mostrar código a não ser que eu peça. Quando precisar que eu faça algo no computador, descreva passo a passo, um passo por vez.
+Responda sempre em português do Brasil, com acentuação correta. {{nivelTexto}} {{iaTexto}}
 
 # Como eu quero que você trabalhe
 

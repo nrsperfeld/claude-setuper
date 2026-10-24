@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Testa o Claude Setuper num macOS zerado, numa VM do tart, do jeito que a cliente roda.
 
-  python3 test/mac-vm/vm.py rodar     # VM nova a partir da limpa, instala tudo, confere e grava o log
+  python3 test/mac-vm/vm.py rodar [--perfil X]   # VM nova a partir da limpa, instala tudo, confere e grava o log
   python3 test/mac-vm/vm.py shell     # abre um terminal na VM de teste que ainda estiver ligada
   python3 test/mac-vm/vm.py desligar
 
@@ -136,8 +136,9 @@ def rodar():
     parar = threading.Event()
     threading.Thread(target=vigiar_logins, args=(endereco, registro, parar), daemon=True).start()
 
+    extras = ' '.join(sys.argv[2:])  # ex.: --perfil empresario
     comando = ('export CLAUDE_SETUPER_LOCAL=/tmp/setuper CLAUDE_SETUPER_ESPERA_MAX=20; '
-               'cat /tmp/setuper/install.sh | bash')
+               f'cat /tmp/setuper/install.sh | bash -s -- {extras}')
     pid, fd = pty.fork()
     if pid == 0:
         # Sem tamanho, o terminal fica com 0 colunas e o assistente desenha uma letra por linha.
@@ -183,12 +184,12 @@ def rodar():
         # Pergunta ativa do assistente: "◆  texto". A mesma pergunta pode voltar mais tarde (GitHub e Vercel),
         # então responde cada aparição nova; o redesenho logo depois da resposta (até 10 s) é ignorado.
         # Só pergunta aberta: o bloco termina em "└". As mensagens de "já instalado" também usam ◆, mas não têm o └.
-        for achado in re.finditer(r'◆\s+([^\n]{8,120})\n(?:│[^\n]*\n){1,8}└', historico[lido:]):
+        for achado in re.finditer(r'◆\s+([^\n]{8,120})\n(?:│[^\n]*\n){1,20}└', historico[lido:]):
             chave = achado.group(1).strip()[:60]
             if time.time() - ultima_resposta.get(chave, 0) > 10:
                 ultima_resposta[chave] = time.time()
                 time.sleep(0.8)
-                os.write(fd, b'Teste\r' if 'chame' in chave else b'\r')
+                os.write(fd, b'Teste\r' if 'chame' in chave else b'52\r' if 'anos' in chave else b'\r')
         lido = max(lido, len(historico) - 200)
         if 'Press Enter to open' in tela[-300:] and 'gh-enter' not in respondidas:
             respondidas.add('gh-enter')

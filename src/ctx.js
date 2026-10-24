@@ -27,6 +27,7 @@ export function criarCtx(flags = {}) {
     semApps: !!flags.semApps, // não instala aplicativos (só escreve arquivos). Usado em testes.
     sim: !!flags.sim, // aceita todos os defaults sem perguntar
     assistido: !!flags.assistido,
+    perfil: flags.perfil || '',
     pastaSetuper,
     logPath,
     estadoPath,

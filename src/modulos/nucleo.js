@@ -2,6 +2,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { ui } from '../ui.js';
+import { perfil, NIVEL_TEC, NIVEL_IA, MENOR_DE_IDADE } from '../perfis.js';
 
 export const id = 'nucleo';
 export const nome = 'Núcleo do Claude';
@@ -45,8 +46,15 @@ export async function instalar(ctx) {
     livre: 'Faça o trabalho inteiro sem pedir confirmação, e no fim conte o que fez, em linguagem simples. Antes de apagar qualquer coisa, faça uma cópia.',
   }[ctx.resp.autonomia];
 
+  const p = perfil(ctx, ctx.resp.perfil);
+  const menor = ctx.resp.idade && Number(ctx.resp.idade) < 18;
+  ctx.resp.idadeTexto = ctx.resp.idade ? `, tenho ${ctx.resp.idade} anos` : '';
+  ctx.resp.nivelTexto = NIVEL_TEC[ctx.resp.tecnologia] || NIVEL_TEC.basico;
+  ctx.resp.iaTexto = NIVEL_IA[ctx.resp.ia] || '';
   const prints = await pastaDePrints(ctx);
   ctx.resp.extras = [
+    p.claudeMd,
+    menor ? MENOR_DE_IDADE : '',
     (ctx.resp.modulos || []).includes('maestri') && ctx.plataforma === 'darwin' ? VARIOS_AGENTES : '',
     prints ? `# Prints de tela\n\nMeus prints de tela ficam em \`${prints}\`. Quando eu falar "olha o print" ou "vê a tela", leia o arquivo mais recente dessa pasta. Se eu arrastar um print e o caminho começar com \`/var/folders/\`, você não vai conseguir ler: pegue o mais recente da pasta de prints.\n` : '',
   ].filter(Boolean).join('\n');

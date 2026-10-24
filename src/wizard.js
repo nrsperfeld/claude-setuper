@@ -1,15 +1,31 @@
 // O wizard: poucas perguntas, nenhuma técnica. O resto tem default.
+// Ordem: nome, pra que vai usar (perfil), idade, familiaridade com tecnologia e com IA; daí em diante o perfil manda.
 import os from 'node:os';
 import { ui, c } from './ui.js';
 import { MODULOS } from './modulos/index.js';
 import { PACOTES } from './modulos/pacotes.js';
 import { catalogo } from './modulos/mcps.js';
+import { perfis, perfil as acharPerfil } from './perfis.js';
+
+const AUTONOMIAS = [
+  { value: 'cauteloso', label: 'Me pergunta antes de cada coisa', hint: 'mais seguro, mais perguntas' },
+  { value: 'equilibrado', label: 'Faz o básico sozinho e me pergunta no que importa', hint: 'recomendado' },
+  { value: 'confiante', label: 'Faz tudo e me avisa no fim', hint: 'mais rápido' },
+  { value: 'livre', label: 'Nunca me pede licença pra nada', hint: 'o mais rápido; só as travas de segurança continuam (apagar tudo, senhas)' },
+];
 
 export async function wizard(ctx) {
   const salvo = ctx.estado.respostas || {};
+  const doSistema = (m) => !m.plataformas || m.plataformas.includes(ctx.plataforma);
+
   if (ctx.sim) {
     const usuario = os.userInfo().username.replace(/[._-]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-    ctx.resp = { nome: usuario, trabalho: '', autonomia: 'equilibrado', modulos: MODULOS.filter((m) => m.padrao && (!m.plataformas || m.plataformas.includes(ctx.plataforma))).map((m) => m.id), pacotes: ['escrita', 'negocios', 'pesquisa'], mcps: [], ...salvo };
+    const p = acharPerfil(ctx, ctx.perfil || salvo.perfil);
+    ctx.resp = {
+      nome: usuario, trabalho: '', idade: '', tecnologia: 'basico', ia: 'vezes', autonomia: 'equilibrado',
+      modulos: MODULOS.filter((m) => m.padrao && doSistema(m) && !p.semModulos.includes(m.id)).map((m) => m.id),
+      pacotes: p.pacotes, mcps: [], ...salvo, perfil: p.id,
+    };
     return ctx.resp;
   }
 
@@ -22,38 +38,59 @@ export async function wizard(ctx) {
     validar: (v) => (!v && !salvo.nome ? 'Só o nome, pode ser o apelido.' : undefined),
   });
 
-  const trabalho = await ui.perguntar('Com o que você trabalha? Conta em uma frase.', {
-    padrao: salvo.trabalho,
-    placeholder: 'Ex.: tenho uma clínica de estética e cuido do marketing e das vendas',
+  // --perfil no comando já responde essa (útil pra mandar o link pra uma turma inteira).
+  const idPerfil = ctx.perfil || await ui.escolher(
+    `Pra que você vai usar o Claude, ${nome}?`,
+    perfis(ctx).map((p) => ({ value: p.id, label: p.nome, hint: p.hint })),
+    { padrao: salvo.perfil || 'dia-a-dia' },
+  );
+  const p = acharPerfil(ctx, idPerfil);
+
+  const idade = await ui.perguntar('Quantos anos você tem?', {
+    padrao: salvo.idade,
+    placeholder: 'Só o número',
+    validar: (v) => (!v && salvo.idade) || /^\d{1,3}$/.test(String(v || '').trim()) && +v >= 6 && +v <= 110 ? undefined : 'Só o número, por exemplo 34.',
   });
 
+  const tecnologia = await ui.escolher('Como você se dá com tecnologia?', [
+    { value: 'pouco', label: 'Me viro pouco, prefiro que me expliquem tudo' },
+    { value: 'basico', label: 'Uso o básico sem problema' },
+    { value: 'avancado', label: 'Sou bem à vontade com computador' },
+  ], { padrao: salvo.tecnologia || 'basico' });
+
+  const ia = await ui.escolher('E com IA, tipo ChatGPT ou Claude?', [
+    { value: 'nunca', label: 'Nunca usei ou quase nunca' },
+    { value: 'vezes', label: 'Uso de vez em quando' },
+    { value: 'diario', label: 'Uso todo dia' },
+  ], { padrao: salvo.ia || 'vezes' });
+
+  const trabalho = await ui.perguntar(p.trabalho.pergunta, {
+    padrao: salvo.perfil === p.id ? salvo.trabalho : undefined,
+    placeholder: p.trabalho.placeholder,
+  });
+
+  const menor = Number(idade) < 18;
   const autonomia = await ui.escolher(
     'Como você prefere que o Claude trabalhe?',
-    [
-      { value: 'cauteloso', label: 'Me pergunta antes de cada coisa', hint: 'mais seguro, mais perguntas' },
-      { value: 'equilibrado', label: 'Faz o básico sozinho e me pergunta no que importa', hint: 'recomendado' },
-      { value: 'confiante', label: 'Faz tudo e me avisa no fim', hint: 'mais rápido' },
-      { value: 'livre', label: 'Nunca me pede licença pra nada', hint: 'o mais rápido; só as travas de segurança continuam (apagar tudo, senhas)' },
-    ],
-    { padrao: salvo.autonomia || 'equilibrado' },
+    AUTONOMIAS.filter((a) => !(menor && a.value === 'livre')),
+    { padrao: salvo.autonomia && !(menor && salvo.autonomia === 'livre') ? salvo.autonomia : 'equilibrado' },
   );
 
   const pacotes = await ui.escolherVarios(
     'Com o que você mais vai usar o Claude? (marca com espaço, confirma com Enter)',
-    Object.entries(PACOTES).map(([value, p]) => ({ value, label: p.nome, hint: p.hint })),
-    { padrao: salvo.pacotes || ['escrita', 'negocios', 'pesquisa'] },
+    Object.entries(PACOTES).filter(([, x]) => !x.soPerfil || x.soPerfil === p.id).map(([value, x]) => ({ value, label: x.nome, hint: x.hint })),
+    { padrao: salvo.perfil === p.id && salvo.pacotes ? salvo.pacotes : p.pacotes },
   );
 
   const cat = catalogo(ctx);
   const mcps = await ui.escolherVarios(
     'Quais dessas ferramentas você já usa? (o Claude passa a mexer nelas pra você)',
-    cat.filter((m) => !m.pacotes || m.pacotes.some((p) => pacotes.includes(p))).map((m) => ({ value: m.id, label: m.nome, hint: m.hint })),
+    cat.filter((m) => !m.pacotes || m.pacotes.some((x) => pacotes.includes(x))).map((m) => ({ value: m.id, label: m.nome, hint: m.hint })),
     { padrao: salvo.mcps || [] },
   );
 
-  const doSistema = (m) => !m.plataformas || m.plataformas.includes(ctx.plataforma);
-  let modulos = MODULOS.filter((m) => m.padrao && doSistema(m)).map((m) => m.id);
-  const avancado = await ui.confirmar('Quer escolher o que entra na instalação? (se não, eu instalo tudo)', false);
+  let modulos = MODULOS.filter((m) => m.padrao && doSistema(m) && !p.semModulos.includes(m.id)).map((m) => m.id);
+  const avancado = await ui.confirmar('Quer escolher o que entra na instalação? (se não, eu instalo o que faz sentido pra você)', false);
   if (avancado) {
     modulos = await ui.escolherVarios(
       'O que você quer instalar?',
@@ -63,11 +100,14 @@ export async function wizard(ctx) {
     modulos = [...MODULOS.filter((m) => m.obrigatorio).map((m) => m.id), ...modulos];
   }
 
-  ctx.resp = { nome, trabalho, autonomia, modulos, pacotes, mcps };
+  ctx.resp = { nome, perfil: p.id, idade, tecnologia, ia, trabalho, autonomia, modulos, pacotes, mcps };
   ctx.estado.respostas = ctx.resp;
   ctx.salvarEstado();
 
   ui.linha();
   ui.ok(`Pronto, ${c.bold(nome)}. Agora é comigo. Vai aparecendo na tela o que estou fazendo.`);
+  if (tecnologia === 'pouco') {
+    ui.info('Vai aparecer bastante coisa escrita na tela, muitas vezes em inglês. É normal e não precisa ler.\nQuando eu precisar de você, aparece uma caixa amarela com a mão ✋ dizendo exatamente o que fazer.');
+  }
   return ctx.resp;
 }
