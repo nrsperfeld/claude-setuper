@@ -49,6 +49,7 @@ async function xcodeCLT(ctx) {
 }
 
 async function homebrew(ctx) {
+  brewNoPerfil(ctx);
   if (await ctx.existeComando('brew')) return ui.ok('Homebrew já está instalado');
   if (ctx.semApps) return;
   ui.pausa('O Mac vai pedir a sua senha', [
@@ -59,6 +60,7 @@ async function homebrew(ctx) {
   await ctx.runVisivel('/bin/bash', ['-c', script], { env: { NONINTERACTIVE: '' } });
   // Homebrew novo não entra no PATH do processo atual; adiciona.
   for (const p of ['/opt/homebrew/bin', '/usr/local/bin']) if (!process.env.PATH.includes(p)) process.env.PATH = `${p}:${process.env.PATH}`;
+  brewNoPerfil(ctx);
   ui.ok('Homebrew instalado');
 }
 
@@ -102,21 +104,29 @@ async function git(ctx) {
   });
 }
 
-// O instalador do Claude põe o binário em ~/.local/bin, que não está no PATH padrão do Mac.
-// Grava no perfil do shell, senão uma janela nova do Terminal dá "command not found: claude".
+// O Homebrew não entra sozinho no perfil do shell, e o Claude fica em ~/.local/bin, fora do PATH padrão.
+// Sem gravar os dois, uma janela nova do Terminal dá "command not found: claude" e os hooks não acham o node.
+function gravarNoPerfil(ctx, marca, linha) {
+  if (ctx.win || ctx.dryRun) return;
+  for (const f of ['.zshrc', '.zprofile', '.bash_profile', '.bashrc']) {
+    const p = `${ctx.homeReal}/${f}`;
+    const atual = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
+    if (atual.includes(marca)) continue;
+    if (!atual && !['.zshrc', '.zprofile'].includes(f)) continue;
+    fs.appendFileSync(p, `${atual && !atual.endsWith('\n') ? '\n' : ''}\n# Claude Setuper\n${linha}\n`);
+  }
+}
+
+function brewNoPerfil(ctx) {
+  const brew = ['/opt/homebrew/bin/brew', '/usr/local/bin/brew'].find((b) => fs.existsSync(b));
+  if (brew) gravarNoPerfil(ctx, 'brew shellenv', `eval "$(${brew} shellenv)"`);
+}
+
 function pathLocalNoPerfil(ctx) {
   if (ctx.win) return;
   const local = `${ctx.homeReal}/.local/bin`;
   if (!process.env.PATH.split(':').includes(local)) process.env.PATH = `${local}:${process.env.PATH}`;
-  if (ctx.dryRun) return;
-  const linha = 'export PATH="$HOME/.local/bin:$PATH"';
-  for (const f of ['.zshrc', '.zprofile', '.bash_profile', '.bashrc']) {
-    const p = `${ctx.homeReal}/${f}`;
-    const atual = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
-    if (atual.includes('.local/bin')) continue;
-    if (!atual && !['.zshrc', '.zprofile'].includes(f)) continue;
-    fs.appendFileSync(p, `${atual && !atual.endsWith('\n') ? '\n' : ''}\n# Claude Code\n${linha}\n`);
-  }
+  gravarNoPerfil(ctx, '.local/bin', 'export PATH="$HOME/.local/bin:$PATH"');
 }
 
 async function claudeCode(ctx) {
