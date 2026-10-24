@@ -35,7 +35,7 @@ export async function instalar(ctx) {
   ctx.resp.data = new Date().toLocaleDateString('pt-BR');
   ctx.resp.comoAbrir = ctx.plataforma === 'darwin' ? 'pelo Maestri (o aplicativo com o canvas)' : 'pelo atalho "Claude" na sua Área de Trabalho';
   // Versão do "trabalho" segura pra ir dentro de aspas em bash e cmd.
-  ctx.resp.trabalhoSeguro = String(ctx.resp.trabalho || '').replace(/["'`$%&|<>^!\\]/g, ' ').replace(/\s+/g, ' ').trim() || 'o meu trabalho do dia a dia';
+  ctx.resp.trabalhoSeguro = ctx.seguro(ctx.resp.trabalho, 'o meu trabalho do dia a dia');
   ctx.resp.autonomiaTexto = {
     cauteloso: 'Pergunte antes de qualquer ação que altere arquivos ou rode comandos. Prefira explicar o que vai fazer e esperar o ok.',
     equilibrado: 'Faça o básico sozinho (ler, escrever, organizar) e pergunte só no que for difícil de desfazer ou que mude a direção do trabalho.',

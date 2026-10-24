@@ -70,7 +70,7 @@ main() {
     git clone -q --depth 1 "https://github.com/$REPO.git" "$DEST"
   fi
   (cd "$DEST" && npm install --silent --no-audit --no-fund >/dev/null 2>&1)
-  npm link --silent >/dev/null 2>&1 || ln -sf "$DEST/bin/claude-setuper.js" "$(npm prefix -g)/bin/claude-setuper" 2>/dev/null || true
+  (cd "$DEST" && npm link --silent >/dev/null 2>&1) || ln -sf "$DEST/bin/claude-setuper.js" "$(npm prefix -g)/bin/claude-setuper" 2>/dev/null || true
   ok "Claude Setuper baixado"
 
   # Teclado pelo terminal real (/dev/ttys00X), não pelo /dev/tty: o claude é feito em Bun, e no Mac o Bun

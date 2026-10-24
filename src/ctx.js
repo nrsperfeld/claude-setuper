@@ -93,6 +93,11 @@ export function criarCtx(flags = {}) {
       }
     },
 
+    // Texto da pessoa que vai dentro de aspas em bash e cmd: tira o que quebraria o script.
+    seguro(s, padrao = '') {
+      return String(s || '').replace(/["'`$%&|<>^!\\]/g, ' ').replace(/\s+/g, ' ').trim() || padrao;
+    },
+
     // Caminho com barras normais, que funciona em bash, cmd e PowerShell.
     posix(p) {
       return String(p).replace(/\\/g, '/');
