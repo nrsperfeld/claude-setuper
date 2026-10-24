@@ -73,7 +73,11 @@ main() {
   npm link --silent >/dev/null 2>&1 || ln -sf "$DEST/bin/claude-setuper.js" "$(npm prefix -g)/bin/claude-setuper" 2>/dev/null || true
   ok "Claude Setuper baixado"
 
-  exec node "$DEST/bin/claude-setuper.js" "$@" < /dev/tty
+  # Teclado pelo terminal real (/dev/ttys00X), não pelo /dev/tty: o claude é feito em Bun, e no Mac o Bun
+  # quebra com "EINVAL kqueue" quando a entrada é o /dev/tty.
+  TERMINAL="/dev/$(ps -o tty= -p $$ 2>/dev/null | tr -d ' ')"
+  [ -c "$TERMINAL" ] && [ -r "$TERMINAL" ] || TERMINAL=/dev/tty
+  exec node "$DEST/bin/claude-setuper.js" "$@" < "$TERMINAL"
 }
 
 main "$@"
