@@ -31,12 +31,20 @@ export async function instalar(ctx) {
   const cat = catalogo(ctx);
   const ja = await instalados(ctx);
   const comLogin = [];
+  const semToken = [];
   await ui.tarefa('Ligando o Claude às suas ferramentas', 'Ferramentas ligadas', async (msg) => {
     for (const mid of escolhidos) {
       const m = cat.find((x) => x.id === mid);
-      if (!m || ja.includes(mid)) continue;
+      if (!m || (ja.includes(mid) && !m.token)) continue;
       msg(`Ligando ${m.nome}`);
       const args = ['mcp', 'add', '--scope', 'user'];
+      // O MCP do GitHub não aceita o login pelo /mcp (não tem registro dinâmico de cliente): vai com o token do gh.
+      if (m.token === 'gh') {
+        await ctx.run('claude', ['mcp', 'remove', '--scope', 'user', m.id], { ignorarErro: true });
+        const token = await ctx.run('gh', ['auth', 'token'], { ignorarErro: true });
+        if (!token) { semToken.push(m); continue; }
+        args.push('--header', `Authorization: Bearer ${token}`);
+      }
       if (m.transporte === 'http') args.push('--transport', 'http', m.id, m.url);
       else args.push(m.id, '--', ...m.comando);
       await ctx.run('claude', args, { ignorarErro: true });
@@ -44,6 +52,7 @@ export async function instalar(ctx) {
     }
   });
   for (const m of comLogin) ui.info(`${m.nome}: ${m.login}`);
+  for (const m of semToken) ui.aviso(`${m.nome}: fica pra depois, precisa da sua conta do GitHub conectada. Quando conectar, rode: claude-setuper --modulos github,mcps`);
 }
 
 export async function remover(ctx) {

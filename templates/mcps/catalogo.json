@@ -29,7 +29,7 @@
     "hint": "abrir issues, PRs e ler repositórios",
     "transporte": "http",
     "url": "https://api.githubcopilot.com/mcp/",
-    "login": "No primeiro uso, digite /mcp dentro do Claude e autorize o GitHub.",
+    "token": "gh",
     "pacotes": ["dev"]
   },
   {
