@@ -23,6 +23,7 @@ export async function instalar(ctx) {
     if (ctx.semApps) return;
     await ui.tarefa('Instalando a ferramenta da Vercel', 'Ferramenta da Vercel instalada', () => ctx.run('npm', ['install', '-g', 'vercel']));
   }
+  if (!ctx.semApps && !ctx.dryRun) await ctx.run('vercel', ['telemetry', 'disable'], { ignorarErro: true, timeout: 30000 });
   if (ctx.semApps || ctx.dryRun) return;
 
   const quem = await ctx.run('vercel', ['whoami'], { ignorarErro: true, sempre: true, timeout: 20000 });

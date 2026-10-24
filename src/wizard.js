@@ -9,7 +9,7 @@ export async function wizard(ctx) {
   const salvo = ctx.estado.respostas || {};
   if (ctx.sim) {
     const usuario = os.userInfo().username.replace(/[._-]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-    ctx.resp = { nome: usuario, trabalho: '', autonomia: 'equilibrado', modulos: MODULOS.filter((m) => m.padrao).map((m) => m.id), pacotes: ['escrita', 'negocios', 'pesquisa'], mcps: [], ...salvo };
+    ctx.resp = { nome: usuario, trabalho: '', autonomia: 'equilibrado', modulos: MODULOS.filter((m) => m.padrao && (!m.plataformas || m.plataformas.includes(ctx.plataforma))).map((m) => m.id), pacotes: ['escrita', 'negocios', 'pesquisa'], mcps: [], ...salvo };
     return ctx.resp;
   }
 
@@ -33,6 +33,7 @@ export async function wizard(ctx) {
       { value: 'cauteloso', label: 'Me pergunta antes de cada coisa', hint: 'mais seguro, mais perguntas' },
       { value: 'equilibrado', label: 'Faz o básico sozinho e me pergunta no que importa', hint: 'recomendado' },
       { value: 'confiante', label: 'Faz tudo e me avisa no fim', hint: 'mais rápido' },
+      { value: 'livre', label: 'Nunca me pede licença pra nada', hint: 'o mais rápido; só as travas de segurança continuam (apagar tudo, senhas)' },
     ],
     { padrao: salvo.autonomia || 'equilibrado' },
   );
@@ -50,12 +51,13 @@ export async function wizard(ctx) {
     { padrao: salvo.mcps || [] },
   );
 
-  let modulos = MODULOS.filter((m) => m.padrao).map((m) => m.id);
+  const doSistema = (m) => !m.plataformas || m.plataformas.includes(ctx.plataforma);
+  let modulos = MODULOS.filter((m) => m.padrao && doSistema(m)).map((m) => m.id);
   const avancado = await ui.confirmar('Quer escolher o que entra na instalação? (se não, eu instalo tudo)', false);
   if (avancado) {
     modulos = await ui.escolherVarios(
       'O que você quer instalar?',
-      MODULOS.filter((m) => !m.obrigatorio).map((m) => ({ value: m.id, label: m.nome, hint: m.descricao })),
+      MODULOS.filter((m) => !m.obrigatorio && doSistema(m)).map((m) => ({ value: m.id, label: m.nome, hint: m.descricao })),
       { padrao: modulos.filter((id) => !MODULOS.find((m) => m.id === id)?.obrigatorio) },
     );
     modulos = [...MODULOS.filter((m) => m.obrigatorio).map((m) => m.id), ...modulos];

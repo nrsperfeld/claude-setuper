@@ -45,7 +45,7 @@ export function criarCtx(flags = {}) {
 
     // Executa um comando e devolve stdout. Em dry-run só registra.
     async run(cmd, args = [], opts = {}) {
-      ctx.log('$', cmd, args.join(' '));
+      ctx.log('$', cmd, resumoArgs(args));
       if (ctx.dryRun && !opts.sempre) return '';
       try {
         if (process.platform === 'win32') {
@@ -56,15 +56,18 @@ export function criarCtx(flags = {}) {
           });
           return (stdout || '').trim();
         }
-        const { stdout } = await execFileP(cmd, args, {
+        const execucao = execFileP(cmd, args, {
           env: { ...process.env, HOME: ctx.homeReal, ...opts.env },
           maxBuffer: 50 * 1024 * 1024,
           timeout: opts.timeout ?? 15 * 60 * 1000,
           ...opts,
         });
+        if (opts.input != null) execucao.child.stdin.end(opts.input);
+        const { stdout } = await execucao;
         return (stdout || '').trim();
       } catch (e) {
-        ctx.log('ERRO', cmd, e.message);
+        // Com ignorarErro a falha é esperada (app fechado, ainda sem login): vai como aviso, não como ERRO.
+        ctx.log(opts.ignorarErro ? 'aviso' : 'ERRO', cmd, resumoArgs([e.message]));
         if (opts.ignorarErro) return '';
         throw e;
       }
@@ -72,7 +75,7 @@ export function criarCtx(flags = {}) {
 
     // Executa mostrando a saída no terminal (pra instaladores interativos como Homebrew).
     runVisivel(cmd, args = [], opts = {}) {
-      ctx.log('$ (visível)', cmd, args.join(' '));
+      ctx.log('$ (visível)', cmd, resumoArgs(args));
       if (ctx.dryRun) return Promise.resolve(0);
       return new Promise((res, rej) => {
         const p = process.platform === 'win32'
@@ -195,6 +198,11 @@ export function criarCtx(flags = {}) {
     },
   };
   return ctx;
+}
+
+// Argumento gigante (um script inteiro passado pro bash -c) suja o registro: guarda só o começo.
+function resumoArgs(args) {
+  return args.map((a) => { a = String(a); return a.length > 200 ? `${a.slice(0, 120).replace(/\s+/g, ' ')}… (${a.length} caracteres)` : a; }).join(' ');
 }
 
 function aspasWin(a) {

@@ -87,6 +87,10 @@ async function instalar(ctx, flags) {
   }
   if (ctx.assistido) gravarRelatorio(ctx, falhas);
 
+  ui.info('Se você já tinha algum Claude aberto (no Terminal ou no Maestri), feche e abra de novo pra ele pegar as configurações novas.');
+  ui.info('Gmail, Google Agenda, Drive, Planilhas, QuickBooks e outros apps se conectam pelo site: claude.ai > Configurações > Conectores > escolhe o app > Conectar. Depois é só abrir o Claude de novo.');
+  ui.linha();
+
   const okMaestri = lista.some((m) => m.id === 'maestri') && !falhas.some((m) => m.id === 'maestri');
   const okAtalho = lista.some((m) => m.id === 'atalho') && !falhas.some((m) => m.id === 'atalho');
   ui.encerramento(

@@ -158,10 +158,12 @@ async function loginClaude(ctx) {
   ui.pausa('Vou abrir o navegador pra você entrar na sua conta do Claude', [
     'Entra com o mesmo e-mail que você usa no Claude.',
     'Se ainda não tem conta, cria ali mesmo. Depois volta pra cá, eu continuo sozinho.',
+    'Não feche esta janela: eu espero até 15 minutos.',
   ]);
   await ctx.runVisivel('claude', ['auth', 'login'], { ignorarErro: true });
-  const ok = await ctx.esperar(() => logado(ctx), { intervalo: 3, limite: 600 });
-  if (!ok) throw new Error('o login no Claude não foi concluído');
+  if (!(await logado(ctx))) ui.info('Estou esperando você terminar o login no navegador...');
+  const ok = await ctx.esperar(() => logado(ctx), { intervalo: 3, limite: 900 });
+  if (!ok) throw new Error('o login no Claude não terminou. Quando terminar, rode claude-setuper de novo, eu continuo de onde parei');
   ui.ok('Login no Claude feito');
 }
 

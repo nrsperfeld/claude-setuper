@@ -13,6 +13,8 @@ const NIVEIS = {
   cauteloso: { defaultMode: 'default', allow: ['Read', 'Glob', 'Grep', 'LS', 'WebSearch'] },
   equilibrado: { defaultMode: 'acceptEdits', allow: ['Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'WebSearch', 'WebFetch', 'Bash(git:*)', 'Bash(ls:*)', 'Bash(cat:*)', 'Bash(mkdir:*)', 'Bash(npm:*)', 'Bash(node:*)', 'Bash(python3:*)', 'Bash(open:*)', 'Bash(obsidian:*)'] },
   confiante: { defaultMode: 'auto', allow: ['Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'Bash', 'WebSearch', 'WebFetch'] },
+  // As regras de DENY continuam valendo mesmo nesse modo.
+  livre: { defaultMode: 'bypassPermissions', allow: ['Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'Bash', 'WebSearch', 'WebFetch'], extra: { skipDangerousModePermissionPrompt: true } },
 };
 // Edit(...) cobre todas as ferramentas de edição de arquivo; Write(...) em deny gera aviso no Claude Code.
 const DENY = ['Bash(rm -rf:*)', 'Bash(sudo rm:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)'];
@@ -40,7 +42,14 @@ export async function instalar(ctx) {
     cauteloso: 'Pergunte antes de qualquer ação que altere arquivos ou rode comandos. Prefira explicar o que vai fazer e esperar o ok.',
     equilibrado: 'Faça o básico sozinho (ler, escrever, organizar) e pergunte só no que for difícil de desfazer ou que mude a direção do trabalho.',
     confiante: 'Faça o trabalho inteiro sem pedir confirmação, e no fim conte o que fez, em linguagem simples.',
+    livre: 'Faça o trabalho inteiro sem pedir confirmação, e no fim conte o que fez, em linguagem simples. Antes de apagar qualquer coisa, faça uma cópia.',
   }[ctx.resp.autonomia];
+
+  const prints = await pastaDePrints(ctx);
+  ctx.resp.extras = [
+    (ctx.resp.modulos || []).includes('maestri') && ctx.plataforma === 'darwin' ? VARIOS_AGENTES : '',
+    prints ? `# Prints de tela\n\nMeus prints de tela ficam em \`${prints}\`. Quando eu falar "olha o print" ou "vê a tela", leia o arquivo mais recente dessa pasta. Se eu arrastar um print e o caminho começar com \`/var/folders/\`, você não vai conseguir ler: pegue o mais recente da pasta de prints.\n` : '',
+  ].filter(Boolean).join('\n');
 
   await ui.tarefa('Ensinando o Claude quem você é', 'O Claude já sabe quem você é', async () => {
     const claudeMd = path.join(d, 'CLAUDE.md');
@@ -63,6 +72,7 @@ export async function instalar(ctx) {
         PostToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-nota.cjs'))}"`, timeout: 10 }] }],
       },
       env: { CLAUDE_SETUPER_VAULT: vault },
+      ...(nivel.extra || {}),
     });
     if (ctx.plataforma === 'darwin') {
       ctx.mesclarJson(path.join(d, 'settings.json'), {
@@ -76,6 +86,31 @@ export async function instalar(ctx) {
     for (const s of ['decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar']) ctx.copiarTemplate(`skills/${s}.md`, path.join(d, 'skills', s, 'SKILL.md'));
     ctx.escreverSeFaltar(path.join(d, 'memoria', 'MEMORIA.md'), ctx.template('memoria/MEMORIA.md'));
   });
+}
+
+const VARIOS_AGENTES = `# Vários Claudes ao mesmo tempo (Maestri)
+
+No Maestri eu posso abrir mais de um Claude trabalhando junto. Quando for assim:
+1. Cada Claude fica com uma tarefa clara e uma pasta própria.
+2. Não mexa em arquivo que outro Claude está usando. Se precisar, me pergunte.
+3. Antes de apagar ou substituir qualquer arquivo, faça uma cópia.
+4. Se o limite do meu plano acabar no meio, me avise em linguagem simples e diga onde parou.
+`;
+
+// No Mac, o print arrastado pra janela vem de uma pasta protegida que o Claude não lê.
+// Manda os prints pra ~/Pictures/Prints (a miniatura no canto continua ligada) e devolve a pasta.
+async function pastaDePrints(ctx) {
+  if (ctx.plataforma !== 'darwin' || ctx.semApps) return '';
+  const atual = await ctx.run('defaults', ['read', 'com.apple.screencapture', 'location'], { ignorarErro: true, sempre: true });
+  if (atual) return atual;
+  if (ctx.dryRun) return '';
+  const quer = ctx.sim ? true : await ui.confirmar('Quer que os seus prints de tela fiquem numa pasta que o Claude consegue ler? (Imagens > Prints)', true);
+  if (!quer) return '';
+  const pasta = path.join(ctx.homeReal, 'Pictures', 'Prints');
+  fs.mkdirSync(pasta, { recursive: true });
+  await ctx.run('defaults', ['write', 'com.apple.screencapture', 'location', pasta], { ignorarErro: true });
+  await ctx.run('killall', ['SystemUIServer'], { ignorarErro: true });
+  return pasta;
 }
 
 export async function remover(ctx) {

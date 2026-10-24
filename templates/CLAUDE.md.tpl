@@ -36,3 +36,5 @@ Regras das notas:
 Antes de trabalhar: leia `CLAUDE/padrões/`, `CLAUDE/decisões/` e a nota do projeto em `CLAUDE/projetos/`, se existir. No fim de uma sessão com trabalho de verdade, atualize a nota do projeto. Se eu te corrigi, anote em `feedback/`.
 
 Comandos que eu posso usar com você: `/decisao`, `/padrao`, `/feedback`, `/descoberta`, `/retro` (fecha a sessão anotando onde parou) e `/lembrar` (busca no cérebro).
+
+{{extras}}

@@ -18,6 +18,7 @@ export async function doctor(ctx) {
     console.log(`\n  ${c.bold(m.nome)}`);
     for (const i of itens) {
       if (!i.ok) faltando++;
+      ctx.log('doctor', i.ok ? '✓' : '✗', m.id, i.item);
       console.log(`    ${i.ok ? c.green('✓') : c.red('✗')} ${i.item}${!i.ok && i.dica ? c.dim(`  → ${i.dica}`) : ''}`);
     }
   }

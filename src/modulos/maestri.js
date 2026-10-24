@@ -43,8 +43,16 @@ export async function instalar(ctx) {
     await ctx.run('osascript', ['-e', 'tell application "Maestri" to quit'], { ignorarErro: true });
     await ctx.esperar(async () => !(await ctx.run('pgrep', ['-x', 'Maestri'], { ignorarErro: true, sempre: true })), { intervalo: 1, limite: 15 });
   }
-  await ctx.run('open', ['-a', 'Maestri'], { ignorarErro: true });
-  ui.ok('O Maestri está abrindo. O Claude vai se apresentar sozinho na janela da esquerda.');
+  // Logo depois do brew, o macOS às vezes ainda não "conhece" o app pelo nome: abre pelo caminho e confere.
+  const app = ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'].find((p) => ctx.existe(p));
+  if (!app) throw new Error('o Maestri não apareceu em Aplicativos depois de instalar');
+  let abriu = false;
+  for (let i = 0; i < 3 && !abriu; i++) {
+    await ctx.run('open', [app], { ignorarErro: true });
+    abriu = await ctx.esperar(async () => !!(await ctx.run('pgrep', ['-x', 'Maestri'], { ignorarErro: true, sempre: true })), { intervalo: 1, limite: 15 });
+  }
+  if (abriu) ui.ok('O Maestri está abrindo. O Claude vai se apresentar sozinho na janela da esquerda.');
+  else ui.aviso('O Maestri não abriu sozinho. Abre ele pela pasta Aplicativos, o painel com o Claude já está montado lá dentro.');
 }
 
 export function montarWorkspace(ctx) {
