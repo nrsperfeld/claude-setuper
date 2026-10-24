@@ -30,9 +30,15 @@ if [ "$SO" = "Darwin" ]; then
   fi
 
   if ! command -v brew >/dev/null 2>&1 && [ ! -x /opt/homebrew/bin/brew ] && [ ! -x /usr/local/bin/brew ]; then
+    if ! id -Gn | tr ' ' '\n' | grep -qx admin; then
+      echo "  Esse usuário do Mac não é administrador, e o Homebrew precisa de um."
+      echo "  Peça pra quem administra o Mac te dar acesso de administrador (Ajustes > Usuários e Grupos) e rode de novo."
+      exit 1
+    fi
     passo "Agora o Homebrew, que instala programas pelo Terminal."
     echo "  O Mac vai pedir a sua senha (a mesma de ligar o computador). Ela não aparece enquanto você digita."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # stdin vem do curl | bash; sem o /dev/tty o Homebrew entra em modo não interativo e não consegue pedir a senha
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" < /dev/tty
   fi
   for b in /opt/homebrew/bin /usr/local/bin; do [ -x "$b/brew" ] && eval "$($b/brew shellenv)"; done
   ok "Homebrew pronto"
