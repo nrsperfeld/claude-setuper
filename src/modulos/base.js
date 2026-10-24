@@ -1,4 +1,5 @@
 // Módulo base: o que a máquina precisa ter antes de qualquer coisa.
+import fs from 'node:fs';
 import { ui } from '../ui.js';
 
 export const id = 'base';
@@ -101,7 +102,25 @@ async function git(ctx) {
   });
 }
 
+// O instalador do Claude põe o binário em ~/.local/bin, que não está no PATH padrão do Mac.
+// Grava no perfil do shell, senão uma janela nova do Terminal dá "command not found: claude".
+function pathLocalNoPerfil(ctx) {
+  if (ctx.win) return;
+  const local = `${ctx.homeReal}/.local/bin`;
+  if (!process.env.PATH.split(':').includes(local)) process.env.PATH = `${local}:${process.env.PATH}`;
+  if (ctx.dryRun) return;
+  const linha = 'export PATH="$HOME/.local/bin:$PATH"';
+  for (const f of ['.zshrc', '.zprofile', '.bash_profile', '.bashrc']) {
+    const p = `${ctx.homeReal}/${f}`;
+    const atual = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
+    if (atual.includes('.local/bin')) continue;
+    if (!atual && !['.zshrc', '.zprofile'].includes(f)) continue;
+    fs.appendFileSync(p, `${atual && !atual.endsWith('\n') ? '\n' : ''}\n# Claude Code\n${linha}\n`);
+  }
+}
+
 async function claudeCode(ctx) {
+  pathLocalNoPerfil(ctx);
   if (await ctx.existeComando('claude')) return ui.ok('Claude Code já está instalado');
   if (ctx.semApps) return;
   await ui.tarefa('Instalando o Claude Code', 'Claude Code instalado', async () => {
