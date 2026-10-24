@@ -4,3 +4,4 @@ node_modules/
 .setuper-test/
 test/mac-vm/logs/
 test/mac-vm/rodada.out
+__pycache__/
