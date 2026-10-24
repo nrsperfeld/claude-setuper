@@ -189,6 +189,8 @@ export function criarCtx(flags = {}) {
     // Espera uma condição ficar verdadeira (polling), com limite em segundos.
     async esperar(cond, { intervalo = 3, limite = 600 } = {}) {
       if (ctx.dryRun) return true;
+      // Só pra teste na VM, onde ninguém faz login: encurta as esperas.
+      if (process.env.CLAUDE_SETUPER_ESPERA_MAX) limite = Math.min(limite, Number(process.env.CLAUDE_SETUPER_ESPERA_MAX));
       const fim = Date.now() + limite * 1000;
       while (Date.now() < fim) {
         if (await cond()) return true;

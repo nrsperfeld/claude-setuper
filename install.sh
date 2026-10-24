@@ -63,7 +63,10 @@ main() {
 
   passo "Baixando o Claude Setuper."
   mkdir -p "$(dirname "$DEST")"
-  if [ -d "$DEST/.git" ]; then
+  if [ -n "$CLAUDE_SETUPER_LOCAL" ]; then
+    # Só pra teste: usa uma cópia local do Setuper em vez de baixar do GitHub.
+    rm -rf "$DEST" && cp -R "$CLAUDE_SETUPER_LOCAL" "$DEST"
+  elif [ -d "$DEST/.git" ]; then
     git -C "$DEST" pull -q --ff-only || true
   else
     rm -rf "$DEST"

@@ -40,7 +40,11 @@ export async function instalar(ctx) {
       await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
     }
   }
-  ui.pausa('Vou abrir o navegador pra conectar a Vercel', ['Escolhe "Continue with GitHub" e autoriza.', 'Depois volta pra cá.']);
+  ui.pausa('Vou abrir o navegador pra conectar a Vercel', [
+    'Vai aparecer aqui um link e um código (a tela fica em inglês, é normal).',
+    'Se o navegador não abrir sozinho, segura a tecla Cmd e clica no link.',
+    'No navegador, escolhe "Continue with GitHub" e autoriza. Depois volta pra cá.',
+  ]);
   await ctx.runVisivel('vercel', ['login'], { ignorarErro: true });
   const ok = await ctx.esperar(async () => {
     const q = await ctx.run('vercel', ['whoami'], { ignorarErro: true, sempre: true, timeout: 20000 });

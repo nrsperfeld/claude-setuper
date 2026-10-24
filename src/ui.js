@@ -76,7 +76,7 @@ export const ui = {
   },
 
   async confirmar(msg, padrao = true) {
-    const r = await p.confirm({ message: msg, initialValue: padrao });
+    const r = await p.confirm({ message: msg, initialValue: padrao, active: 'Sim', inactive: 'Não' });
     checar(r);
     return r;
   },

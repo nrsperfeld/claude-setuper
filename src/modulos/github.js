@@ -65,7 +65,8 @@ export async function instalar(ctx) {
 
 async function login(ctx, qual) {
   ui.pausa(`Vou abrir o navegador pra conectar ${qual} do GitHub`, [
-    'Vai aparecer um código de 8 letras aqui na tela. Copia ele.',
+    'Vão aparecer duas perguntas em inglês aqui. Nas duas, só aperta Enter.',
+    'Depois aparece um código de 8 letras. Copia ele.',
     'No navegador, cola o código, clica em Continuar e depois em Autorizar.',
     'Depois volta pra cá, eu continuo.',
   ]);

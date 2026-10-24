@@ -2,3 +2,5 @@ node_modules/
 .DS_Store
 *.log
 .setuper-test/
+test/mac-vm/logs/
+test/mac-vm/rodada.out
