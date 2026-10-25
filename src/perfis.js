@@ -47,6 +47,7 @@ export function apresentacao(ctx) {
     `Oi, eu sou ${nome}. Acabei de instalar você com o Claude Setuper.`,
     `Se apresenta pra mim em poucas linhas, em português simples: quem você é, ${sobre}, e como o meu segundo cérebro (as notas no Obsidian) funciona entre a gente.`,
     r.ia === 'nunca' ? 'Eu quase nunca usei IA, então me dá três exemplos bem práticos do que eu posso te pedir.' : '',
+    r.perfil === 'estudante' ? 'Me explica também como você vai me ajudar a identificar, usar e criar padrões, em vez de fazer as coisas por mim.' : '',
     r.ia === 'code' ? 'Eu já uso IA pra código, então pula o básico e me mostra o que esse setup tem de diferente: o segundo cérebro, as skills e as rotinas.' : '',
     r.tecnologia === 'pouco' ? 'Fala bem simples, sem nenhum termo técnico.' : '',
     'No fim, me propõe uma tarefa pequena e útil pra gente fazer agora em um minuto.',

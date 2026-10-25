@@ -31,7 +31,8 @@ export async function wizard(ctx) {
 
   // No app, a tela de boas-vindas já disse isso.
   if (!ctx.app) {
-    ui.info('Vou preparar o seu Claude. Leva uns 10 minutos.\nEu aviso toda vez que precisar de você, e espero o tempo que for.');
+    ui.info('Vou preparar o seu Claude. Leva uns 15 minutos.\nEu aviso toda vez que precisar de você, e espero o tempo que for.');
+    ui.info('O que muda em relação ao chat: o Claude vai trabalhar direto no seu computador, lembrar de você pelo segundo cérebro\n(o que você decidiu, como gosta das coisas, onde cada projeto parou) e já vir com comandos e rotinas prontos.\nÉ assim que trabalha o 1% que mais tira proveito do Claude.');
     ui.linha();
   }
 

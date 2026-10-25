@@ -146,3 +146,11 @@ input[type=text]:focus, input[type=password]:focus { outline: none; border-color
 .loja-topo b { flex: 1; font-size: 18px; }
 .icone-loja { width: 34px; height: 34px; border-radius: 8px; background: #d97757; }
 .bchrome { background: #0b57d0; color: #fff; border-radius: 18px; padding: 8px 16px; font-weight: 600; font-size: 13px; }
+
+/* Apresentação: três telas curtas antes das perguntas. */
+.icone-apresentacao svg { width: 56px; height: 56px; fill: none; stroke: var(--acc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 18px; }
+.texto-apresentacao { font-size: 19px; line-height: 1.6; color: var(--mut); max-width: 560px; }
+.pontos { display: flex; gap: 8px; margin-top: 26px; }
+.ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.ponto.atual { background: var(--acc); width: 22px; border-radius: 4px; }
+.link.pular { font-size: 15px; align-self: center; margin-left: 8px; }

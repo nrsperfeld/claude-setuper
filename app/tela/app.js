@@ -32,7 +32,7 @@ function botao(texto, onclick, secundario = false, extra = {}) {
 // ---------- coluna da esquerda ----------
 function desenharEtapas() {
   const itens = [];
-  const perguntasFeitas = estado.fase !== 'inicio' && estado.fase !== 'perguntas' && estado.fase !== 'carregando';
+  const perguntasFeitas = !['inicio', 'apresentacao', 'perguntas', 'carregando'].includes(estado.fase);
   itens.push(['Algumas perguntas', perguntasFeitas ? 'feito' : estado.fase === 'perguntas' ? 'atual' : '']);
   if (estado.passos.length) {
     estado.passos.forEach((nome, i) => {
@@ -53,6 +53,7 @@ function desenhar() {
   let conteudo;
   if (estado.pedido) conteudo = telaPedido(estado.pedido);
   else if (estado.fase === 'inicio') conteudo = telaInicio();
+  else if (estado.fase === 'apresentacao') conteudo = telaApresentacao();
   else if (estado.fase === 'perguntas') conteudo = [h('p', { class: 'mut' }, 'Um instante...')];
   else if (estado.fase === 'instalando') conteudo = telaInstalando();
   else if (estado.fase === 'fim') conteudo = telaFim();
@@ -75,8 +76,44 @@ function telaInicio() {
       ? 'Posso continuar a instalação de onde ela parou, ou só conferir se está tudo no lugar.'
       : 'Leva uns 15 minutos. Primeiro umas perguntas rápidas, depois eu instalo tudo sozinho. Quando eu precisar de você, aparece um cartão amarelo dizendo exatamente o que fazer.'),
     h('div', { class: 'botoes' },
-      botao(temInstalacao ? 'Continuar a instalação' : 'Começar', () => comecar('instalar'), false, { 'data-foco': true }),
+      botao(temInstalacao ? 'Continuar a instalação' : 'Começar', () => (temInstalacao ? comecar('instalar') : apresentar(0)), false, { 'data-foco': true }),
       temInstalacao && botao('Só conferir', () => comecar('conferir'), true)),
+  ];
+}
+
+// ---------- apresentação: por que usar o Claude assim (só na primeira vez) ----------
+const ICONE = {
+  computador: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="9" width="36" height="24" rx="3"/><path d="M18 39h12M24 33v6"/><path d="M14 18l5 4-5 4M22 26h8"/></svg>',
+  memoria: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 8h18l6 6v26H12z"/><path d="M30 8v6h6M18 22h12M18 28h12M18 34h7"/></svg>',
+  estrela: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6l5 11 12 1-9 8 3 12-11-6-11 6 3-12-9-8 12-1z"/></svg>',
+};
+const APRESENTACAO = [
+  { icone: 'computador', titulo: 'Um Claude que trabalha no seu computador',
+    texto: 'No chat, você pergunta, copia a resposta e cola em outro lugar. Aqui o Claude abre os seus arquivos, escreve, organiza pastas, monta planilhas e leva o trabalho até o fim. No que for importante, ele pede licença antes.' },
+  { icone: 'memoria', titulo: 'E que lembra de você',
+    texto: 'Antes de começar, ele lê o seu segundo cérebro: o que você já decidiu, como gosta das coisas, onde cada projeto parou. Quando você corrige alguma coisa, ele anota e não repete o erro. Quanto mais você usa, mais ele fica do seu jeito.' },
+  { icone: 'estrela', titulo: 'Do jeito que os usuários mais avançados trabalham',
+    texto: 'Memória que não se perde, comandos prontos pro seu tipo de trabalho, rotinas que rodam sozinhas e o Claude ligado nas ferramentas que você já usa. É assim que trabalha o 1% que mais tira proveito do Claude, e o Claude Setuper monta tudo isso pra você em uns 15 minutos.' },
+];
+function apresentar(i) {
+  estado.fase = 'apresentacao';
+  estado.slide = i;
+  desenhar();
+}
+function telaApresentacao() {
+  const i = estado.slide || 0;
+  const s = APRESENTACAO[i];
+  const ultimo = i === APRESENTACAO.length - 1;
+  const icone = h('div', { class: 'icone-apresentacao' });
+  icone.innerHTML = ICONE[s.icone]; // SVG fixo, escrito aqui; nada vindo de fora
+  return [
+    icone,
+    h('h1', {}, s.titulo),
+    h('p', { class: 'texto-apresentacao' }, s.texto),
+    h('div', { class: 'pontos', 'aria-label': `${i + 1} de ${APRESENTACAO.length}` }, APRESENTACAO.map((_, j) => h('span', { class: j === i ? 'ponto atual' : 'ponto' }))),
+    h('div', { class: 'botoes' },
+      botao(ultimo ? 'Vamos começar' : 'Continuar', () => (ultimo ? comecar('instalar') : apresentar(i + 1)), false, { 'data-foco': true }),
+      !ultimo && h('button', { class: 'link pular', type: 'button', onclick: () => comecar('instalar') }, 'Pular')),
   ];
 }
 
@@ -278,7 +315,13 @@ function print(nome) {
 }
 function roteiro(ev) {
   const a = estado.auto;
-  if (ev.tipo === 'inicio') { print('inicio'); setTimeout(() => comecar('instalar'), 1500); return; }
+  if (ev.tipo === 'inicio') {
+    print('inicio');
+    // Passa pela apresentação como a pessoa faria, com um print de cada tela.
+    APRESENTACAO.forEach((_, i) => setTimeout(() => { apresentar(i); print(`apresentacao-${i + 1}`); }, 1500 + i * 2500));
+    setTimeout(() => comecar('instalar'), 1500 + APRESENTACAO.length * 2500);
+    return;
+  }
   if (ev.tipo === 'pedido') {
     print('pergunta');
     const p = estado.pedido;
