@@ -129,7 +129,7 @@ function gravarRelatorio(ctx, falhas) {
 }
 
 function resumoErro(e) {
-  return String(e.message || e).split('\n')[0].slice(0, 120);
+  return String(e.message || e).split('\n')[0].slice(0, 220);
 }
 
 function parse(argv) {
