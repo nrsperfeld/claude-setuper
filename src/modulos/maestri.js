@@ -17,6 +17,7 @@ const NOTAS = [
   { arquivo: 'o-que-pedir.md', tpl: 'maestri/o-que-pedir.md', cor: 'green', tam: [360, 300] },
   { arquivo: 'lembretes.md', tpl: 'maestri/lembretes.md', cor: 'blue', tam: [360, 300] },
   { arquivo: 'se-algo-der-errado.md', tpl: 'maestri/se-algo-der-errado.md', cor: 'pink', tam: [360, 260] },
+  { arquivo: 'como-usar.md', tpl: 'maestri/como-usar.md', cor: 'purple', tam: [740, 520] },
 ];
 
 export async function verificar(ctx) {
@@ -94,7 +95,7 @@ export function montarWorkspace(ctx) {
   ];
 
   let ny = Y;
-  const colunas = [[X + 1150, Y], [X + 1150 + 380, Y], [X + 1150, Y + 330], [X + 1150 + 380, Y + 330]];
+  const colunas = [[X + 1150, Y], [X + 1150 + 380, Y], [X + 1150, Y + 330], [X + 1150 + 380, Y + 330], [X + 1150, Y + 620]];
   NOTAS.forEach((n, i) => {
     ctx.escreverSeFaltar(path.join(dir, 'notes', n.arquivo), ctx.template(n.tpl));
     nodes.push({
@@ -112,7 +113,15 @@ export function montarWorkspace(ctx) {
 
   const wsPath = path.join(dir, 'workspace.json');
   const existente = ctx.lerJson(wsPath, null);
-  if (!existente) {
+  if (existente?.payload?.nodes) {
+    // Painel já montado (rodou o Setuper antes): só acrescenta as notas novas, sem mexer no que a pessoa arrumou.
+    const tem = new Set(existente.payload.nodes.map((n) => n.content?.stickyNote?._0?.fileName).filter(Boolean));
+    const novas = nodes.filter((n) => n.content.stickyNote && !tem.has(n.content.stickyNote._0.fileName));
+    if (novas.length) {
+      existente.payload.nodes.push(...novas);
+      ctx.escrever(wsPath, existente);
+    }
+  } else if (!existente) {
     ctx.escrever(wsPath, {
       schemaVersion: 2, type: 'workspace',
       payload: {

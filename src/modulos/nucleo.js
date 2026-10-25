@@ -80,6 +80,8 @@ export async function instalar(ctx) {
         PostToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-nota.cjs'))}"`, timeout: 10 }] }],
       },
       env: { CLAUDE_SETUPER_VAULT: vault },
+      // Modo voz ligado: segura a barra de espaço pra falar. O ditado segue o idioma.
+      language: 'Português', voiceEnabled: true, voice: { enabled: true, mode: 'hold' },
       ...(nivel.extra || {}),
     });
     if (ctx.plataforma === 'darwin') {

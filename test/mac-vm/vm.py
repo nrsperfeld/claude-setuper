@@ -19,6 +19,7 @@ VM = 'setuper-teste'
 SENHA = 'admin'
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 LOGS = os.path.join(RAIZ, 'test', 'mac-vm', 'logs')
+IDADE = os.environ.get('SETUPER_IDADE', '52').encode()  # SETUPER_IDADE=15 testa o caminho de menor de idade
 LOGINS = ['claude auth login', 'gh auth login', 'vercel login']
 
 ASKPASS = os.path.join(tempfile.gettempdir(), 'setuper-vm-askpass.sh')
@@ -189,7 +190,7 @@ def rodar():
             if time.time() - ultima_resposta.get(chave, 0) > 10:
                 ultima_resposta[chave] = time.time()
                 time.sleep(0.8)
-                os.write(fd, b'Teste\r' if 'chame' in chave else b'52\r' if 'anos' in chave else b'\r')
+                os.write(fd, b'Teste\r' if 'chame' in chave else IDADE + b'\r' if 'anos' in chave else b'\r')
         lido = max(lido, len(historico) - 200)
         if 'Press Enter to open' in tela[-300:] and 'gh-enter' not in respondidas:
             respondidas.add('gh-enter')

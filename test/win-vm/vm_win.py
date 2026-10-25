@@ -20,6 +20,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 LOGS = os.path.join(RAIZ, 'test', 'win-vm', 'logs')
 SSH = ['sshpass', '-p', 'Setuper2026!', 'ssh', '-p', '2222', '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null',
        '-o', 'ConnectTimeout=15', '-o', 'LogLevel=ERROR', '-o', 'ServerAliveInterval=30', 'teste@127.0.0.1']
+IDADE = os.environ.get('SETUPER_IDADE', '52').encode()  # SETUPER_IDADE=15 testa o caminho de menor de idade
 LOGINS = ['auth login', 'vercel login', 'vercel.js login']
 
 
@@ -151,7 +152,7 @@ def rodar():
             if time.time() - ultima.get(chave, 0) > 10:
                 ultima[chave] = time.time()
                 time.sleep(0.8)
-                os.write(fd, b'Teste\r' if 'chame' in chave else b'52\r' if 'anos' in chave else b'\r')
+                os.write(fd, b'Teste\r' if 'chame' in chave else IDADE + b'\r' if 'anos' in chave else b'\r')
         lido = max(lido, len(historico) - 200)
         if re.search(r'Press Enter to open|\(Y/n\)|Aperta Enter pra seguir', historico[-300:]) and time.time() - ultima.get('ingles', 0) > 10:
             ultima['ingles'] = time.time()
