@@ -59,7 +59,12 @@ def desligar():
 
 def ligar_limpa():
     desligar()
-    r = subprocess.run(['qemu-img', 'snapshot', '-a', 'limpo', DISCO], capture_output=True, text=True)
+    # O qemu da rodada anterior pode levar um tempo pra soltar o disco depois do stop.
+    for _ in range(40):
+        r = subprocess.run(['qemu-img', 'snapshot', '-a', 'limpo', DISCO], capture_output=True, text=True)
+        if 'lock' not in r.stderr:
+            break
+        time.sleep(3)
     if r.returncode:
         sys.exit(f'sem snapshot "limpo": {r.stderr}')
     vm('start')
