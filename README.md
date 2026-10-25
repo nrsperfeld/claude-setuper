@@ -53,7 +53,9 @@ Opções úteis pra quem está ajudando alguém: `--assistido` grava um relatór
 
 ## Perfis (pra quem é)
 
-Logo depois do nome, o Setuper pergunta pra que a pessoa vai usar o Claude, a idade e como ela se dá com tecnologia e com IA. O perfil escolhido muda a pergunta sobre o trabalho, os pacotes que já vêm marcados, os passos que entram (o estudante não instala GitHub nem Vercel) e o que vai pro CLAUDE.md. A familiaridade define quanto o Claude explica; abaixo de 18 anos some a opção "nunca pede licença" e entram cuidados com dados pessoais.
+Logo depois do nome, o Setuper pergunta pra que a pessoa vai usar o Claude, a idade e como ela se dá com tecnologia e com IA. O perfil escolhido muda a pergunta sobre o trabalho, os pacotes que já vêm marcados, os passos que entram (o estudante não instala GitHub nem Vercel) e o que vai pro CLAUDE.md. A familiaridade define quanto o Claude explica. A pergunta de IA tem três níveis (nunca usou, usa o chat, já usa IA pra programar); quem já programa com IA recebe instruções técnicas e começa com a autonomia "faz tudo e me avisa". Abaixo de 18 anos some a opção "nunca pede licença" e entram cuidados com dados pessoais.
+
+O perfil `estudante` existe pra que a IA não faça o trabalho no lugar de quem estuda. O Claude é instruído a nunca entregar a lição pronta e a treinar três habilidades: identificar padrões (perguntar o que a pessoa percebeu antes de explicar), usar padrões (exercício novo pra aplicar sozinho) e criar padrões (inventar exemplo, macete ou questão de prova). A skill `/estudar` segue esse ciclo.
 
 Perfis: `dia-a-dia` (o generalista), `empresario`, `marketing`, `video`, `estudante`, `elos`. Cada um é um arquivo em `templates/perfis/`. Pra mandar o link pra uma turma inteira já com o perfil escolhido:
 

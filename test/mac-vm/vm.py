@@ -75,8 +75,13 @@ def copiar_setuper(endereco):
     tar = subprocess.run(['tar', '-cz', '--exclude', 'node_modules', '--exclude', '.git', '--exclude', 'test/mac-vm/logs',
                           '--exclude', 'app/dist', '--exclude', 'app/.cache', '-C', RAIZ, '.'],
                          capture_output=True)
-    r = subprocess.run(['ssh', *SSH_OPTS, f'admin@{endereco}', 'rm -rf /tmp/setuper && mkdir -p /tmp/setuper && tar -xz -C /tmp/setuper'],
-                       input=tar.stdout, env=SSH_ENV, capture_output=True)
+    # Com a máquina carregada, o SSH da VM às vezes demora a responder: tenta de novo antes de desistir.
+    for _ in range(5):
+        r = subprocess.run(['ssh', *SSH_OPTS, f'admin@{endereco}', 'rm -rf /tmp/setuper && mkdir -p /tmp/setuper && tar -xz -C /tmp/setuper'],
+                           input=tar.stdout, env=SSH_ENV, capture_output=True)
+        if not r.returncode:
+            break
+        time.sleep(20)
     if r.returncode:
         sys.exit(f'cópia falhou: {r.stderr.decode()}')
 

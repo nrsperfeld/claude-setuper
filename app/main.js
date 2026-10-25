@@ -120,7 +120,7 @@ async function conferencia() {
   for (const m of lista) {
     let itens;
     try { itens = await m.verificar(ctx); } catch (e) { itens = [{ item: m.nome, ok: false, dica: e.message }]; }
-    if (itens.length) grupos.push({ nome: m.nome, itens: itens.map((i) => ({ item: i.item, ok: !!i.ok, dica: i.dica || '' })) });
+    if (itens.length) grupos.push({ nome: m.nomeCurto || m.nome, itens: itens.map((i) => ({ item: i.item, ok: !!i.ok, dica: i.dica || '' })) });
   }
   return grupos;
 }
@@ -222,6 +222,7 @@ ipcMain.on('pronto', async () => {
     enviar({ tipo: 'fim', soConferiu: false, grupos: [
       { nome: 'Preparar o computador', itens: [{ item: 'Claude Code', ok: true }, { item: 'Login no Claude', ok: false, dica: 'rode: claude auth login' }] },
       { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Plugins habilitados (clique de confiança)', ok: false, dica: 'abra o cofre e clique em "Trust author and enable plugins"' }] },
+      ...['Configurar o Claude', 'Esforço automático', 'Habilidades', 'Ferramentas', 'Rotinas', 'Painel do Claude'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] })),
     ] });
     await print('fim');
     return;
