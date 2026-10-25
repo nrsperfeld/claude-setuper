@@ -65,7 +65,7 @@ export async function instalar(ctx) {
     return !!q && !/error|not/i.test(q);
   }, { intervalo: 3, limite: 300 });
   if (ok) ui.ok('Vercel conectada. Agora é só pedir pro Claude "publica isso na internet".');
-  else ui.aviso('Não consegui confirmar o login na Vercel. Dá pra fazer depois com: vercel login');
+  else ui.aviso(ctx.app ? 'Não vi o login na Vercel terminar. Sem problema, no fim eu te mostro o que ficou faltando.' : 'Não consegui confirmar o login na Vercel. Dá pra fazer depois com: vercel login');
 }
 
 async function logadoNaVercel(ctx) {
