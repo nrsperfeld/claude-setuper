@@ -6,7 +6,7 @@ Instala e configura o Claude Code do zero, em português, pra quem não é de te
 - **Segundo cérebro no Obsidian**: cofre montado, plugins instalados, pasta `CLAUDE/` com feedback, decisões, padrões, descobertas e projetos. Hooks fazem o Claude ler o cérebro ao começar e anotar ao terminar.
 - **Maestri** (Mac) aberto no fim com o Claude se apresentando e notas explicativas do lado. No Windows e no Linux, um atalho "Claude" na Área de Trabalho e o Claude aberto ao lado do cofre.
 - **GitHub** (uma ou duas contas), **Chrome** (extensão do Claude) e **Vercel** (publicar sites).
-- **Pacotes de comandos** por tipo de uso (escrita, negócios, pesquisa, conteúdo, programação) e **ferramentas conectadas** (Notion, Figma, Canva...).
+- **Pacotes de comandos** por tipo de uso (escrita, negócios, pesquisa, conteúdo, programação) e **ferramentas conectadas** (Gmail, Google Drive, Google Agenda, Notion, Figma, Canva...).
 - **Rotinas**: revisão semanal do cérebro e backup diário das notas.
 
 Página pra mandar pra pessoa: `https://nrsperfeld.github.io/claude-setuper/`

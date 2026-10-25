@@ -101,8 +101,8 @@ function telaPedido(p) {
 
   if (p.tipo === 'confirmar') {
     return [intro, h('h2', {}, p.msg), h('div', { class: 'botoes' },
-      botao('Sim', () => responder(true), !p.padrao, p.padrao ? { 'data-foco': true } : {}),
-      botao('Não', () => responder(false), !!p.padrao, p.padrao ? {} : { 'data-foco': true }))];
+      botao(p.sim || 'Sim', () => responder(true), !p.padrao, p.padrao ? { 'data-foco': true } : {}),
+      botao(p.nao || 'Não', () => responder(false), !!p.padrao, p.padrao ? {} : { 'data-foco': true }))];
   }
 
   // escolher (uma) ou varios (várias)

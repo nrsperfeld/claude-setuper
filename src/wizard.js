@@ -5,7 +5,7 @@ import { ui, c } from './ui.js';
 import { MODULOS } from './modulos/index.js';
 import { PACOTES } from './modulos/pacotes.js';
 import { catalogo } from './modulos/mcps.js';
-import { perfis, perfil as acharPerfil } from './perfis.js';
+import { perfis, perfil as acharPerfil, IA_ANTIGA } from './perfis.js';
 
 const AUTONOMIAS = [
   { value: 'cauteloso', label: 'Me pergunta antes de cada coisa', hint: 'mais seguro, mais perguntas' },
@@ -22,7 +22,7 @@ export async function wizard(ctx) {
     const usuario = os.userInfo().username.replace(/[._-]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
     const p = acharPerfil(ctx, ctx.perfil || salvo.perfil);
     ctx.resp = {
-      nome: usuario, trabalho: '', idade: '', tecnologia: 'basico', ia: 'vezes', autonomia: 'equilibrado',
+      nome: usuario, trabalho: '', idade: '', tecnologia: 'basico', ia: 'chat', autonomia: 'equilibrado',
       modulos: MODULOS.filter((m) => m.padrao && doSistema(m) && !p.semModulos.includes(m.id)).map((m) => m.id),
       pacotes: p.pacotes, mcps: [], ...salvo, perfil: p.id,
     };
@@ -61,11 +61,11 @@ export async function wizard(ctx) {
     { value: 'avancado', label: 'Sou bem à vontade com computador' },
   ], { padrao: salvo.tecnologia || 'basico' });
 
-  const ia = await ui.escolher('E com IA, tipo ChatGPT ou Claude?', [
-    { value: 'nunca', label: 'Nunca usei ou quase nunca' },
-    { value: 'vezes', label: 'Uso de vez em quando' },
-    { value: 'diario', label: 'Uso todo dia' },
-  ], { padrao: salvo.ia || 'vezes' });
+  const ia = await ui.escolher('E como você usa IA hoje?', [
+    { value: 'nunca', label: 'Nunca usei, ou quase nunca' },
+    { value: 'chat', label: 'Uso o chat', hint: 'ChatGPT, Claude, Gemini: pergunto e copio a resposta' },
+    { value: 'code', label: 'Já uso IA pra programar', hint: 'Claude Code, Codex, Cursor, no terminal ou no editor' },
+  ], { padrao: IA_ANTIGA[salvo.ia] || salvo.ia || 'chat' });
 
   const trabalho = await ui.perguntar(p.trabalho.pergunta, {
     padrao: salvo.perfil === p.id ? salvo.trabalho : undefined,
@@ -76,7 +76,8 @@ export async function wizard(ctx) {
   const autonomia = await ui.escolher(
     'Como você prefere que o Claude trabalhe?',
     AUTONOMIAS.filter((a) => !(menor && a.value === 'livre')),
-    { padrao: salvo.autonomia && !(menor && salvo.autonomia === 'livre') ? salvo.autonomia : 'equilibrado' },
+    // Quem já usa IA pra código costuma preferir menos interrupção; o resto começa no equilibrado.
+    { padrao: salvo.autonomia && !(menor && salvo.autonomia === 'livre') ? salvo.autonomia : ia === 'code' && !menor ? 'confiante' : 'equilibrado' },
   );
 
   const pacotes = await ui.escolherVarios(
@@ -93,7 +94,7 @@ export async function wizard(ctx) {
   );
 
   let modulos = MODULOS.filter((m) => m.padrao && doSistema(m) && !p.semModulos.includes(m.id)).map((m) => m.id);
-  const avancado = await ui.confirmar('Quer escolher o que entra na instalação? (se não, eu instalo o que faz sentido pra você)', false);
+  const avancado = await ui.confirmar('Quer escolher o que entra na instalação?', false, { sim: 'Sim, quero escolher', nao: 'Não, pode instalar tudo' });
   if (avancado) {
     modulos = await ui.escolherVarios(
       'O que você quer instalar?',

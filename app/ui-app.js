@@ -62,8 +62,8 @@ export function criarUiApp(enviar, pedir) {
     escolherVarios(texto, opcoes, { padrao = [] } = {}) {
       return pedir({ tipo: 'varios', msg: limpo(texto), opcoes: opcoesLimpas(opcoes), padrao });
     },
-    confirmar(texto, padrao = true) {
-      return pedir({ tipo: 'confirmar', msg: limpo(texto), padrao });
+    confirmar(texto, padrao = true, { sim = 'Sim', nao = 'Não' } = {}) {
+      return pedir({ tipo: 'confirmar', msg: limpo(texto), padrao, sim: limpo(sim), nao: limpo(nao) });
     },
     async senha(texto) {
       return String((await pedir({ tipo: 'senha', msg: limpo(texto) })) ?? '');

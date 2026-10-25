@@ -23,9 +23,11 @@ export const NIVEL_TEC = {
 
 export const NIVEL_IA = {
   nunca: 'Eu quase nunca usei IA. Quando fizer sentido, me mostre o que mais dá pra pedir pra você, sempre com um exemplo do meu dia a dia.',
-  vezes: '',
-  diario: 'Eu uso IA todo dia, não precisa explicar o básico de como pedir as coisas.',
+  chat: 'Eu já uso IA no chat (ChatGPT, Claude), mas é a primeira vez que uso uma IA que mexe no meu computador. Quando você criar, mudar ou apagar algum arquivo, ou rodar algum programa, me conta em uma frase o que fez.',
+  code: 'Eu já uso IA pra programar e no terminal (Claude Code, Codex, Cursor ou parecido). Pode ser direto e técnico, sem explicar o básico.',
 };
+// Respostas da versão anterior da pergunta (antes da 1.4).
+export const IA_ANTIGA = { vezes: 'chat', diario: 'chat' };
 
 export const MENOR_DE_IDADE = `# Cuidados (menor de 18 anos)
 
@@ -45,6 +47,7 @@ export function apresentacao(ctx) {
     `Oi, eu sou ${nome}. Acabei de instalar você com o Claude Setuper.`,
     `Se apresenta pra mim em poucas linhas, em português simples: quem você é, ${sobre}, e como o meu segundo cérebro (as notas no Obsidian) funciona entre a gente.`,
     r.ia === 'nunca' ? 'Eu quase nunca usei IA, então me dá três exemplos bem práticos do que eu posso te pedir.' : '',
+    r.ia === 'code' ? 'Eu já uso IA pra código, então pula o básico e me mostra o que esse setup tem de diferente: o segundo cérebro, as skills e as rotinas.' : '',
     r.tecnologia === 'pouco' ? 'Fala bem simples, sem nenhum termo técnico.' : '',
     'No fim, me propõe uma tarefa pequena e útil pra gente fazer agora em um minuto.',
   ].filter(Boolean).join(' ');

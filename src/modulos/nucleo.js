@@ -2,7 +2,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { ui } from '../ui.js';
-import { perfil, NIVEL_TEC, NIVEL_IA, MENOR_DE_IDADE } from '../perfis.js';
+import { perfil, NIVEL_TEC, NIVEL_IA, IA_ANTIGA, MENOR_DE_IDADE } from '../perfis.js';
 
 export const id = 'nucleo';
 export const nome = 'Núcleo do Claude';
@@ -49,8 +49,9 @@ export async function instalar(ctx) {
   const p = perfil(ctx, ctx.resp.perfil);
   const menor = ctx.resp.idade && Number(ctx.resp.idade) < 18;
   ctx.resp.idadeTexto = ctx.resp.idade ? `, tenho ${ctx.resp.idade} anos` : '';
-  ctx.resp.nivelTexto = NIVEL_TEC[ctx.resp.tecnologia] || NIVEL_TEC.basico;
-  ctx.resp.iaTexto = NIVEL_IA[ctx.resp.ia] || '';
+  // Quem já usa IA pra código não precisa do aviso de "sem jargão", mesmo que tenha marcado o básico em tecnologia.
+  ctx.resp.nivelTexto = ctx.resp.ia === 'code' ? NIVEL_TEC.avancado : NIVEL_TEC[ctx.resp.tecnologia] || NIVEL_TEC.basico;
+  ctx.resp.iaTexto = NIVEL_IA[IA_ANTIGA[ctx.resp.ia] || ctx.resp.ia] || '';
   const prints = await pastaDePrints(ctx);
   ctx.resp.extras = [
     p.claudeMd,

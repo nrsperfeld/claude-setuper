@@ -75,8 +75,9 @@ export const ui = {
     return r;
   },
 
-  async confirmar(msg, padrao = true) {
-    const r = await p.confirm({ message: msg, initialValue: padrao, active: 'Sim', inactive: 'Não' });
+  // `sim` e `nao` trocam o Sim/Não por botões que dizem o que acontece (ex.: "Não, pode instalar tudo").
+  async confirmar(msg, padrao = true, { sim = 'Sim', nao = 'Não' } = {}) {
+    const r = await p.confirm({ message: msg, initialValue: padrao, active: sim, inactive: nao });
     checar(r);
     return r;
   },
