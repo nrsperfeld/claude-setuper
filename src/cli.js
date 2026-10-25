@@ -81,7 +81,7 @@ export async function instalar(ctx, flags) {
         // Sem a base (Homebrew, Node, Claude Code) os outros passos só iam falhar um atrás do outro.
         ctx.salvarEstado();
         ui.erro(`${m.nome}: não deu certo (${resumoErro(e)}). Sem essa parte o resto não funciona, então parei aqui. Confere a internet e rode de novo: eu continuo de onde parei.`);
-        return { parou: m.nome, motivo: resumoErro(e) };
+        return { parou: m.nomeCurto || m.nome, motivo: resumoErro(e) };
       }
       // Pendência que depende da pessoa (um login) é aviso, não erro: o resto segue normal.
       if (e.continuar) ui.aviso(`${m.nomeCurto || m.nome}: ${resumoErro(e)}`);

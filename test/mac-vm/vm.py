@@ -86,7 +86,9 @@ def instalar_clt_como_se_clicasse(endereco, registro):
     registro('[teste] simulando o clique em Instalar das ferramentas da Apple')
     script = (
         'touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress; '
-        "P=$(softwareupdate -l 2>/dev/null | grep -E '\\* Label: Command Line Tools' | sed 's/^.*Label: //' | sort -V | tail -n1); "
+        # A lista da Apple às vezes vem vazia na primeira consulta: tenta algumas vezes.
+        "for i in 1 2 3 4 5; do P=$(softwareupdate -l 2>/dev/null | grep -E '\\* Label: Command Line Tools' | sed 's/^.*Label: //' | sort -V | tail -n1); "
+        '[ -n "$P" ] && break; sleep 20; done; '
         f'echo "produto: $P"; echo {SENHA} | sudo -S softwareupdate -i "$P" --verbose 2>&1 | tail -3; '
         'rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress; xcode-select -p'
     )
@@ -251,7 +253,13 @@ def rodar_app():
 
     parar = threading.Event()
     threading.Thread(target=vigiar_logins, args=(endereco, registro, parar), daemon=True).start()
-    threading.Thread(target=instalar_clt_como_se_clicasse, args=(endereco, registro), daemon=True).start()
+    def clt_quando_o_app_pedir():
+        # Clica em "Instalar" só depois que o app pediu as ferramentas, como a pessoa faria.
+        for _ in range(240):
+            if ssh(endereco, "grep -q 'xcode-select --install' ~/'Claude Setuper/registro.log' 2>/dev/null && echo sim", timeout=60)[1] == 'sim':
+                return instalar_clt_como_se_clicasse(endereco, registro)
+            time.sleep(5)
+    threading.Thread(target=clt_quando_o_app_pedir, daemon=True).start()
 
     extras = ' '.join(sys.argv[2:])
     codigo, saida = ssh(endereco, f'export CLAUDE_SETUPER_APP_URL=file:///tmp/app.zip; cat /tmp/setuper/install.sh | bash -s -- {extras}', timeout=600)

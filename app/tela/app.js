@@ -193,7 +193,7 @@ function telaFalha() {
     h('h2', {}, 'Algo deu errado e eu precisei parar'),
     h('p', {}, estado.falha),
     h('p', { class: 'mut' }, 'Confere a internet e tenta de novo: eu continuo de onde parei. Se repetir, manda o registro pra quem te passou o Claude Setuper.'),
-    h('div', { class: 'botoes' }, botao('Tentar de novo', () => comecar('instalar'), false, { 'data-foco': true }), botao('Abrir o registro', () => S.mostrarRegistro(), true)))];
+    h('div', { class: 'botoes' }, botao('Tentar de novo', () => comecar('instalar'), false, { 'data-foco': true }), botao('Mostrar o registro (pra quem te ajuda)', () => S.mostrarRegistro(), true)))];
 }
 
 

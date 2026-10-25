@@ -46,7 +46,7 @@ async function xcodeCLT(ctx) {
   ], { figura: 'apple-ferramentas' });
   await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
   const ok = await ctx.esperar(async () => !!(await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true })), { intervalo: 5, limite: 1800, semEncurtar: true });
-  if (!ok) throw new Error('as ferramentas da Apple não terminaram de instalar');
+  if (!ok) throw new Error(ctx.app ? 'as ferramentas da Apple não terminaram de instalar. Se a janela da Apple sumiu, clica em Tentar de novo que ela aparece outra vez' : 'as ferramentas da Apple não terminaram de instalar');
   ui.ok('Ferramentas da Apple instaladas');
 }
 
