@@ -73,8 +73,13 @@ def copiar_setuper():
     local = os.path.join(LOGS, 'setuper.tgz')
     open(local, 'wb').write(tar)
     # scp em vez de mandar pela entrada: o PowerShell do Windows mexe nos bytes que passam por ela.
-    r = subprocess.run(['sshpass', '-p', 'Setuper2026!', 'scp', '-P', '2222', '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null',
-                        '-o', 'LogLevel=ERROR', local, 'teste@127.0.0.1:C:/setuper.tgz'], capture_output=True)
+    # Logo depois de ligar, o SSH às vezes recusa a senha por alguns segundos: tenta de novo antes de desistir.
+    for _ in range(5):
+        r = subprocess.run(['sshpass', '-p', 'Setuper2026!', 'scp', '-P', '2222', '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null',
+                            '-o', 'LogLevel=ERROR', local, 'teste@127.0.0.1:C:/setuper.tgz'], capture_output=True)
+        if not r.returncode:
+            break
+        time.sleep(20)
     if r.returncode:
         sys.exit(f'cópia falhou: {r.stderr.decode(errors="ignore")}')
     codigo, saida = ssh('Remove-Item -Recurse -Force C:\\setuper -ErrorAction SilentlyContinue; New-Item -ItemType Directory C:\\setuper | Out-Null; '
