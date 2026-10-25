@@ -202,6 +202,7 @@ const DICAS_APP = [
   [/^git sabe/, 'Se resolve sozinho quando a conta do GitHub estiver conectada.'],
   [/^Login na Vercel/, 'Falta entrar na sua conta da Vercel. ' + RESOLVER],
   [/^Extensão Claude no Chrome/, 'Falta adicionar a extensão do Claude no Chrome. ' + RESOLVER],
+  [/^Plugins habilitados/, 'Falta clicar em "Trust author and enable plugins" no Obsidian. ' + RESOLVER],
 ];
 function dicaApp(i) {
   const d = DICAS_APP.find(([re]) => re.test(i.item));
@@ -210,18 +211,22 @@ function dicaApp(i) {
 }
 
 function telaFim() {
-  const faltas = estado.grupos.flatMap((g) => g.itens.filter((i) => !i.ok));
+  // O que falta (em português simples) primeiro; o que ficou pronto vem resumido pelos nomes curtos.
+  const faltas = estado.grupos.flatMap((g) => g.itens.filter((i) => !i.ok).map((i) => ({ ...i, grupo: g.nome })));
+  const prontos = estado.grupos.filter((g) => g.itens.every((i) => i.ok)).map((g) => g.nome);
   const titulo = estado.soConferiu ? 'Conferência da instalação' : (estado.encerramento.split('.')[0] + '.');
   return [
     h('h1', {}, titulo),
     !estado.soConferiu && h('p', { class: 'mut' }, estado.encerramento.split('. ').slice(1).join('. ')),
     h('div', { class: 'botoes' }, botao('Abrir o Claude', () => S.abrirClaude(), false, { 'data-foco': true }),
       faltas.length ? botao('Tentar resolver o que falta', () => comecar('instalar'), true) : null),
-    h('p', { class: 'mut pequeno' }, faltas.length
-      ? `${faltas.length === 1 ? 'Ficou 1 coisa' : `Ficaram ${faltas.length} coisas`} pra você terminar, quase sempre uma conta ou um clique. Pode abrir o Claude Setuper de novo quando quiser: ele continua de onde parou.`
-      : 'Tudo certo. Pode fechar esta janela.'),
-    estado.grupos.map((g) => h('div', { class: 'grupo' }, h('b', {}, g.nome), h('ul', {},
-      g.itens.map((i) => h('li', { class: i.ok ? 'sim' : 'nao' }, h('span', { class: 's' }, i.ok ? '✓' : '!'), h('span', {}, i.item, !i.ok ? h('small', {}, dicaApp(i)) : null)))))),
+    faltas.length
+      ? h('section', { class: 'grupo' }, h('b', {}, faltas.length === 1 ? 'Falta 1 coisa, que depende de você' : `Faltam ${faltas.length} coisas, que dependem de você`),
+        h('ul', {}, faltas.map((i) => h('li', { class: 'nao' }, h('span', { class: 's' }, '!'), h('span', {}, i.item, h('small', {}, dicaApp(i)))))),
+        h('p', { class: 'mut pequeno rodape-grupo' }, 'Pode abrir o Claude Setuper de novo quando quiser: ele continua de onde parou.'))
+      : h('p', { class: 'mut' }, 'Tudo certo. Pode fechar esta janela.'),
+    prontos.length > 0 && h('section', { class: 'grupo' }, h('b', {}, 'Pronto pra usar'),
+      h('ul', { class: 'prontos' }, prontos.map((n) => h('li', { class: 'sim' }, h('span', { class: 's' }, '✓'), h('span', {}, n))))),
   ];
 }
 
