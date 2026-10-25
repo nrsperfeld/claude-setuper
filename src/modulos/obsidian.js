@@ -1,4 +1,5 @@
 // Obsidian: instala o app, monta o vault com CLAUDE/, plugins e registra no app. Validado em 12/10/2026.
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -20,9 +21,13 @@ export function dirConfigObsidian(ctx) {
   return path.join(ctx.appData(), 'obsidian');
 }
 
+function exeWindows(ctx) {
+  return [...['Programs\\Obsidian\\Obsidian.exe', 'Obsidian\\Obsidian.exe'].map((r) => path.join(ctx.localAppData(), r)), 'C:\\Program Files\\Obsidian\\Obsidian.exe'].find((p) => ctx.existe(p));
+}
+
 function appInstalado(ctx) {
   if (ctx.plataforma === 'darwin') return ctx.existe('/Applications/Obsidian.app');
-  if (ctx.win) return ['Programs\\Obsidian\\Obsidian.exe', 'Obsidian\\Obsidian.exe'].some((r) => ctx.existe(path.join(ctx.localAppData(), r))) || ctx.existe('C:\\Program Files\\Obsidian\\Obsidian.exe');
+  if (ctx.win) return !!exeWindows(ctx);
   return false;
 }
 
@@ -145,12 +150,18 @@ async function abrirEConfiar(ctx, vault) {
     await new Promise((r) => setTimeout(r, 1000));
   }
   ui.pausa('O Obsidian vai abrir e perguntar se você confia nos plugins', [
-    'Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.',
+    ctx.win ? 'Se o Windows perguntar se pode abrir o Obsidian, clica em Permitir.' : 'Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.',
     'No Obsidian, clica no botão da direita: "Confiar no autor e habilitar plugins".',
     'Os plugins são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.',
-    'Se o Obsidian não aparecer, abre ele você mesmo pela pasta Aplicativos. Eu espero você clicar.',
+    ctx.win ? 'Se o Obsidian não aparecer, abre ele você mesmo pelo menu Iniciar. Eu espero você clicar.' : 'Se o Obsidian não aparecer, abre ele você mesmo pela pasta Aplicativos. Eu espero você clicar.',
   ]);
-  if (ctx.win) await ctx.abrirUrl(`obsidian://open?path=${encodeURIComponent(vault)}`);
+  // No Windows abre o programa direto: o link obsidian:// só funciona depois que o Obsidian abriu uma vez.
+  // O cofre já está marcado como aberto no obsidian.json, então ele abre nele.
+  if (ctx.win) {
+    const exe = exeWindows(ctx);
+    if (exe) spawn(exe, [], { detached: true, stdio: 'ignore' }).unref();
+    else await ctx.abrirUrl(`obsidian://open?path=${encodeURIComponent(vault)}`);
+  }
   else {
     // Confere se abriu e tenta de novo: o primeiro open depois de instalar às vezes se perde.
     for (let i = 0; i < 3; i++) {

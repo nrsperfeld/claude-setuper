@@ -20,6 +20,15 @@ function GravarPathUsuario($pasta) {
 }
 function InstalarWinget($id) { & winget.exe install -e --id $id --source winget --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null; AtualizarPath }
 
+# Se algo quebrar, explica em português em vez de só deixar o erro vermelho na tela.
+trap {
+  Write-Host ""
+  Write-Host "Não consegui terminar este passo: $($_.Exception.Message)" -ForegroundColor Red
+  Write-Host "Confere a internet e roda o instalador de novo, ele continua de onde parou. Se repetir, manda um print desta tela pra quem te passou o link." -ForegroundColor Yellow
+  Read-Host "Aperta Enter pra fechar" | Out-Null
+  exit 1
+}
+
 Clear-Host
 Write-Host "Claude Setuper" -ForegroundColor White
 try {
@@ -50,7 +59,11 @@ Ok "Node $(node -v) pronto"
 
 Passo "Baixando o Claude Setuper."
 New-Item -ItemType Directory -Force -Path (Split-Path $Dest) | Out-Null
-if (Test-Path (Join-Path $Dest '.git')) {
+if ($env:CLAUDE_SETUPER_LOCAL) {
+  # Só pra teste: usa uma cópia local do Setuper em vez de baixar do GitHub.
+  if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
+  Copy-Item -Recurse $env:CLAUDE_SETUPER_LOCAL $Dest
+} elseif (Test-Path (Join-Path $Dest '.git')) {
   git -C $Dest pull -q --ff-only 2>$null
 } else {
   if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }

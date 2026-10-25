@@ -184,7 +184,7 @@ def rodar():
         # Pergunta ativa do assistente: "◆  texto". A mesma pergunta pode voltar mais tarde (GitHub e Vercel),
         # então responde cada aparição nova; o redesenho logo depois da resposta (até 10 s) é ignorado.
         # Só pergunta aberta: o bloco termina em "└". As mensagens de "já instalado" também usam ◆, mas não têm o └.
-        for achado in re.finditer(r'◆\s+([^\n]{8,120})\n(?:│[^\n]*\n){1,20}└', historico[lido:]):
+        for achado in re.finditer(r'[◆▲]\s+([^\n]{8,120})\n(?:│[^\n]*\n){1,20}└', historico[lido:]):
             chave = achado.group(1).strip()[:60]
             if time.time() - ultima_resposta.get(chave, 0) > 10:
                 ultima_resposta[chave] = time.time()

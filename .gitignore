@@ -5,3 +5,5 @@ node_modules/
 test/mac-vm/logs/
 test/mac-vm/rodada.out
 __pycache__/
+test/win-vm/logs/
+test/win-vm/rodada.out

@@ -25,12 +25,12 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash
 ```
 
-### Windows: o caminho principal é o script único
+### Windows: plano B, o script único
 
-No Windows, o `.bat` da página baixa e roda `fallback-windows.ps1`, que faz a instalação inteira sem o wizard em Node. Pelo terminal (PowerShell comum, sem administrador):
+O `.bat` da página baixa e roda o `install.ps1`, o mesmo assistente em Node do Mac (com perfis, idade e familiaridade). Se o Node não subir numa máquina, o `fallback-windows.ps1` faz a instalação inteira sem o wizard, mas sem os perfis. Pelo terminal (PowerShell comum, sem administrador):
 
 ```powershell
-irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/v1.1.3/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"
+irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"
 
 # sem perguntas
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1" -Nome "Maria" -Trabalho "tenho uma loja de roupas" -Autonomia equilibrado

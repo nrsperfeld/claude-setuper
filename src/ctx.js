@@ -182,7 +182,7 @@ export function criarCtx(flags = {}) {
     async abrirUrl(url) {
       ctx.log('abrir', url);
       if (ctx.dryRun) return;
-      if (ctx.win) return ctx.run('cmd.exe', ['/c', 'start', '""', url.replace(/&/g, '^&')], { ignorarErro: true });
+      if (ctx.win) return ctx.run('cmd.exe', ['/c', 'start', '""', url.replace(/&/g, '^&')], { ignorarErro: true, timeout: 30000 });  // sem app pro link, o start pode ficar preso
       const cmd = ctx.plataforma === 'darwin' ? 'open' : 'xdg-open';
       await ctx.run(cmd, [url], { ignorarErro: true });
     },
