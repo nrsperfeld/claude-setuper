@@ -22,6 +22,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 LOGS = os.path.join(RAIZ, 'test', 'mac-vm', 'logs')
 IDADE = os.environ.get('SETUPER_IDADE', '52').encode()  # SETUPER_IDADE=15 testa o caminho de menor de idade
 ESPERA_LOGIN = int(os.environ.get('ESPERA_LOGIN', '20'))  # no app, 45: dá tempo do código aparecer na tela
+REAL = os.environ.get('SETUPER_REAL') == '1'  # rodar-app com a linha publicada, sem cópia local
 LOGINS = ['claude auth login', 'gh auth login', 'vercel login']
 
 ASKPASS = os.path.join(tempfile.gettempdir(), 'setuper-vm-askpass.sh')
@@ -230,7 +231,7 @@ def rodar():
 def rodar_app():
     """A linha do Terminal baixa o app (aqui, o zip local) e abre; o app responde as telas sozinho (modo roteiro)."""
     zip_app = os.path.join(RAIZ, 'app', 'dist', 'Claude-Setuper-mac-arm64.zip')
-    if not os.path.exists(zip_app):
+    if not REAL and not os.path.exists(zip_app):
         sys.exit('gere o app antes: bash app/build.sh arm64')
     os.makedirs(LOGS, exist_ok=True)
     nome_log = os.path.join(LOGS, time.strftime('%Y-%m-%d_%H%M%S') + '-app.log')
@@ -249,10 +250,11 @@ def rodar_app():
         time.sleep(3)
     codigo, saida = ssh(endereco, 'sw_vers -productVersion; xcode-select -p 2>&1; pgrep -x Finder >/dev/null && echo "sessão gráfica: sim"')
     registro(f'[teste] VM {VM} ligada em {endereco}\n{saida}')
-    copiar_setuper(endereco)
-    r = subprocess.run(['ssh', *SSH_OPTS, f'admin@{endereco}', 'cat > /tmp/app.zip'], stdin=open(zip_app, 'rb'), env=SSH_ENV, capture_output=True)
-    if r.returncode:
-        sys.exit(f'cópia do app falhou: {r.stderr.decode()}')
+    if not REAL:
+        copiar_setuper(endereco)
+        r = subprocess.run(['ssh', *SSH_OPTS, f'admin@{endereco}', 'cat > /tmp/app.zip'], stdin=open(zip_app, 'rb'), env=SSH_ENV, capture_output=True)
+        if r.returncode:
+            sys.exit(f'cópia do app falhou: {r.stderr.decode()}')
     teste = json.dumps({'nome': 'Teste', 'idade': IDADE.decode(), 'senha': SENHA, 'esperaMax': 20})
     ssh(endereco, f"mkdir -p ~/'Claude Setuper' && cat > ~/'Claude Setuper/.teste-auto.json'", entrada=teste)
 
@@ -267,7 +269,11 @@ def rodar_app():
     threading.Thread(target=clt_quando_o_app_pedir, daemon=True).start()
 
     extras = ' '.join(sys.argv[2:])
-    codigo, saida = ssh(endereco, f'export CLAUDE_SETUPER_APP_URL=file:///tmp/app.zip; cat /tmp/setuper/install.sh | bash -s -- {extras}', timeout=600)
+    if REAL:  # a linha que a página mostra, com o install.sh do main e o app da última release
+        linha = f'curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash -s -- {extras}'
+    else:
+        linha = f'export CLAUDE_SETUPER_APP_URL=file:///tmp/app.zip; cat /tmp/setuper/install.sh | bash -s -- {extras}'
+    codigo, saida = ssh(endereco, linha, timeout=600)
     registro(f'[teste] linha do Terminal (código {codigo}):\n{saida[-1500:]}')
     inicio = time.time()
     fim = ''
