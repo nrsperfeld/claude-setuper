@@ -1,6 +1,6 @@
 {
   "name": "claude-setuper",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Configura o Claude Code do zero, com segundo cérebro no Obsidian, GitHub, Chrome, Vercel e Maestri. Feito pra quem não é de tecnologia.",
   "type": "module",
   "bin": { "claude-setuper": "bin/claude-setuper.js" },
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node bin/claude-setuper.js",
     "doctor": "node bin/claude-setuper.js doctor",
-    "test": "node --test test/"
+    "test": "node --test \"test/*.test.cjs\""
   },
   "dependencies": {
     "@clack/prompts": "^0.8.0",

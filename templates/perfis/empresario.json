@@ -14,5 +14,14 @@
   ],
   "semModulos": [],
   "claudeMd": "# Minha empresa\n\nEu sou dono(a) de empresa e meu tempo é curto. Comece pela recomendação e depois explique o porquê. Quando a decisão envolver dinheiro ou tempo, faça a conta antes de opinar: quanto custa, quanto volta e em quanto tempo. Se faltar número pra fazer a conta, me pergunte em vez de inventar.\n\nQuando eu pedir algo pra equipe (mensagem, procedimento, cobrança), escreva pronto pra eu mandar, no tom de quem é firme com o resultado e respeitoso com as pessoas.\n",
-  "id": "empresario"
+  "id": "empresario",
+  "primeiraVitoria": "Vamos fazer agora a primeira tarefa de verdade, com um número da minha empresa. Me peça pra arrastar pra cá uma planilha ou PDF da empresa (vendas, custos, extrato, orçamento). Se eu não tiver nada à mão, me pergunte o faturamento e os principais custos do mês. Com isso, me mostre as 3 coisas que mais importam ali e uma recomendação, com a conta feita. Guarde o resumo numa nota no meu segundo cérebro.",
+  "semana": [
+    "Escrever pra equipe a mensagem ou o procedimento que eu vivo repetindo, pronto pra mandar.",
+    "Montar uma proposta comercial a partir de três informações que eu der sobre o cliente.",
+    "Fazer a conta de uma decisão que eu estou adiando: quanto custa, quanto volta e em quanto tempo.",
+    "Ler os últimos e-mails ou mensagens de um cliente que eu colar e me dizer o que ele realmente quer.",
+    "Montar a pauta da próxima reunião com a equipe, com o que decidir em cada ponto.",
+    "Revisar comigo a semana da empresa e anotar no cérebro as decisões que a gente tomou."
+  ]
 }

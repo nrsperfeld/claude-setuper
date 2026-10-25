@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('setuper', {
   abrirClaude: () => ipcRenderer.send('abrir-claude'),
   atualizar: () => ipcRenderer.send('atualizar'),
   mostrarRegistro: () => ipcRenderer.send('mostrar-registro'),
+  pedirAjuda: () => ipcRenderer.invoke('pedir-ajuda'),
   print: (nome) => ipcRenderer.invoke('print', nome),
 });

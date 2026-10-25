@@ -230,6 +230,9 @@ if __name__ == '__main__':
         _, saida = ssh('powershell -NoProfile -ExecutionPolicy Bypass -File C:\\setuper\\test\\win-vm\\sentinela-teste.ps1', timeout=7200)
         print(saida, flush=True)
         print('[sentinela] tela:', vm('shot'), flush=True)
+    elif acao == 'script':  # roda um .ps1 do repositório (já copiado pra C:\\setuper) na VM que acabou de instalar
+        _, saida = ssh(f'powershell -NoProfile -ExecutionPolicy Bypass -File C:\\setuper\\{sys.argv[2].replace("/", chr(92))}', timeout=3600)
+        print(saida, flush=True)
     elif acao == 'limpo':
         desligar()
         subprocess.run(['qemu-img', 'snapshot', '-d', 'limpo', DISCO], capture_output=True)

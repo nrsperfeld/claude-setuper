@@ -6,6 +6,7 @@ import { doctor } from './doctor.js';
 import { remover } from './remover.js';
 import { exportar } from './exportar.js';
 import { atualizar } from './atualizar.js';
+import { gerarPedidoDeAjuda } from './ajuda.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +21,7 @@ Claude Setuper ${VERSAO}
   claude-setuper atualizar       puxa a versão nova sem perder o que você editou
   claude-setuper remover         desfaz a instalação (pergunta antes de cada coisa)
   claude-setuper exportar        gera um perfil a partir do setup atual
+  claude-setuper pedir-ajuda     cria na Mesa um arquivo pra mandar pra quem te ajuda
 
 Opções:
   --perfil <id>     já escolhe o público (dia-a-dia, empresario, marketing, video, estudante, elos)
@@ -48,6 +50,8 @@ export async function main(argv) {
       return remover(ctx);
     case 'exportar':
       return exportar(ctx);
+    case 'pedir-ajuda':
+      return pedirAjuda(ctx);
     default:
       console.log(AJUDA);
   }
@@ -112,6 +116,14 @@ export async function instalar(ctx, flags) {
         ? `Pronto, ${ctx.resp.nome}. O Claude está abrindo numa janela nova, e deixei um atalho "Claude" na sua Área de Trabalho pra próxima vez.`
         : `Pronto, ${ctx.resp.nome}. Abra o Terminal e digite ${c.bold('claude')} pra começar.`,
   );
+}
+
+async function pedirAjuda(ctx) {
+  ui.abertura('Claude Setuper · pedir ajuda', 'Vou juntar num arquivo o que quem te ajuda precisa ver');
+  const arquivo = await ui.tarefa('Conferindo a instalação e montando o arquivo', 'Arquivo pronto', () => gerarPedidoDeAjuda(ctx, VERSAO));
+  if (ctx.win) await ctx.run('explorer.exe', [`/select,${arquivo}`], { ignorarErro: true });
+  else if (ctx.plataforma === 'darwin') await ctx.run('open', ['-R', arquivo], { ignorarErro: true });
+  ui.encerramento(`Criei o arquivo "${path.basename(arquivo)}" em ${path.dirname(arquivo)}. Manda ele pra quem instalou o Claude pra você (pelo WhatsApp ou por e-mail). Ele não tem senha nem código de login.`);
 }
 
 function gravarRelatorio(ctx, falhas) {

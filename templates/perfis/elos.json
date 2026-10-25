@@ -15,5 +15,14 @@
   ],
   "semModulos": [],
   "claudeMd": "# Trabalho no Instituto ELOS\n\nEu faço parte da equipe do Instituto ELOS, que tem como fundador o Erick Loureiro. O tom da ELOS é caloroso, próximo e intencional, nunca frio ou corporativo.\n\nNos textos da ELOS, não use estas palavras: transformação, coaching, mindset, crenças (no sentido de autoajuda), inteligência emocional.\n\nE nada de texto com cara de IA: sem frase de efeito pra fechar parágrafo, sem \"não é X, é Y\" em série, sem travessão (use vírgula, dois-pontos ou frase nova), sem lista em que toda linha tem o mesmo formato, sem muletas como \"no fim do dia\", \"vale ressaltar\" e \"em suma\". Escreva como gente falando, explicando o porquê até o fim. Antes de entregar, releia e corte o que soar como propaganda.\n",
-  "id": "elos"
+  "id": "elos",
+  "primeiraVitoria": "Vamos fazer agora a primeira tarefa de verdade: me pergunte qual é a tarefa mais chata ou repetitiva da minha semana na ELOS. Depois faça ela comigo uma vez, do começo ao fim, e no final transforme o que a gente fez num comando que eu possa chamar de novo. Guarde o passo a passo numa nota no meu segundo cérebro.",
+  "semana": [
+    "Preparar a mensagem ou o material de uma turma ou cliente que eu atendo nesta semana.",
+    "Resumir uma reunião (transcrição ou anotações que eu colar) com decisões e próximos passos.",
+    "Organizar uma pasta de trabalho que está bagunçada, sem apagar nada.",
+    "Revisar um texto ou roteiro com a voz da ELOS, apontando o que soa artificial.",
+    "Montar uma planilha simples pra acompanhar algo que hoje eu controlo de cabeça.",
+    "Anotar no cérebro as decisões e os aprendizados da semana."
+  ]
 }

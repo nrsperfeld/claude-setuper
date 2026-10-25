@@ -8,6 +8,8 @@ Instala e configura o Claude Code do zero, em português, pra quem não é de te
 - **GitHub** (uma ou duas contas), **Chrome** (extensão do Claude) e **Vercel** (publicar sites).
 - **Pacotes de comandos** por tipo de uso (escrita, negócios, pesquisa, conteúdo, programação) e **ferramentas conectadas** (Gmail, Google Drive, Google Agenda, Notion, Figma, Canva...).
 - **Rotinas**: revisão semanal do cérebro e backup diário das notas.
+- **Primeira semana guiada**: a primeira conversa já faz uma tarefa real do perfil (arrumar Downloads, ler a planilha da empresa, escrever o próximo post...), e nos dias seguintes o Claude sugere uma missão por dia de uso. Junto vem o **Cardápio do Claude**, uma nota com pedidos prontos por profissão. Depois da primeira semana, uma vez por semana, ele mostra o resumo do que fez pela pessoa (conversas, pedidos, arquivos, notas).
+- **Pedir ajuda**: no app (botão) ou no Terminal (`claude-setuper pedir-ajuda`), gera na Mesa um arquivo com a conferência e o registro, sem senha nem código, pra mandar pra quem dá suporte.
 - **Manter tudo atualizado**: uma vez por semana atualiza as ferramentas que o Setuper instalou e confere se continuam funcionando. Só aparece pra pessoa se alguma coisa parou de funcionar.
 
 Página pra mandar pra pessoa: `https://nrsperfeld.github.io/claude-setuper/`
@@ -71,7 +73,7 @@ Um CLI em Node (`src/`) com um wizard de três perguntas e dez módulos que roda
 | Módulo | O que faz |
 |---|---|
 | `base` | Xcode CLT, Homebrew, Node, git, Claude Code, login |
-| `nucleo` | `CLAUDE.md`, `settings.json` por nível de autonomia, hooks e skills do segundo cérebro |
+| `nucleo` | `CLAUDE.md`, `settings.json` por nível de autonomia, hooks e skills do segundo cérebro, cardápio do perfil e a primeira semana (`hooks/ativacao.cjs` + `~/.claude/setuper-ativacao.json`) |
 | `obsidian` | instala o app, monta o cofre, baixa Dataview e Templater da release, registra no `obsidian.json` |
 | `github` | `gh`, uma ou duas contas, `includeIf` por pasta |
 | `chrome` | Chrome (se faltar) e a extensão Claude |

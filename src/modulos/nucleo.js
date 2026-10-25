@@ -29,6 +29,7 @@ export async function verificar(ctx) {
     { item: 'Hooks do segundo cérebro', ok: ctx.existe(path.join(d, 'hooks', 'cerebro-inicio.cjs')) },
     { item: 'Skills (/decisão, /retro...)', ok: ctx.existe(path.join(d, 'skills', 'retro', 'SKILL.md')) },
     { item: 'Pasta de memória', ok: ctx.existe(path.join(d, 'memoria', 'MEMORIA.md')) },
+    { item: 'Primeira semana guiada', ok: ctx.existe(path.join(d, 'hooks', 'ativacao.cjs')) && ctx.existe(path.join(d, 'setuper-ativacao.json')) },
   ];
 }
 
@@ -54,10 +55,12 @@ export async function instalar(ctx) {
   ctx.resp.nivelTexto = ctx.resp.ia === 'code' ? NIVEL_TEC.avancado : NIVEL_TEC[ctx.resp.tecnologia] || NIVEL_TEC.basico;
   ctx.resp.iaTexto = NIVEL_IA[IA_ANTIGA[ctx.resp.ia] || ctx.resp.ia] || '';
   const prints = await pastaDePrints(ctx);
+  const cardapio = caminhoCardapio(ctx, vault);
   ctx.resp.extras = [
     p.claudeMd,
     menor ? MENOR_DE_IDADE : '',
     (ctx.resp.modulos || []).includes('maestri') && ctx.plataforma === 'darwin' ? VARIOS_AGENTES : '',
+    `# Cardápio do Claude\n\nQuando eu perguntar o que dá pra te pedir, ou parecer que não sei por onde começar, abra o Cardápio do Claude em \`${cardapio}\` e sugira 2 ou 3 pedidos que combinem com o momento, não a lista inteira.\n`,
     prints ? `# Prints de tela\n\nMeus prints de tela ficam em \`${prints}\`. Quando eu falar "olha o print" ou "vê a tela", leia o arquivo mais recente dessa pasta. Se eu arrastar um print e o caminho começar com \`/var/folders/\`, você não vai conseguir ler: pegue o mais recente da pasta de prints.\n` : '',
   ].filter(Boolean).join('\n');
 
@@ -77,7 +80,10 @@ export async function instalar(ctx) {
     ctx.mesclarJson(path.join(d, 'settings.json'), {
       permissions: { allow: nivel.allow, deny: DENY, defaultMode: nivel.defaultMode },
       hooks: {
-        SessionStart: [{ hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-inicio.cjs'))}"`, timeout: 10 }] }],
+        SessionStart: [
+          { hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-inicio.cjs'))}"`, timeout: 10 }] },
+          { hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'ativacao.cjs'))}"`, timeout: 10 }] },
+        ],
         Stop: [{ hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-fim.cjs'))}"`, timeout: 10 }] }],
         PostToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-nota.cjs'))}"`, timeout: 10 }] }],
       },
@@ -94,10 +100,29 @@ export async function instalar(ctx) {
   });
 
   await ui.tarefa('Montando a memória e os lembretes do Claude', 'Memória e lembretes prontos', async () => {
-    for (const h of ['cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs']) ctx.copiarTemplate(`hooks/${h}`, path.join(d, 'hooks', h));
+    for (const h of ['cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs', 'ativacao.cjs']) ctx.copiarTemplate(`hooks/${h}`, path.join(d, 'hooks', h));
     for (const s of ['decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar']) ctx.copiarTemplate(`skills/${s}.md`, path.join(d, 'skills', s, 'SKILL.md'));
     ctx.escreverSeFaltar(path.join(d, 'memoria', 'MEMORIA.md'), ctx.template('memoria/MEMORIA.md'));
   });
+
+  await ui.tarefa('Preparando a sua primeira semana com o Claude', 'Primeira semana preparada', async () => {
+    // Cardápio de pedidos do perfil: a pessoa pode editar à vontade, então só cria se faltar.
+    ctx.escreverSeFaltar(cardapio, ctx.template(`cardapio/${p.id}.md`));
+    // Missões dos próximos dias e o resumo semanal (hook ativacao.cjs). Rodar de novo não reinicia a semana.
+    const config = path.join(d, 'setuper-ativacao.json');
+    const antes = ctx.lerJson(config, {});
+    ctx.escrever(config, {
+      instalado: antes.instalado || new Date().toISOString(),
+      nome: ctx.resp.nome, perfil: p.id, missoes: p.semana || [], cardapio,
+      vault: (ctx.resp.modulos || []).includes('obsidian') ? vault : '',
+    });
+  });
+}
+
+// Com o segundo cérebro, o cardápio fica na raiz do cofre (a pessoa vê no Obsidian); sem ele, na pasta do Setuper.
+function caminhoCardapio(ctx, vault) {
+  const pasta = (ctx.resp.modulos || []).includes('obsidian') ? vault : ctx.pastaSetuper;
+  return path.join(pasta, 'Cardápio do Claude.md');
 }
 
 const VARIOS_AGENTES = `# Vários Claudes ao mesmo tempo (Maestri)
@@ -135,6 +160,7 @@ export async function remover(ctx) {
     if (i === 0) fs.rmSync(claudeMd, { force: true });
     else if (i > 0) fs.writeFileSync(claudeMd, txt.slice(0, i).trimEnd() + '\n');
   }
-  for (const h of ['cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs', 'cerebro-inicio.js', 'cerebro-fim.js', 'cerebro-nota.js']) fs.rmSync(path.join(d, 'hooks', h), { force: true });
+  for (const f of ['setuper-ativacao.json', 'setuper-ativacao-estado.json']) fs.rmSync(path.join(d, f), { force: true });
+  for (const h of ['ativacao.cjs', 'cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs', 'cerebro-inicio.js', 'cerebro-fim.js', 'cerebro-nota.js']) fs.rmSync(path.join(d, 'hooks', h), { force: true });
   for (const s of ['decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar']) fs.rmSync(path.join(d, 'skills', s), { recursive: true, force: true });
 }

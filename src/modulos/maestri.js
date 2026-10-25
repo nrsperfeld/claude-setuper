@@ -98,7 +98,7 @@ export function montarWorkspace(ctx) {
   let ny = Y;
   const colunas = [[X + 1150, Y], [X + 1150 + 380, Y], [X + 1150, Y + 330], [X + 1150 + 380, Y + 330], [X + 1150, Y + 620]];
   NOTAS.forEach((n, i) => {
-    ctx.escreverSeFaltar(path.join(dir, 'notes', n.arquivo), ctx.template(n.tpl));
+    ctx.escreverSeFaltar(path.join(dir, 'notes', n.arquivo), n.arquivo === 'o-que-pedir.md' ? oQuePedir(ctx) : ctx.template(n.tpl));
     nodes.push({
       content: { stickyNote: { _0: { color: n.cor, fileName: n.arquivo, fontSize: 14, hasCustomName: false, isContentLocked: false, isPreviewing: true, storageMode: { managed: {} }, textModifiedAt: agora } } },
       createdAt: agora, frame: [colunas[i], n.tam], id: crypto.randomUUID().toUpperCase(), isLocked: false, isRedacted: false, lastModifiedAt: agora, zIndex: 20 + i,
@@ -140,4 +140,14 @@ export function montarWorkspace(ctx) {
   estado.payload = { ...estado.payload, activeWorkspaceId: wid, hasCompletedOnboarding: true, hasSeenFloorOnboarding: true, recentWorkspaceIds: [wid, ...(estado.payload.recentWorkspaceIds || []).filter((x) => x !== wid)] };
   ctx.escrever(path.join(raiz, 'app-state.json'), estado);
   return wid;
+}
+
+// A nota "O que pedir" mostra os primeiros pedidos do cardápio do perfil da pessoa, não uma lista genérica.
+function oQuePedir(ctx) {
+  const config = ctx.lerJson(path.join(ctx.claudeDir, 'setuper-ativacao.json'), {});
+  let cardapio = '';
+  try { cardapio = fs.readFileSync(config.cardapio, 'utf8'); } catch { return ctx.template('maestri/o-que-pedir.md'); }
+  const pedidos = cardapio.split('\n').filter((l) => l.startsWith('- ')).slice(0, 6);
+  const onde = config.vault ? 'no seu segundo cérebro (Obsidian)' : 'na pasta Claude Setuper';
+  return ['O que você pode pedir pro Claude', '', ...pedidos, '', `Tem mais no "Cardápio do Claude", ${onde}. Ou pergunta pra ele: "o que mais eu posso te pedir?"`, ''].join('\n');
 }

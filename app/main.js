@@ -225,6 +225,9 @@ ipcMain.on('pronto', async () => {
       ...['Configurar o Claude', 'Esforço automático', 'Habilidades', 'Ferramentas', 'Rotinas', 'Painel do Claude'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] })),
     ] });
     await print('fim');
+    await janela.webContents.executeJavaScript("document.getElementById('pedir-ajuda').click()");
+    await new Promise((r) => setTimeout(r, 6000));
+    await print('pedir-ajuda');
     return;
   }
   const estado = lerJson(path.join(PASTA, 'estado.json'));
@@ -257,6 +260,19 @@ ipcMain.on('copiar', (_e, texto) => clipboard.writeText(String(texto)));
 ipcMain.on('abrir-claude', () => abrirClaude());
 ipcMain.on('atualizar', () => atualizarApp());
 ipcMain.on('mostrar-registro', () => shell.openPath(path.join(PASTA, 'registro.log')));
+// Pedir ajuda: o mesmo arquivo do `claude-setuper pedir-ajuda`, na Mesa, e mostra ele no Finder.
+ipcMain.handle('pedir-ajuda', async () => {
+  try {
+    const { criarCtx } = await importarSetuper('ctx.js');
+    const { gerarPedidoDeAjuda } = await importarSetuper('ajuda.js');
+    const arquivo = await gerarPedidoDeAjuda(criarCtx({ app: true }), VERSAO);
+    shell.showItemInFolder(arquivo);
+    return { arquivo, nome: path.basename(arquivo), pasta: path.basename(path.dirname(arquivo)) };
+  } catch (e) {
+    fs.appendFileSync(path.join(PASTA, 'registro.log'), `[ajuda] ${e.stack || e.message}\n`);
+    return { erro: String(e.message || e) };
+  }
+});
 // Nos testes, guarda um print de cada tela pra conferir o visual depois.
 ipcMain.handle('print', async (_e, nome) => {
   if (!TESTE || !janela) return;

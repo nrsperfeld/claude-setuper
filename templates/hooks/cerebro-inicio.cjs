@@ -14,7 +14,7 @@ function lerEntrada(cb) {
   process.stdin.on('data', (c) => { dados += c; });
   process.stdin.on('end', fim);
   process.stdin.on('error', fim);
-  setTimeout(fim, 3000);
+  setTimeout(fim, 3000).unref(); // unref: não segura o processo depois que a entrada chegou
 }
 
 lerEntrada(main);

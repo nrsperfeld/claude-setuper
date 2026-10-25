@@ -36,20 +36,21 @@ Eu tenho menos de 18 anos. Não me peça e não guarde dados pessoais meus ou de
 
 // A primeira mensagem que o Claude recebe ao abrir pela primeira vez. Vai dentro de aspas em bash e cmd,
 // então o texto fixo não tem aspas, $, % nem !, e o que a pessoa escreveu passa pelo ctx.seguro.
+// Primeira mensagem pro Claude (Maestri no Mac, atalho no Windows): em vez de só se apresentar, ele já conduz uma
+// tarefa real do perfil da pessoa. Quem nunca usou IA trava diante da tela em branco; assim a primeira conversa já resolve algo.
 export function apresentacao(ctx) {
   const r = ctx.resp;
+  const p = perfil(ctx, r.perfil);
   const nome = ctx.seguro(r.nome, 'eu');
-  const trabalho = ctx.seguro(r.trabalho, 'o meu dia a dia');
-  const sobre = r.perfil === 'estudante'
-    ? `o que você consegue fazer pelos meus estudos (${trabalho})`
-    : `o que você consegue fazer por alguém como eu (${trabalho})`;
+  const trabalho = ctx.seguro(r.trabalho);
+  const leigo = r.tecnologia === 'pouco' || r.ia === 'nunca';
   return [
-    `Oi, eu sou ${nome}. Acabei de instalar você com o Claude Setuper.`,
-    `Se apresenta pra mim em poucas linhas, em português simples: quem você é, ${sobre}, e como o meu segundo cérebro (as notas no Obsidian) funciona entre a gente.`,
-    r.ia === 'nunca' ? 'Eu quase nunca usei IA, então me dá três exemplos bem práticos do que eu posso te pedir.' : '',
-    r.perfil === 'estudante' ? 'Me explica também como você vai me ajudar a identificar, usar e criar padrões, em vez de fazer as coisas por mim.' : '',
-    r.ia === 'code' ? 'Eu já uso IA pra código, então pula o básico e me mostra o que esse setup tem de diferente: o segundo cérebro, as skills e as rotinas.' : '',
-    r.tecnologia === 'pouco' ? 'Fala bem simples, sem nenhum termo técnico.' : '',
-    'No fim, me propõe uma tarefa pequena e útil pra gente fazer agora em um minuto.',
+    `Oi, eu sou ${nome}${trabalho ? ` (${trabalho})` : ''}. Acabei de instalar você com o Claude Setuper.`,
+    'Se apresenta em no máximo duas linhas, em português simples.',
+    ctx.seguro(p.primeiraVitoria || 'Depois me propõe uma tarefa pequena e útil pra gente fazer agora, e faz comigo.'),
+    'Uma pergunta por vez, e espera eu responder.',
+    leigo ? 'Eu quase nunca usei IA: fala bem simples, sem termo técnico, e me diz exatamente o que fazer (onde clicar, o que arrastar pra janela).' : '',
+    r.ia === 'code' ? 'Eu já uso IA pra código: pode ir direto ao ponto.' : '',
+    'Quando terminar, me mostra onde ficou guardado e me conta em uma frase que amanhã você me sugere outra coisa, e que o Cardápio do Claude tem mais ideias do que pedir.',
   ].filter(Boolean).join(' ');
 }

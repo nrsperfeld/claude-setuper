@@ -13,5 +13,14 @@
   ],
   "semModulos": [],
   "claudeMd": "",
-  "id": "dia-a-dia"
+  "id": "dia-a-dia",
+  "primeiraVitoria": "Vamos fazer agora a primeira tarefa de verdade: arrumar a minha pasta Downloads. Olhe o que tem lá e me mostre, em poucas linhas, um plano de pastas por tipo (documentos, fotos, planilhas, instaladores...). Espere o meu ok. Depois só crie pastas e mova arquivos, nunca apague nada, e guarde a lista do que mudou de lugar numa nota, pra dar pra desfazer. No fim me mostre como ficou.",
+  "semana": [
+    "Me mandar uma foto ou print de um papel (conta, recibo, receita) pra você transformar em texto organizado.",
+    "Escrever junto comigo aquela mensagem difícil que eu estou adiando, no meu tom.",
+    "Montar a lista de compras ou de tarefas da semana a partir do que eu ditar, em ordem de prioridade.",
+    "Pegar um arquivo grande (contrato, manual, PDF) e me explicar em cinco linhas o que importa nele.",
+    "Planejar um passeio ou viagem curta com horários, custos e um plano B se chover.",
+    "Revisar comigo o que a gente fez nesta semana e anotar no cérebro o que eu gostei e o que não gostei."
+  ]
 }

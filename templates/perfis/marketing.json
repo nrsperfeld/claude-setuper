@@ -14,5 +14,14 @@
   ],
   "semModulos": [],
   "claudeMd": "# Meu trabalho com marketing\n\nEu trabalho com marketing. Antes da primeira peça de uma marca, me pergunte uma vez quem é o público e qual o objetivo, e guarde a resposta em `CLAUDE/padrões/`. Nas próximas, use o que está guardado.\n\nTexto de marketing sem cara de IA: nada de \"não é X, é Y\" em série, nada de fechar parágrafo com frase de efeito, nada de lista em que toda linha tem o mesmo formato. Escreva como uma pessoa da marca falaria com o cliente. Quando eu pedir opções, me dê três bem diferentes entre si, não três versões da mesma ideia.\n",
-  "id": "marketing"
+  "id": "marketing",
+  "primeiraVitoria": "Vamos fazer agora a primeira tarefa de verdade: o meu próximo conteúdo. Me pergunte qual post, anúncio ou campanha eu preciso entregar e pra quem é. Depois escreva 3 versões bem diferentes entre si, no meu tom, e me diga qual você escolheria e por quê. Guarde as versões numa nota no meu segundo cérebro.",
+  "semana": [
+    "Transformar um conteúdo que deu certo em 5 ideias novas no mesmo formato.",
+    "Escrever a legenda e os primeiros 3 segundos de um vídeo que eu vou gravar.",
+    "Montar o calendário de posts das próximas duas semanas a partir dos meus temas.",
+    "Analisar 3 concorrentes que eu indicar e me dizer o que eles fazem que eu não faço.",
+    "Reescrever uma página ou bio minha pra ficar mais clara pra quem chega pela primeira vez.",
+    "Anotar no cérebro o tom de voz que a gente usou nesta semana, pra você acertar de primeira daqui pra frente."
+  ]
 }

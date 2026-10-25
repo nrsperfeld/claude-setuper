@@ -3,6 +3,7 @@
 
   python3 test/mac-vm/vm.py rodar [--perfil X]   # VM nova a partir da limpa, instala tudo, confere e grava o log
   python3 test/mac-vm/vm.py rodar-app [--perfil X]   # o mesmo, pelo app (app/dist/Claude-Setuper-mac-arm64.zip)
+  python3 test/mac-vm/vm.py script X.sh # depois do rodar-app: roda um script de conferência na VM
   python3 test/mac-vm/vm.py sentinela # depois do rodar-app: testa a atualização semanal pelo launchd
   python3 test/mac-vm/vm.py shell     # abre um terminal na VM de teste que ainda estiver ligada
   python3 test/mac-vm/vm.py desligar
@@ -322,6 +323,9 @@ if __name__ == '__main__':
         rodar_app()
     elif acao == 'sentinela':
         testar_sentinela()
+    elif acao == 'script':  # roda um script de conferência na VM que acabou de instalar
+        r = subprocess.run(['ssh', *SSH_OPTS, f'admin@{ip()}', 'bash -s'], stdin=open(sys.argv[2]), env=SSH_ENV, capture_output=True, text=True, timeout=3600)
+        print(r.stdout[-8000:], r.stderr[-1500:], flush=True)
     elif acao == 'shell':
         os.execvpe('ssh', ['ssh', '-tt', *SSH_OPTS, f'admin@{ip()}'], SSH_ENV)
     elif acao == 'desligar':

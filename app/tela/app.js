@@ -10,6 +10,7 @@ const estado = {
   passos: [], atual: -1, falhos: new Set(),
   tarefa: '', msgs: [], pausa: null, pedido: null, introPerguntas: '',
   encerramento: '', grupos: [], soConferiu: false, falha: '',
+  ajuda: null, // null | 'gerando' | { arquivo, nome, pasta } | { erro }
 };
 
 // Monta elementos sem innerHTML: todo texto entra como texto.
@@ -59,7 +60,7 @@ function desenhar() {
   else if (estado.fase === 'fim') conteudo = telaFim();
   else if (estado.fase === 'falha') conteudo = telaFalha();
   else conteudo = [];
-  palco.replaceChildren(...[conteudo].flat(3).filter((x) => x != null && x !== false));
+  palco.replaceChildren(...[avisoAjuda(), conteudo].flat(3).filter((x) => x != null && x !== false));
   const foco = palco.querySelector('[data-foco]');
   if (foco) foco.focus();
 }
@@ -122,6 +123,27 @@ function comecar(modo) {
   if (modo !== 'instalar') estado.tarefa = 'Conferindo o que está instalado';
   desenhar();
   S.iniciar(modo);
+}
+
+// ---------- pedir ajuda ----------
+async function pedirAjuda() {
+  estado.ajuda = 'gerando';
+  desenhar();
+  estado.ajuda = await S.pedirAjuda();
+  desenhar();
+}
+function avisoAjuda() {
+  const a = estado.ajuda;
+  if (!a) return null;
+  const fechar = botao('Fechar', () => { estado.ajuda = null; desenhar(); }, true);
+  if (a === 'gerando') return h('section', { class: 'cartao ajuda', role: 'status' }, h('p', {}, 'Conferindo a instalação e montando o arquivo pra quem te ajuda. Leva menos de um minuto...'));
+  if (a.erro) return h('section', { class: 'cartao ajuda', role: 'alert' }, h('p', {}, 'Não consegui montar o arquivo. Tira um print desta tela e manda pra quem instalou o Claude pra você.'), h('div', { class: 'botoes' }, fechar));
+  const onde = a.pasta === 'Desktop' ? 'na sua Mesa' : `na pasta ${a.pasta}`;
+  return h('section', { class: 'cartao ajuda', role: 'status' },
+    h('h2', {}, 'Arquivo pronto pra mandar'),
+    h('p', {}, `Criei o arquivo "${a.nome}" ${onde} e abri a pasta pra você. Manda ele pra quem instalou o Claude pra você, pelo WhatsApp ou por e-mail.`),
+    h('p', { class: 'mut pequeno' }, 'Ele tem o que essa pessoa precisa pra te ajudar, sem nenhuma senha nem código de login.'),
+    h('div', { class: 'botoes' }, fechar));
 }
 
 function telaPedido(p) {
@@ -219,7 +241,8 @@ function telaFim() {
     h('h1', {}, titulo),
     !estado.soConferiu && h('p', { class: 'mut' }, estado.encerramento.split('. ').slice(1).join('. ')),
     h('div', { class: 'botoes' }, botao('Abrir o Claude', () => S.abrirClaude(), false, { 'data-foco': true }),
-      faltas.length ? botao('Tentar resolver o que falta', () => comecar('instalar'), true) : null),
+      faltas.length ? botao('Tentar resolver o que falta', () => comecar('instalar'), true) : null,
+      faltas.length ? botao('Pedir ajuda', pedirAjuda, true) : null),
     faltas.length
       ? h('section', { class: 'grupo' }, h('b', {}, faltas.length === 1 ? 'Falta 1 coisa, que depende de você' : `Faltam ${faltas.length} coisas, que dependem de você`),
         h('ul', {}, faltas.map((i) => h('li', { class: 'nao' }, h('span', { class: 's' }, '!'), h('span', {}, i.item, h('small', {}, dicaApp(i)))))),
@@ -234,8 +257,8 @@ function telaFalha() {
   return [h('section', { class: 'cartao falha', role: 'alert' },
     h('h2', {}, 'Algo deu errado e eu precisei parar'),
     h('p', {}, estado.falha),
-    h('p', { class: 'mut' }, 'Confere a internet e tenta de novo: eu continuo de onde parei. Se repetir, manda o registro pra quem te passou o Claude Setuper.'),
-    h('div', { class: 'botoes' }, botao('Tentar de novo', () => comecar('instalar'), false, { 'data-foco': true }), botao('Mostrar o registro (pra quem te ajuda)', () => S.mostrarRegistro(), true)))];
+    h('p', { class: 'mut' }, 'Confere a internet e tenta de novo: eu continuo de onde parei. Se repetir, clica em Pedir ajuda e manda o arquivo pra quem te passou o Claude Setuper.'),
+    h('div', { class: 'botoes' }, botao('Tentar de novo', () => comecar('instalar'), false, { 'data-foco': true }), botao('Pedir ajuda', pedirAjuda, true)))];
 }
 
 
@@ -266,6 +289,7 @@ function anotar(texto) {
   detalhes.textContent = (detalhes.textContent + texto).slice(-20000);
   if (!detalhes.hidden) detalhes.scrollTop = detalhes.scrollHeight;
 }
+document.getElementById('pedir-ajuda').addEventListener('click', () => pedirAjuda());
 document.getElementById('ver-detalhes').addEventListener('click', (e) => {
   detalhes.hidden = !detalhes.hidden;
   e.target.setAttribute('aria-expanded', String(!detalhes.hidden));
