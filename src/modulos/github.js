@@ -40,7 +40,7 @@ export async function instalar(ctx) {
   if (!(await ctx.existeComando('gh'))) {
     if (ctx.semApps) return;
     await ui.tarefa('Instalando a ferramenta do GitHub', 'Ferramenta do GitHub instalada', async () => {
-      if (ctx.plataforma === 'darwin') await ctx.run('brew', ['install', 'gh']);
+      if (ctx.plataforma === 'darwin') await (await import('./base.js')).brewInstalar(ctx, 'github', ['gh']);
       else if (ctx.win) await (await import('./base.js')).winget(ctx, 'GitHub.cli');
       else await ctx.runVisivel('/bin/bash', ['-c', 'sudo apt-get install -y gh || (type -p curl >/dev/null || sudo apt-get install -y curl) && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && sudo apt-get update && sudo apt-get install -y gh']);
     });

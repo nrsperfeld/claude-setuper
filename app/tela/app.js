@@ -138,9 +138,9 @@ function telaPedido(p) {
   }
 
   if (p.tipo === 'confirmar') {
-    return [intro, h('h2', {}, p.msg), explicacao, h('div', { class: 'botoes' },
+    return [intro, h('h2', {}, p.msg), explicacao, p.figura && FIGURAS[p.figura] ? FIGURAS[p.figura]() : null, h('div', { class: 'botoes' },
       botao(p.sim || 'Sim', () => responder(true), !p.padrao, p.padrao ? { 'data-foco': true } : {}),
-      botao(p.nao || 'Não', () => responder(false), !!p.padrao, p.padrao ? {} : { 'data-foco': true }))];
+      p.nao === '' ? null : botao(p.nao || 'Não', () => responder(false), !!p.padrao, p.padrao ? {} : { 'data-foco': true }))];
   }
 
   // escolher (uma) ou varios (várias)

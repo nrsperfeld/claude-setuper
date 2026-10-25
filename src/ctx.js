@@ -15,6 +15,7 @@ export function criarCtx(flags = {}) {
   fs.mkdirSync(pastaSetuper, { recursive: true });
   const logPath = path.join(pastaSetuper, 'registro.log');
   const estadoPath = path.join(pastaSetuper, 'estado.json');
+  const adiantados = new Map();
 
   const ctx = {
     raiz: RAIZ,
@@ -59,11 +60,13 @@ export function criarCtx(flags = {}) {
           });
           return (stdout || '').trim();
         }
+        // opts.env soma ao ambiente; espalhado por último ele apagava o PATH inteiro (brew: ENOENT).
+        const { env: extra, ...resto } = opts;
         const execucao = execFileP(cmd, args, {
-          env: { ...process.env, HOME: ctx.homeReal, ...opts.env },
           maxBuffer: 50 * 1024 * 1024,
+          ...resto,
           timeout: opts.timeout ?? 15 * 60 * 1000,
-          ...opts,
+          env: { ...process.env, HOME: ctx.homeReal, ...extra },
         });
         if (opts.input != null) execucao.child.stdin.end(opts.input);
         const { stdout } = await execucao;
@@ -74,6 +77,24 @@ export function criarCtx(flags = {}) {
         if (opts.ignorarErro) return '';
         throw e;
       }
+    },
+
+    // Trabalho adiantado em segundo plano (um download enquanto a pessoa faz um login, por exemplo).
+    // Nunca derruba a instalação: quem precisa do resultado espera com `adiantado` e, se não deu certo,
+    // faz do jeito normal. O resultado é true só quando o trabalho terminou sem erro.
+    adiantar(chave, fn) {
+      if (ctx.dryRun || ctx.semApps || adiantados.has(chave)) return;
+      ctx.log('adiantando', chave);
+      adiantados.set(chave, Promise.resolve().then(fn).then(
+        () => { ctx.log('adiantado', chave); return true; },
+        (e) => { ctx.log('aviso', 'adiantar', chave, resumoArgs([e.message])); return false; },
+      ));
+    },
+    adiantado(chave) {
+      return adiantados.get(chave) ?? Promise.resolve(false);
+    },
+    temAdiantado(chave) {
+      return adiantados.has(chave);
     },
 
     // Executa mostrando a saída no terminal (pra instaladores interativos como Homebrew).

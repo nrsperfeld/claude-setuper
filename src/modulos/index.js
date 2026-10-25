@@ -11,10 +11,11 @@ import * as vercel from './vercel.js';
 import * as pacotes from './pacotes.js';
 import * as mcps from './mcps.js';
 import * as rotinas from './rotinas.js';
+import * as sentinela from './sentinela.js';
 import * as maestri from './maestri.js';
 import * as atalho from './atalho.js';
 
-export const MODULOS = [base, nucleo, effortless, obsidian, github, chrome, vercel, pacotes, mcps, rotinas, maestri, atalho];
+export const MODULOS = [base, nucleo, effortless, obsidian, github, chrome, vercel, pacotes, mcps, rotinas, sentinela, maestri, atalho];
 
 export function modulo(id) {
   return MODULOS.find((m) => m.id === id);

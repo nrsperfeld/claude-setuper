@@ -64,8 +64,9 @@ export function criarUiApp(enviar, pedir) {
     escolherVarios(texto, opcoes, { padrao = [], explicacao } = {}) {
       return pedir({ tipo: 'varios', msg: limpo(texto), explicacao: limpo(explicacao), opcoes: opcoesLimpas(opcoes), padrao });
     },
-    confirmar(texto, padrao = true, { sim = 'Sim', nao = 'Não', explicacao } = {}) {
-      return pedir({ tipo: 'confirmar', msg: limpo(texto), explicacao: limpo(explicacao), padrao, sim: limpo(sim), nao: limpo(nao) });
+    // nao: '' deixa um botão só; figura é a ilustração de onde clicar.
+    confirmar(texto, padrao = true, { sim = 'Sim', nao = 'Não', explicacao, figura } = {}) {
+      return pedir({ tipo: 'confirmar', msg: limpo(texto), explicacao: limpo(explicacao), padrao, sim: limpo(sim), nao: limpo(nao), figura });
     },
     async senha(texto) {
       return String((await pedir({ tipo: 'senha', msg: limpo(texto) })) ?? '');

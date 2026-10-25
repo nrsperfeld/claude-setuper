@@ -107,7 +107,7 @@ async function instalarApp(ctx) {
   if (ctx.plataforma === 'darwin') {
     if (ctx.existe('/Applications/Obsidian.app')) return ui.ok('Obsidian já está instalado');
     if (ctx.semApps) return;
-    await ui.tarefa('Instalando o Obsidian, o seu segundo cérebro', 'Obsidian instalado', async () => { await ctx.run('brew', ['install', '--cask', 'obsidian']); }, { demora: 'uns 2 minutos, é normal' });
+    await ui.tarefa('Instalando o Obsidian, o seu segundo cérebro', 'Obsidian instalado', async () => { await (await import('./base.js')).brewInstalar(ctx, 'obsidian', ['--cask', 'obsidian']); }, { demora: 'uns 2 minutos, é normal' });
   } else if (ctx.plataforma === 'linux') {
     if (await ctx.existeComando('obsidian')) return ui.ok('Obsidian já está instalado');
     if (ctx.semApps) return;

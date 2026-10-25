@@ -56,6 +56,8 @@ export async function main(argv) {
 export async function instalar(ctx, flags) {
   ui.abertura('Claude Setuper', `versão ${VERSAO}${ctx.dryRun ? '  (modo de teste, nada vai ser alterado)' : ''}`);
 
+  // No app, as ferramentas da Apple instalam enquanto a pessoa responde as perguntas.
+  if (ctx.app) await (await import('./modulos/base.js')).adiantarFerramentasApple(ctx);
   await wizard(ctx);
   const ids = flags.modulos ? flags.modulos.split(',') : ctx.resp.modulos;
   const lista = modulosParaPlataforma(ids, ctx.plataforma);

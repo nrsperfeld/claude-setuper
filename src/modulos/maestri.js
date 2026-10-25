@@ -33,7 +33,7 @@ export async function instalar(ctx) {
   const instalado = ctx.existe('/Applications/Maestri.app') || ctx.existe('/Applications/Setapp/Maestri.app');
   if (instalado) ui.ok('Maestri já está instalado');
   else if (!ctx.semApps) {
-    await ui.tarefa('Instalando o Maestri, o seu painel com o Claude', 'Maestri instalado', async () => { await ctx.run('brew', ['install', '--cask', 'maestri']); }, { demora: 'uns 2 minutos, é normal' });
+    await ui.tarefa('Instalando o Maestri, o seu painel com o Claude', 'Maestri instalado', async () => { await (await import('./base.js')).brewInstalar(ctx, 'maestri', ['--cask', 'maestri']); }, { demora: 'uns 2 minutos, é normal' });
   }
 
   await ui.tarefa('Preparando o painel com o Claude e as suas notas', 'Painel pronto', async () => {

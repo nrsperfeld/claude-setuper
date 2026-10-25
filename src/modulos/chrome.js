@@ -48,7 +48,7 @@ export async function instalar(ctx) {
     });
     if (!quer) return ui.info(ctx.app ? 'Tudo bem, deixei o Chrome pra depois.' : 'Tudo bem, pulei o Chrome. Dá pra instalar depois com: claude-setuper --modulos chrome');
     await ui.tarefa('Instalando o Google Chrome', 'Chrome instalado', async () => {
-      if (ctx.plataforma === 'darwin') await ctx.run('brew', ['install', '--cask', 'google-chrome']);
+      if (ctx.plataforma === 'darwin') await (await import('./base.js')).brewInstalar(ctx, 'chrome', ['--cask', 'google-chrome']);
       else if (ctx.win) await (await import('./base.js')).winget(ctx, 'Google.Chrome');
       else await ctx.runVisivel('/bin/bash', ['-c', 'wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && sudo apt-get install -y /tmp/chrome.deb']);
     }, { demora: 'uns 2 minutos, é normal' });

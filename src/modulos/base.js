@@ -27,27 +27,102 @@ export async function verificar(ctx) {
 }
 
 export async function instalar(ctx) {
-  if (ctx.plataforma === 'darwin') await xcodeCLT(ctx);
-  if (ctx.plataforma === 'darwin') await homebrew(ctx);
+  if (ctx.plataforma === 'darwin') {
+    await xcodeCLT(ctx);
+    // O instalador do Claude Code só precisa da internet: roda junto com o Homebrew e o Node.
+    pathLocalNoPerfil(ctx);
+    ctx.adiantar('claude', () => instalarClaudeScript(ctx));
+    await homebrew(ctx);
+    adiantarDownloads(ctx);
+  }
   await node(ctx);
   await git(ctx);
   await claudeCode(ctx);
   await loginClaude(ctx);
 }
 
-async function xcodeCLT(ctx) {
-  const tem = await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true });
-  if (tem) return ui.ok('Ferramentas da Apple já estão instaladas');
-  if (ctx.semApps) return;
-  ui.pausa('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', [
-    'Clica em Instalar.',
-    'Depois aparece o contrato: clica em Concordo.',
-    'Demora entre 3 e 10 minutos. Eu fico esperando aqui.',
-  ], { figura: 'apple-ferramentas' });
+// Só no app: pede as ferramentas da Apple antes das perguntas, e a pessoa responde enquanto o Mac instala.
+export async function adiantarFerramentasApple(ctx) {
+  if (ctx.plataforma !== 'darwin' || ctx.semApps || ctx.dryRun) return;
+  if (await cltPronto(ctx)) return;
   await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
-  const ok = await ctx.esperar(async () => !!(await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true })), { intervalo: 5, limite: 1800, semEncurtar: true });
+  ctx.cltPedido = true;
+  await ui.confirmar('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', true, {
+    sim: 'Já cliquei em Instalar', nao: '', figura: 'apple-ferramentas',
+    explicacao: 'Clica em Instalar e depois em Concordo. O Mac leva de 3 a 10 minutos pra instalar, e enquanto isso eu te faço umas perguntas.',
+  });
+}
+
+async function cltPronto(ctx) {
+  return !!(await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true }));
+}
+
+async function xcodeCLT(ctx) {
+  if (await cltPronto(ctx)) return ui.ok('Ferramentas da Apple já estão instaladas');
+  if (ctx.semApps) return;
+  if (ctx.cltPedido) {
+    ui.pausa('Esperando as ferramentas da Apple terminarem de instalar', [
+      'Elas estão instalando numa janela da Apple, que pode estar atrás desta.',
+      'Se você ainda não clicou em Instalar, procura essa janela e clica lá. Sem essas ferramentas eu não consigo seguir.',
+    ], { figura: 'apple-ferramentas' });
+  } else {
+    ui.pausa('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', [
+      'Clica em Instalar.',
+      'Depois aparece o contrato: clica em Concordo.',
+      'Demora entre 3 e 10 minutos. Eu fico esperando aqui.',
+    ], { figura: 'apple-ferramentas' });
+    await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
+  }
+  // Se a pessoa fechar a janela da Apple sem instalar, ela volta a aparecer, em vez de eu esperar meia hora por nada.
+  let semJanela = 0;
+  const ok = await ctx.esperar(async () => {
+    if (await cltPronto(ctx)) return true;
+    semJanela = (await ctx.run('pgrep', ['-f', 'Install Command Line Developer Tools'], { ignorarErro: true, sempre: true })) ? 0 : semJanela + 1;
+    if (semJanela >= 3) {
+      semJanela = 0;
+      await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
+    }
+    return false;
+  }, { intervalo: 5, limite: 1800, semEncurtar: true });
   if (!ok) throw new Error(ctx.app ? 'as ferramentas da Apple não terminaram de instalar. Se a janela da Apple sumiu, clica em Tentar de novo que ela aparece outra vez' : 'as ferramentas da Apple não terminaram de instalar');
   ui.ok('Ferramentas da Apple instaladas');
+}
+
+// Downloads dos próximos passos, em fila, enquanto a pessoa faz o login do Claude. Só baixa: cada passo
+// continua instalando e conferindo do jeito de sempre, e baixa sozinho se o download adiantado não deu certo.
+const DOWNLOADS_MAC = [
+  { modulo: 'obsidian', args: ['--cask', 'obsidian'], apps: ['/Applications/Obsidian.app'] },
+  { modulo: 'github', args: ['gh'], apps: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh'] },
+  { modulo: 'chrome', args: ['--cask', 'google-chrome'], apps: ['/Applications/Google Chrome.app'] },
+  { modulo: 'maestri', args: ['--cask', 'maestri'], apps: ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'] },
+];
+
+function adiantarDownloads(ctx) {
+  const modulos = ctx.resp.modulos || [];
+  let anterior = Promise.resolve(true);
+  for (const d of DOWNLOADS_MAC) {
+    if (!modulos.includes(d.modulo) || d.apps.some((a) => ctx.existe(a))) continue;
+    const vez = anterior;
+    ctx.adiantar(`brew:${d.modulo}`, async () => {
+      await vez;
+      await ctx.run('brew', ['fetch', ...d.args], { env: { HOMEBREW_NO_AUTO_UPDATE: '1' }, timeout: 15 * 60 * 1000 });
+    });
+    anterior = ctx.adiantado(`brew:${d.modulo}`);
+  }
+  ctx.adiantar('brew:fila', () => anterior);
+}
+
+// brew install depois do download adiantado. Se esbarrar num download que ainda corre em segundo plano,
+// espera a fila terminar e tenta de novo uma vez.
+export async function brewInstalar(ctx, modulo, args) {
+  await ctx.adiantado(`brew:${modulo}`);
+  try {
+    await ctx.run('brew', ['install', ...args]);
+  } catch (e) {
+    if (!ctx.temAdiantado('brew:fila')) throw e;
+    await ctx.adiantado('brew:fila');
+    await ctx.run('brew', ['install', ...args]);
+  }
 }
 
 async function homebrew(ctx) {
@@ -139,20 +214,27 @@ function pathLocalNoPerfil(ctx) {
   gravarNoPerfil(ctx, '.local/bin', 'export PATH="$HOME/.local/bin:$PATH"');
 }
 
+// Instalador oficial (Mac e Linux). No Mac roda adiantado, junto com o Homebrew.
+async function instalarClaudeScript(ctx) {
+  if (await ctx.existeComando('claude')) return;
+  const script = await (await fetch('https://claude.ai/install.sh')).text();
+  await ctx.run('/bin/bash', ['-c', script]);
+  const local = `${ctx.homeReal}/.local/bin`;
+  if (!process.env.PATH.includes(local)) process.env.PATH = `${local}:${process.env.PATH}`;
+}
+
 async function claudeCode(ctx) {
   pathLocalNoPerfil(ctx);
-  if (await ctx.existeComando('claude')) return ui.ok('Claude Code já está instalado');
+  const adiantado = ctx.temAdiantado('claude');
+  if (!adiantado && await ctx.existeComando('claude')) return ui.ok('Claude Code já está instalado');
   if (ctx.semApps) return;
   await ui.tarefa('Instalando o Claude Code', 'Claude Code instalado', async () => {
+    // No Mac ele já veio instalando junto com o Homebrew; só confere e, se não deu, instala agora.
+    if (adiantado && (await ctx.adiantado('claude')) && (await ctx.existeComando('claude'))) return;
     if (ctx.win) {
       await ctx.run('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'irm https://claude.ai/install.ps1 | iex'], { ignorarErro: true, timeout: 10 * 60 * 1000 });
       atualizarPathWindows();
-    } else {
-      const script = await (await fetch('https://claude.ai/install.sh')).text();
-      await ctx.run('/bin/bash', ['-c', script]);
-      const local = `${ctx.homeReal}/.local/bin`;
-      if (!process.env.PATH.includes(local)) process.env.PATH = `${local}:${process.env.PATH}`;
-    }
+    } else await instalarClaudeScript(ctx);
     if (!(await ctx.existeComando('claude'))) await ctx.run('npm', ['install', '-g', '@anthropic-ai/claude-code']);
     if (ctx.win) {
       // Grava .local\bin e a pasta do npm no PATH do usuário, senão janelas novas não acham o claude.

@@ -3,6 +3,7 @@
 
   python3 test/mac-vm/vm.py rodar [--perfil X]   # VM nova a partir da limpa, instala tudo, confere e grava o log
   python3 test/mac-vm/vm.py rodar-app [--perfil X]   # o mesmo, pelo app (app/dist/Claude-Setuper-mac-arm64.zip)
+  python3 test/mac-vm/vm.py sentinela # depois do rodar-app: testa a atualização semanal pelo launchd
   python3 test/mac-vm/vm.py shell     # abre um terminal na VM de teste que ainda estiver ligada
   python3 test/mac-vm/vm.py desligar
 
@@ -301,12 +302,26 @@ def rodar_app():
     registro(f'[teste] log completo: {nome_log}')
 
 
+def testar_sentinela():
+    """Na VM que acabou de instalar: roda test/mac-vm/sentinela-teste.sh e guarda o print da janela de aviso."""
+    endereco = ip()
+    r = subprocess.run(['ssh', *SSH_OPTS, f'admin@{endereco}', 'bash -s'], stdin=open(os.path.join(RAIZ, 'test', 'mac-vm', 'sentinela-teste.sh')),
+                       env=SSH_ENV, capture_output=True, text=True, timeout=7200)
+    print(r.stdout[-6000:], r.stderr[-1500:], flush=True)
+    png = subprocess.run(['ssh', *SSH_OPTS, f'admin@{endereco}', 'cat /tmp/aviso.png'], env=SSH_ENV, capture_output=True).stdout
+    if png:
+        destino = os.path.join(LOGS, time.strftime('%Y-%m-%d_%H%M%S') + '-sentinela-aviso.png')
+        open(destino, 'wb').write(png)
+        print(f'[sentinela] print do aviso: {destino}', flush=True)
+
 if __name__ == '__main__':
     acao = sys.argv[1] if len(sys.argv) > 1 else 'rodar'
     if acao == 'rodar':
         rodar()
     elif acao == 'rodar-app':
         rodar_app()
+    elif acao == 'sentinela':
+        testar_sentinela()
     elif acao == 'shell':
         os.execvpe('ssh', ['ssh', '-tt', *SSH_OPTS, f'admin@{ip()}'], SSH_ENV)
     elif acao == 'desligar':

@@ -186,7 +186,7 @@ function criarJanela() {
 ipcMain.on('pronto', async () => {
   // Só pra conferir o visual das telas sem rodar uma instalação inteira: cada cena vira um print em telas/.
   if (process.argv.includes('--demo-cartoes')) {
-    const passos = ['Preparar o computador', 'Configurar o Claude', 'Esforço automático', 'Segundo cérebro', 'GitHub', 'Claude no Chrome', 'Publicar sites', 'Habilidades', 'Ferramentas', 'Rotinas', 'Painel do Claude'];
+    const passos = ['Preparar o computador', 'Configurar o Claude', 'Esforço automático', 'Segundo cérebro', 'GitHub', 'Claude no Chrome', 'Publicar sites', 'Habilidades', 'Ferramentas', 'Rotinas', 'Manter atualizado', 'Painel do Claude'];
     const { ui } = await importarSetuper('ui.js');
     const cartao = (n, titulo, linhas, figura, extras = []) => [
       { tipo: 'passo', n, total: passos.length, titulo: passos[n - 1] },

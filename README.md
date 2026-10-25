@@ -8,6 +8,7 @@ Instala e configura o Claude Code do zero, em português, pra quem não é de te
 - **GitHub** (uma ou duas contas), **Chrome** (extensão do Claude) e **Vercel** (publicar sites).
 - **Pacotes de comandos** por tipo de uso (escrita, negócios, pesquisa, conteúdo, programação) e **ferramentas conectadas** (Gmail, Google Drive, Google Agenda, Notion, Figma, Canva...).
 - **Rotinas**: revisão semanal do cérebro e backup diário das notas.
+- **Manter tudo atualizado**: uma vez por semana atualiza as ferramentas que o Setuper instalou e confere se continuam funcionando. Só aparece pra pessoa se alguma coisa parou de funcionar.
 
 Página pra mandar pra pessoa: `https://nrsperfeld.github.io/claude-setuper/`
 
@@ -78,10 +79,13 @@ Um CLI em Node (`src/`) com um wizard de três perguntas e dez módulos que roda
 | `pacotes` | skills por tipo de uso |
 | `mcps` | catálogo em `templates/mcps/catalogo.json` via `claude mcp add` |
 | `rotinas` | launchd (Mac) ou cron (Linux) |
+| `sentinela` | (Mac e Windows, obrigatório) tarefa diária às 13h que trabalha uma vez por semana: Homebrew/winget (gh, git, Node só na mesma versão grande), Vercel e `claude update`; não roda com o Claude aberto; confere antes e depois e avisa só se algo que funcionava parou. Registro em `~/Claude Setuper/sentinela/registro.log` |
 | `maestri` | (Mac) instala o app e semeia `~/.maestri` com o workspace "Meu Claude" |
 | `atalho` | (Windows e Linux) atalho "Claude" na Área de Trabalho que abre o Claude com a saudação |
 
 No Windows, os aplicativos vêm pelo `winget` (Git, Node, GitHub CLI, Obsidian, Chrome), o Claude Code pelo `install.ps1` oficial, e as rotinas pelo Agendador de Tarefas (`schtasks`). Os hooks são Node puro e rodam igual nos três sistemas.
+
+Pra ganhar tempo sem mudar o resultado, alguns trabalhos começam antes da hora (`ctx.adiantar` / `ctx.adiantado`): no app, as ferramentas da Apple instalam enquanto a pessoa responde as perguntas; no Mac, o Claude Code instala junto com o Homebrew e o Node, e os programas dos próximos passos são baixados (`brew fetch`) enquanto a pessoa faz o login. Cada passo ainda instala e confere do jeito normal, e baixa sozinho se o download adiantado não deu certo.
 
 Os textos que a pessoa vê estão em `templates/`. É ali que se mexe pra mudar a voz.
 
@@ -113,6 +117,8 @@ Sem conta de desenvolvedor da Apple a assinatura é ad-hoc: baixado pelo navegad
 python3 test/mac-vm/vm.py rodar                    # generalista, pelo Terminal
 python3 test/mac-vm/vm.py rodar --perfil estudante # um perfil
 python3 test/mac-vm/vm.py rodar-app --perfil X     # pelo app (gere antes com app/build.sh arm64)
+SETUPER_REAL=1 python3 test/mac-vm/vm.py rodar-app  # pela linha publicada: install.sh do main e app da última release
+python3 test/mac-vm/vm.py sentinela                # depois de um rodar-app: atualização semanal pelo launchd
 ```
 
 No `rodar-app` o app responde as telas sozinho (modo roteiro, ligado pelo arquivo `~/Claude Setuper/.teste-auto.json` que só o teste cria) e salva um print de cada tela; os prints voltam pra `test/mac-vm/logs/`.

@@ -2,6 +2,7 @@
 """Testa o Claude Setuper (caminho em Node, install.ps1) num Windows 11 ARM zerado, na VM do QEMU.
 
   python3 test/win-vm/vm_win.py rodar [--perfil X]   # volta a VM pro estado limpo, instala tudo, confere e grava o log
+  python3 test/win-vm/vm_win.py sentinela            # depois do rodar: testa a atualização semanal pelo Agendador
   python3 test/win-vm/vm_win.py limpo                # grava o estado atual (VM desligada) como o "limpo"
 
 A VM fica em ~/Projects/.vm (vm.py start/shot/key/stop). O estado limpo é um snapshot "limpo" do win11.qcow2,
@@ -79,7 +80,7 @@ def copiar_setuper():
     open(local, 'wb').write(tar)
     # scp em vez de mandar pela entrada: o PowerShell do Windows mexe nos bytes que passam por ela.
     # Logo depois de ligar, o SSH às vezes recusa a senha por alguns segundos: tenta de novo antes de desistir.
-    for _ in range(5):
+    for _ in range(12):
         r = subprocess.run(['sshpass', '-p', 'Setuper2026!', 'scp', '-P', '2222', '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null',
                             '-o', 'LogLevel=ERROR', local, 'teste@127.0.0.1:C:/setuper.tgz'], capture_output=True)
         if not r.returncode:
@@ -136,10 +137,14 @@ def rodar():
     extras = ' '.join(sys.argv[2:])
     comando = ("$env:CLAUDE_SETUPER_LOCAL='C:\\setuper'; $env:CLAUDE_SETUPER_ESPERA_MAX='20'; $env:WT_SESSION='teste'; "
                f"& powershell -NoProfile -ExecutionPolicy Bypass -File C:\\setuper\\install.ps1 {extras}")
-    pid, fd = pty.fork()
-    if pid == 0:
-        fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack('HHHH', 40, 120, 0, 0))
-        os.execvp(SSH[0], [*SSH[:-1], '-tt', SSH[-1], comando])
+    def iniciar():
+        pid, fd = pty.fork()
+        if pid == 0:
+            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack('HHHH', 40, 120, 0, 0))
+            os.execvp(SSH[0], [*SSH[:-1], '-tt', SSH[-1], comando])
+        return pid, fd
+    pid, fd = iniciar()
+    tentativas = 1
 
     historico, lido, ultima = '', 0, {}
     inicio = time.time()
@@ -167,6 +172,18 @@ def rodar():
         if not dado:
             break
         texto = dado.decode(errors='ignore')
+        # Com o Mac carregado, o SSH do Windows às vezes recusa a senha de primeira: tenta de novo.
+        if 'Permission denied' in texto and time.time() - inicio < 60 and tentativas < 6:
+            registro('[teste] o SSH recusou a senha logo no começo; tentando de novo')
+            try:
+                os.waitpid(pid, 0)
+            except ChildProcessError:
+                pass
+            time.sleep(15)
+            pid, fd = iniciar()
+            tentativas += 1
+            inicio = time.time()
+            continue
         log.write(texto)
         log.flush()
         historico += re.sub(r'\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07', '', texto)
@@ -208,6 +225,11 @@ if __name__ == '__main__':
     acao = sys.argv[1] if len(sys.argv) > 1 else 'rodar'
     if acao == 'rodar':
         rodar()
+    elif acao == 'sentinela':
+        # Na VM que acabou de instalar (rodar deixa ela ligada): o sentinela pelo Agendador de Tarefas.
+        _, saida = ssh('powershell -NoProfile -ExecutionPolicy Bypass -File C:\\setuper\\test\\win-vm\\sentinela-teste.ps1', timeout=7200)
+        print(saida, flush=True)
+        print('[sentinela] tela:', vm('shot'), flush=True)
     elif acao == 'limpo':
         desligar()
         subprocess.run(['qemu-img', 'snapshot', '-d', 'limpo', DISCO], capture_output=True)
