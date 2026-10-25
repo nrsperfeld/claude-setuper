@@ -16,6 +16,7 @@
   .btn { display:inline-block; background:var(--acc); color:#111; font-weight:700; padding:16px 26px; border-radius:12px; text-decoration:none; font-size:18px }
   .btn:hover { filter:brightness(1.08) }
   .btn2 { background:var(--card); color:var(--fg); border:1px solid var(--line) }
+  button.btn { font:inherit; font-weight:700; cursor:pointer; margin-top:4px }
   .botoes { display:flex; gap:12px; flex-wrap:wrap }
   .alt { color:var(--mut); font-size:15px; margin-top:12px }
   code { background:var(--card); border:1px solid var(--line); padding:2px 7px; border-radius:6px; font-size:15px }
@@ -36,15 +37,24 @@
 
   <div class="botoes">
     <a class="btn" href="Claude%20Setuper.bat" download>Baixar para Windows</a>
-    <a class="btn btn2" href="Claude%20Setuper.command" download>Baixar para Mac</a>
+    <a class="btn btn2" href="#mac">Instalar no Mac</a>
   </div>
   <p class="alt"><b>Windows:</b> dois cliques no arquivo <code>Claude Setuper.bat</code>. Se aparecer "O Windows protegeu o computador", clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>.<br>
-  <b>Mac:</b> dois cliques no arquivo <code>Claude Setuper.command</code>. Se o Mac reclamar que não conhece o desenvolvedor, clique com o botão direito nele → <b>Abrir</b> → <b>Abrir</b>.</p>
+  </p>
+
+  <h2 id="mac">No Mac</h2>
+  <ol class="passos">
+    <li>Aperte <b>⌘ + espaço</b>, digite <b>Terminal</b> e aperte Enter. Vai abrir uma janela de texto.</li>
+    <li>Clique em <b>Copiar</b> aqui embaixo, clique dentro da janela do Terminal, aperte <b>⌘ + V</b> e depois Enter.</li>
+  </ol>
+  <pre id="linha-mac">curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash</pre>
+  <button class="btn btn2" id="copiar-mac" type="button">Copiar</button>
+  <p class="mut">É assim, pelo Terminal, porque o Mac bloqueia programas baixados pelo navegador que não pagaram o registro na Apple. Pelo Terminal não aparece aviso nenhum.</p>
 
   <h2>O que vai acontecer</h2>
   <ol class="passos">
-    <li><b>Uma janela preta vai abrir.</b> É o Terminal. Faz parte, não fecha. Ele vai falando em português o que está fazendo.</li>
-    <li><b>Ele faz três perguntas:</b> como você quer ser chamado, com o que você trabalha, e se prefere que o Claude pergunte antes de fazer as coisas ou faça e avise.</li>
+    <li><b>A instalação acontece numa janela de texto.</b> Faz parte, não fecha. Ele vai falando em português o que está fazendo.</li>
+    <li><b>Ele faz algumas perguntas:</b> como você quer ser chamado, pra que vai usar o Claude, a sua idade, o quanto você se dá com tecnologia e com IA, e se prefere que o Claude pergunte antes de fazer as coisas ou faça e avise. É isso que define o quanto ele explica pra você.</li>
     <li><b>Ele instala tudo sozinho</b> e só te chama quando precisar de um clique seu: a senha do Mac, entrar na sua conta do Claude, confirmar um botão. Ele espera o tempo que for.</li>
     <li><b>No fim, o Claude abre</b> já conversando com você. No Mac isso acontece dentro do Maestri, um painel com notas explicativas do lado. No Windows abre numa janela própria, com um atalho "Claude" na Área de Trabalho pra próxima vez.</li>
   </ol>
@@ -57,12 +67,10 @@
   <div class="card"><b>Comandos prontos</b> Pacotes pro seu tipo de trabalho: escrita, negócios, pesquisa, conteúdo ou programação. E ferramentas que você já usa, como Notion, Figma e Canva.</div>
   <div class="card"><b>Rotinas</b> Revisão semanal do cérebro e backup diário das suas notas, sem você lembrar de nada.</div>
 
-  <h2>Se preferir o comando</h2>
+  <h2>Windows pelo PowerShell</h2>
   <p class="mut">No Windows, abra o PowerShell normal (menu Iniciar, digite PowerShell; não precisa ser como administrador) e cole a linha inteira:</p>
   <pre>irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.ps1 -OutFile "$env:USERPROFILE\claude-setuper-install.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper-install.ps1"</pre>
   <p class="mut">Ele lembra onde parou: se algo travar, rode a mesma linha de novo. Pra só conferir o que está instalado: acrescente <code>-Doctor</code> no fim.</p>
-  <p class="mut">No Mac, abra o Terminal (⌘ + espaço, digite Terminal) e cole:</p>
-  <pre>curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash</pre>
 
   <h2>Depois de instalado</h2>
   <ul>
@@ -80,5 +88,12 @@
 
   <footer>Código aberto, licença MIT. <a href="https://github.com/nrsperfeld/claude-setuper" style="color:var(--acc)">Repositório no GitHub</a>.</footer>
 </main>
+<script>
+  document.getElementById('copiar-mac').addEventListener('click', async (e) => {
+    const linha = document.getElementById('linha-mac').textContent;
+    try { await navigator.clipboard.writeText(linha); e.target.textContent = 'Copiado. Agora cole no Terminal.'; }
+    catch { getSelection().selectAllChildren(document.getElementById('linha-mac')); e.target.textContent = 'Selecionei a linha: aperte ⌘ + C'; }
+  });
+</script>
 </body>
 </html>

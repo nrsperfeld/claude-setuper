@@ -1,7 +1,7 @@
 #!/bin/bash
 # Dois cliques neste arquivo abrem o Terminal e iniciam o Claude Setuper.
-# Se o Mac disser que "não pode abrir porque é de um desenvolvedor não identificado":
-# clique com o botão direito no arquivo → Abrir → Abrir.
+# No macOS 15 e mais novos, o Mac bloqueia este arquivo se ele veio do navegador.
+# O caminho principal agora é a linha do Terminal, na página do Setuper.
 clear
 echo
 echo "  Claude Setuper"

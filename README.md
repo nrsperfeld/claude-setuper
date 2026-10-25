@@ -13,7 +13,7 @@ Página pra mandar pra pessoa: `https://nrsperfeld.github.io/claude-setuper/`
 
 ## Instalar
 
-Dois cliques no arquivo baixado da página (`Claude Setuper.bat` no Windows, `Claude Setuper.command` no Mac), ou pelo terminal:
+No Windows, dois cliques no `Claude Setuper.bat` baixado da página. No Mac, a linha do Terminal abaixo (o `.command` baixado pelo navegador é bloqueado no macOS 15 e mais novos, porque não tem assinatura da Apple):
 
 ```powershell
 # Windows (PowerShell)
