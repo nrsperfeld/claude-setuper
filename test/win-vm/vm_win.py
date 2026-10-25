@@ -133,10 +133,23 @@ def rodar():
 
     historico, lido, ultima = '', 0, {}
     inicio = time.time()
+    silencio = time.time()
     while time.time() - inicio < 90 * 60:
         r, _, _ = select.select([fd], [], [], 1)
         if not r:
+            # No fim o instalador abre o Claude numa janela nova, que segura a sessão do SSH aberta.
+            # Depois de 2 min sem nada na tela, confere se o Setuper ainda está rodando na VM.
+            if time.time() - silencio > 120:
+                silencio = time.time()
+                try:
+                    _, n = ssh("@(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'claude-setuper.js' }).Count", timeout=60)
+                except subprocess.TimeoutExpired:
+                    n = '1'
+                if n.strip() == '0':
+                    registro('[teste] o Setuper terminou na VM (a sessão ficou aberta por causa da janela do Claude)')
+                    break
             continue
+        silencio = time.time()
         try:
             dado = os.read(fd, 65536)
         except OSError:
@@ -159,6 +172,10 @@ def rodar():
             os.write(fd, b'\r')
 
     parar.set()
+    try:
+        os.kill(pid, 15)  # encerra o ssh se ele ainda estiver preso
+    except ProcessLookupError:
+        pass
     try:
         _, status = os.waitpid(pid, 0)
     except ChildProcessError:
