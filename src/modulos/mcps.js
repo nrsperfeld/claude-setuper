@@ -5,6 +5,7 @@ import { ui } from '../ui.js';
 
 export const id = 'mcps';
 export const nome = 'Ferramentas conectadas (Gmail, Drive, Notion...)';
+export const nomeCurto = 'Ferramentas';
 export const descricao = 'Liga o Claude às ferramentas que você já usa';
 export const padrao = true;
 
@@ -29,7 +30,7 @@ export async function verificar(ctx) {
 
 export async function instalar(ctx) {
   const escolhidos = ctx.resp.mcps || [];
-  if (!escolhidos.length) return ui.info('Nenhuma ferramenta escolhida agora. Dá pra ligar depois com: claude-setuper --modulos mcps');
+  if (!escolhidos.length) return ui.info(ctx.app ? 'Nenhuma ferramenta escolhida agora. Dá pra ligar depois abrindo o Claude Setuper de novo.' : 'Nenhuma ferramenta escolhida agora. Dá pra ligar depois com: claude-setuper --modulos mcps');
   if (ctx.semApps || ctx.dryRun) return;
   const cat = catalogo(ctx);
   await ligarConectores(ctx, cat.filter((m) => m.conector && escolhidos.includes(m.id)));
@@ -57,7 +58,7 @@ export async function instalar(ctx) {
     }
   });
   for (const m of comLogin) ui.info(`${m.nome}: ${m.login}`);
-  for (const m of semToken) ui.aviso(`${m.nome}: fica pra depois, precisa da sua conta do GitHub conectada. Quando conectar, rode: claude-setuper --modulos github,mcps`);
+  for (const m of semToken) ui.aviso(`${m.nome}: fica pra depois, precisa da sua conta do GitHub conectada. ${ctx.app ? 'Quando conectar, abra o Claude Setuper de novo.' : 'Quando conectar, rode: claude-setuper --modulos github,mcps'}`);
 }
 
 // Gmail, Drive e Agenda são conectores do claude.ai: liga uma vez no site, com a conta do Google,

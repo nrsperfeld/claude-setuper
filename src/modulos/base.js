@@ -4,6 +4,7 @@ import { ui } from '../ui.js';
 
 export const id = 'base';
 export const nome = 'Base da máquina';
+export const nomeCurto = 'Preparar o computador';
 export const descricao = 'Ferramentas de sistema, Node e o próprio Claude Code';
 export const padrao = true;
 export const obrigatorio = true;
@@ -38,10 +39,11 @@ async function xcodeCLT(ctx) {
   const tem = await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true });
   if (tem) return ui.ok('Ferramentas da Apple já estão instaladas');
   if (ctx.semApps) return;
-  ui.pausa('O Mac vai abrir uma janela pedindo pra instalar as "ferramentas de linha de comando"', [
-    'Clica em Instalar e aceita o contrato.',
+  ui.pausa('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', [
+    'Clica em Instalar.',
+    'Depois aparece o contrato: clica em Concordo.',
     'Demora entre 3 e 10 minutos. Eu fico esperando aqui.',
-  ]);
+  ], { figura: 'apple-ferramentas' });
   await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
   const ok = await ctx.esperar(async () => !!(await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true })), { intervalo: 5, limite: 1800, semEncurtar: true });
   if (!ok) throw new Error('as ferramentas da Apple não terminaram de instalar');
@@ -173,7 +175,9 @@ async function loginClaude(ctx) {
   const ok = await ctx.esperar(() => logado(ctx), { intervalo: 3, limite: 900 });
   if (!ok) {
     // Sem login o resto ainda instala; o módulo fica marcado como pendente pra próxima rodada.
-    const e = new Error('o login no Claude não terminou. Quando terminar, rode claude-setuper de novo, eu continuo de onde parei');
+    const e = new Error(ctx.app
+      ? 'o login no Claude ficou pra depois. No fim eu te mostro como terminar'
+      : 'o login no Claude não terminou. Quando terminar, rode claude-setuper de novo, eu continuo de onde parei');
     e.continuar = true;
     throw e;
   }

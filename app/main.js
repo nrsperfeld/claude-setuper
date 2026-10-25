@@ -1,6 +1,6 @@
 // App do Claude Setuper no Mac: a mesma instalação do Terminal (src/), com telas no lugar do texto.
 // Desenho em docs/superpowers/specs/2026-10-24-app-mac-design.md.
-import { app, BrowserWindow, ipcMain, shell, clipboard, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, clipboard, dialog, nativeTheme } from 'electron';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -184,21 +184,46 @@ function criarJanela() {
 }
 
 ipcMain.on('pronto', async () => {
-  // Só pra conferir o visual dos cartões sem rodar uma instalação inteira.
+  // Só pra conferir o visual das telas sem rodar uma instalação inteira: cada cena vira um print em telas/.
   if (process.argv.includes('--demo-cartoes')) {
-    const passos = ['Base da máquina', 'Núcleo do Claude', 'GitHub (guardar e versionar o trabalho)', 'Vercel (publicar sites na internet)'];
-    const seq = [
-      { tipo: 'inicio', versao: VERSAO, temInstalacao: false, nome: '', auto: null },
-      { tipo: 'plano', passos }, { tipo: 'passo', n: 3, total: 4, titulo: passos[2] },
-      { tipo: 'tarefa', id: 1, estado: 'feito', texto: 'Ferramenta do GitHub instalada' },
-      { tipo: 'pausa', titulo: 'Vou abrir o navegador pra conectar a sua conta do GitHub', linhas: ['Vai aparecer aqui um código de 8 letras, com um botão pra copiar.', 'O navegador abre sozinho. Lá, cola o código, clica em Continuar e depois em Autorizar.', 'Depois volta pra cá, eu continuo.'] },
-      { tipo: 'link', url: 'https://github.com/login/device' }, { tipo: 'codigo', codigo: '07D6-0B19' },
+    const passos = ['Preparar o computador', 'Configurar o Claude', 'Esforço automático', 'Segundo cérebro', 'GitHub', 'Claude no Chrome', 'Publicar sites', 'Habilidades', 'Ferramentas', 'Rotinas', 'Painel do Claude'];
+    const { ui } = await importarSetuper('ui.js');
+    const cartao = (n, titulo, linhas, figura, extras = []) => [
+      { tipo: 'passo', n, total: passos.length, titulo: passos[n - 1] },
+      { tipo: 'tarefa', id: n, estado: 'feito', texto: 'Ferramenta instalada' },
+      { tipo: 'pausa', titulo, linhas, figura }, ...extras,
     ];
-    for (const ev of seq) enviar(ev);
-    setTimeout(async () => {
-      fs.mkdirSync(path.join(PASTA, 'telas'), { recursive: true });
-      fs.writeFileSync(path.join(PASTA, 'telas', 'demo-cartoes.png'), (await janela.webContents.capturePage()).toPNG());
-    }, 1500);
+    const cenas = [
+      ['ferramentas-apple', cartao(1, 'O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', ['Clica em Instalar.', 'Depois aparece o contrato: clica em Concordo.', 'Demora entre 3 e 10 minutos. Eu fico esperando aqui.'], 'apple-ferramentas')],
+      ['obsidian', cartao(4, 'O Obsidian vai abrir e perguntar se pode ligar os complementos', ['Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.', 'Na janela do Obsidian (em inglês), clica em "Trust author and enable plugins".', 'Os complementos são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.', 'Se o Obsidian não aparecer, abre ele pela pasta Aplicativos. Eu espero você clicar.'], 'obsidian-confiar', [{ tipo: 'msg', nivel: 'info', texto: 'Estou esperando você clicar no Obsidian...' }])],
+      ['github-codigo', cartao(5, 'Vou abrir o navegador pra conectar a sua conta do GitHub', ['Vai aparecer aqui um código de 8 letras, com um botão pra copiar.', 'O navegador abre sozinho. Lá, cola o código, clica em Continuar e depois em Autorizar.', 'Depois volta pra cá, eu continuo.'], null, [{ tipo: 'link', url: 'https://github.com/login/device' }, { tipo: 'codigo', codigo: '07D6-0B19' }])],
+      ['chrome', cartao(6, 'O Chrome vai abrir na página da extensão do Claude', ['Clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e confirma.', 'Se o Chrome pedir pra você entrar na sua conta Google, pode entrar.', 'Depois, clica no ícone do Claude na barra do Chrome e entra com a sua conta do Claude.', 'Eu espero.'], 'chrome-extensao')],
+    ];
+    const dir = path.join(PASTA, 'telas');
+    fs.mkdirSync(dir, { recursive: true });
+    const print = async (nome) => { await new Promise((r) => setTimeout(r, 900)); fs.writeFileSync(path.join(dir, `demo-${nome}.png`), (await janela.webContents.capturePage()).toPNG()); };
+    enviar({ tipo: 'inicio', versao: VERSAO, temInstalacao: false, nome: '', auto: null });
+    enviar({ tipo: 'plano', passos });
+    for (const [nome, eventos] of cenas) { for (const ev of eventos) enviar(ev); await print(nome); }
+    // As perguntas novas, do jeito que os módulos fazem.
+    const github = ui.escolher('Quer ligar o GitHub?', [
+      { value: 'criar', label: 'Sim, e quero criar uma conta', hint: 'é de graça, leva 2 minutos' },
+      { value: 'tenho', label: 'Sim, já tenho conta' },
+      { value: 'pular', label: 'Agora não', hint: 'dá pra ligar depois, abrindo o Claude Setuper de novo' },
+    ], { padrao: 'criar', explicacao: 'O GitHub guarda uma cópia de tudo que você e o Claude criarem, com o histórico de cada mudança. Se algo der errado ou o computador quebrar, nada se perde, e dá pra voltar a qualquer versão. É opcional, mas é o que deixa o seu trabalho seguro.' });
+    await print('pergunta-github');
+    for (const [id, r] of pendentes) { pendentes.delete(id); r('pular'); }
+    await github;
+    enviar({ tipo: 'fim', soConferiu: false, grupos: [
+      { nome: 'Preparar o computador', itens: [{ item: 'Claude Code', ok: true }, { item: 'Login no Claude', ok: false, dica: 'rode: claude auth login' }] },
+      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Plugins habilitados (clique de confiança)', ok: false, dica: 'abra o cofre e clique em "Trust author and enable plugins"' }] },
+    ] });
+    enviar({ tipo: 'encerramento', texto: 'Pronto, Ana. O Maestri está abrindo com o Claude e as suas notas do lado. Vai lá.' });
+    enviar({ tipo: 'fim', soConferiu: false, grupos: [
+      { nome: 'Preparar o computador', itens: [{ item: 'Claude Code', ok: true }, { item: 'Login no Claude', ok: false, dica: 'rode: claude auth login' }] },
+      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Plugins habilitados (clique de confiança)', ok: false, dica: 'abra o cofre e clique em "Trust author and enable plugins"' }] },
+    ] });
+    await print('fim');
     return;
   }
   const estado = lerJson(path.join(PASTA, 'estado.json'));
@@ -244,6 +269,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => { if (janela) { if (janela.isMinimized()) janela.restore(); janela.focus(); } });
   app.whenReady().then(async () => {
+    if (process.argv.includes('--tema-claro')) nativeTheme.themeSource = 'light'; // só pros prints de conferência
     const { ui } = await importarSetuper('ui.js');
     Object.assign(ui, criarUiApp(enviar, pedir));
     criarJanela();

@@ -2,6 +2,8 @@
 // `enviar` manda um evento pra tela; `pedir` manda uma pergunta e espera a resposta da pessoa.
 const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
 const limpo = (s) => String(s ?? '').replace(ANSI, '');
+// Igual ao src/ui.js: frase curta da tarefa vale; saída de comando nunca vai pra tela.
+const mensagemFeito = (r, feito) => (typeof r === 'string' && r && r.length <= 100 && !r.includes('\n') && !r.includes('==>') ? r : feito);
 const opcoesLimpas = (opcoes) => opcoes.map((o) => ({ value: o.value, label: limpo(o.label), hint: o.hint ? limpo(o.hint) : '' }));
 
 export function criarUiApp(enviar, pedir) {
@@ -19,15 +21,15 @@ export function criarUiApp(enviar, pedir) {
     plano(nomes) {
       enviar({ tipo: 'plano', passos: nomes.map(limpo) });
     },
-    passo(n, total, titulo) {
-      enviar({ tipo: 'passo', n, total, titulo: limpo(titulo) });
+    passo(n, total, titulo, curto) {
+      enviar({ tipo: 'passo', n, total, titulo: limpo(curto || titulo) });
     },
     ok: msg('ok'),
     info: msg('info'),
     aviso: msg('aviso'),
     erro: msg('erro'),
-    pausa(titulo, linhas) {
-      enviar({ tipo: 'pausa', titulo: limpo(titulo), linhas: (Array.isArray(linhas) ? linhas : [linhas]).map(limpo) });
+    pausa(titulo, linhas, { figura } = {}) {
+      enviar({ tipo: 'pausa', titulo: limpo(titulo), linhas: (Array.isArray(linhas) ? linhas : [linhas]).map(limpo), figura });
     },
 
     async tarefa(fazendo, feito, fn, { demora } = {}) {
@@ -37,7 +39,7 @@ export function criarUiApp(enviar, pedir) {
       const timer = demora ? setTimeout(() => mostrar('fazendo', `${fazendo} (${demora})`), 60_000) : null;
       try {
         const r = await fn((m) => mostrar('fazendo', m));
-        mostrar('feito', typeof r === 'string' && r ? r : feito);
+        mostrar('feito', mensagemFeito(r, feito));
         return r;
       } catch (e) {
         mostrar('falhou', `Não consegui: ${limpo(fazendo).toLowerCase()}`);
@@ -56,14 +58,14 @@ export function criarUiApp(enviar, pedir) {
         if (!erro) return String(v || padrao || '').trim();
       }
     },
-    escolher(texto, opcoes, { padrao } = {}) {
-      return pedir({ tipo: 'escolher', msg: limpo(texto), opcoes: opcoesLimpas(opcoes), padrao: padrao ?? opcoes[0]?.value });
+    escolher(texto, opcoes, { padrao, explicacao } = {}) {
+      return pedir({ tipo: 'escolher', msg: limpo(texto), explicacao: limpo(explicacao), opcoes: opcoesLimpas(opcoes), padrao: padrao ?? opcoes[0]?.value });
     },
-    escolherVarios(texto, opcoes, { padrao = [] } = {}) {
-      return pedir({ tipo: 'varios', msg: limpo(texto), opcoes: opcoesLimpas(opcoes), padrao });
+    escolherVarios(texto, opcoes, { padrao = [], explicacao } = {}) {
+      return pedir({ tipo: 'varios', msg: limpo(texto), explicacao: limpo(explicacao), opcoes: opcoesLimpas(opcoes), padrao });
     },
-    confirmar(texto, padrao = true, { sim = 'Sim', nao = 'Não' } = {}) {
-      return pedir({ tipo: 'confirmar', msg: limpo(texto), padrao, sim: limpo(sim), nao: limpo(nao) });
+    confirmar(texto, padrao = true, { sim = 'Sim', nao = 'Não', explicacao } = {}) {
+      return pedir({ tipo: 'confirmar', msg: limpo(texto), explicacao: limpo(explicacao), padrao, sim: limpo(sim), nao: limpo(nao) });
     },
     async senha(texto) {
       return String((await pedir({ tipo: 'senha', msg: limpo(texto) })) ?? '');

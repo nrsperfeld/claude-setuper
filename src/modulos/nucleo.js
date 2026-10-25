@@ -6,6 +6,7 @@ import { perfil, NIVEL_TEC, NIVEL_IA, IA_ANTIGA, MENOR_DE_IDADE } from '../perfi
 
 export const id = 'nucleo';
 export const nome = 'Núcleo do Claude';
+export const nomeCurto = 'Configurar o Claude';
 export const descricao = 'Quem você é, como o Claude trabalha e as regras do segundo cérebro';
 export const padrao = true;
 export const obrigatorio = true;
@@ -115,12 +116,12 @@ async function pastaDePrints(ctx) {
   const atual = await ctx.run('defaults', ['read', 'com.apple.screencapture', 'location'], { ignorarErro: true, sempre: true });
   if (atual) return atual;
   if (ctx.dryRun) return '';
-  const quer = ctx.sim ? true : await ui.confirmar('Quer que os seus prints de tela fiquem numa pasta que o Claude consegue ler? (Imagens > Prints)', true);
-  if (!quer) return '';
+  // Sem perguntar: o Mac joga os prints na Mesa, onde o Claude não acha. Numa pasta fixa ele lê o mais recente.
   const pasta = path.join(ctx.homeReal, 'Pictures', 'Prints');
   fs.mkdirSync(pasta, { recursive: true });
   await ctx.run('defaults', ['write', 'com.apple.screencapture', 'location', pasta], { ignorarErro: true });
   await ctx.run('killall', ['SystemUIServer'], { ignorarErro: true });
+  ui.ok('Seus prints de tela agora vão pra Imagens > Prints, onde o Claude consegue ler.');
   return pasta;
 }
 

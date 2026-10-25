@@ -5,6 +5,7 @@ import { ui } from '../ui.js';
 
 export const id = 'pacotes';
 export const nome = 'Pacotes de habilidades';
+export const nomeCurto = 'Habilidades';
 export const descricao = 'Comandos prontos pro seu tipo de trabalho (escrita, negócios, pesquisa...)';
 export const padrao = true;
 
@@ -31,7 +32,7 @@ export async function verificar(ctx) {
 
 export async function instalar(ctx) {
   const escolhidos = ctx.resp.pacotes || [];
-  if (!escolhidos.length) return ui.info('Nenhum pacote escolhido. Dá pra adicionar depois com: claude-setuper --modulos pacotes');
+  if (!escolhidos.length) return ui.info(ctx.app ? 'Nenhum pacote escolhido. Dá pra adicionar depois abrindo o Claude Setuper de novo.' : 'Nenhum pacote escolhido. Dá pra adicionar depois com: claude-setuper --modulos pacotes');
   await ui.tarefa('Instalando os comandos do seu tipo de trabalho', `Pacotes instalados: ${escolhidos.map((p) => PACOTES[p]?.nome).join(', ')}`, async () => {
     for (const p of escolhidos) for (const s of PACOTES[p]?.skills || []) ctx.copiarTemplate(`pacotes/${s}.md`, path.join(ctx.claudeDir, 'skills', s, 'SKILL.md'));
   });

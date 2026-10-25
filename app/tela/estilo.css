@@ -112,3 +112,37 @@ input[type=text]:focus, input[type=password]:focus { outline: none; border-color
 .rodape { grid-column: 2; padding: 10px 56px 14px; border-top: 1px solid var(--line); }
 .detalhes { max-height: 180px; overflow: auto; margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--card); border: 1px solid var(--line);
   font: 12px/1.45 ui-monospace, Menlo, monospace; color: var(--mut); white-space: pre-wrap; word-break: break-all; user-select: text; }
+
+/* Explicação de uma pergunta (pra que serve, por que importa). */
+.explicacao { color: var(--mut); font-size: 16px; margin: -8px 0 20px; max-width: 580px; }
+.status-cartao { margin: 14px 0 0; font-size: 14px; color: var(--mut); }
+
+/* Figuras: desenho da janela que vai aparecer, com o botão certo marcado. */
+.figura { margin: 18px 0 4px; }
+.figura figcaption { font-size: 13px; color: var(--mut); margin-top: 8px; }
+.alvo { position: relative; outline: 3px solid var(--acc); outline-offset: 3px; animation: pulsa 1.6s ease-in-out infinite; }
+.alvo .seta { position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); white-space: nowrap;
+  font: 700 11px/1 -apple-system, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--acc-fg); background: var(--acc); padding: 5px 8px; border-radius: 6px; }
+@keyframes pulsa { 50% { outline-offset: 6px; } }
+@media (prefers-reduced-motion: reduce) { .alvo { animation: none; } }
+
+.janela-mac { background: #ececec; color: #1d1d1f; border-radius: 12px; padding: 18px 18px 34px; max-width: 420px; box-shadow: 0 8px 30px rgba(0,0,0,.25); font: 13px/1.4 -apple-system, sans-serif; }
+.janela-mac .icone-mac { font-size: 30px; line-height: 1; margin-bottom: 8px; color: #666; }
+.janela-mac p { margin: 0 0 14px; }
+.botoes-mac { display: flex; gap: 8px; justify-content: flex-end; }
+.bmac { background: #fff; border: 1px solid #c8c8c8; border-radius: 6px; padding: 4px 12px; font-size: 13px; }
+.bmac.azul { background: #0a6cff; color: #fff; border-color: #0a6cff; }
+
+.janela-obsidian { background: #262626; color: #dadada; border-radius: 10px; padding: 18px 18px 34px; max-width: 460px; box-shadow: 0 8px 30px rgba(0,0,0,.3); font: 13px/1.4 -apple-system, sans-serif; display: grid; gap: 8px; }
+.janela-obsidian b { font-size: 15px; color: #fff; }
+.linha-cinza { display: block; height: 8px; border-radius: 4px; background: #3a3a3a; }
+.linha-cinza.curta { width: 70%; }
+.botoes-obsidian { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.bobs { background: #3f3f3f; color: #dadada; border-radius: 6px; padding: 6px 10px; font-size: 12px; }
+.bobs.apagado { opacity: .55; }
+
+.janela-chrome { background: #fff; color: #1f1f1f; border-radius: 10px; padding: 16px 16px 34px; max-width: 460px; box-shadow: 0 8px 30px rgba(0,0,0,.2); font: 14px/1.4 -apple-system, sans-serif; }
+.loja-topo { display: flex; align-items: center; gap: 12px; }
+.loja-topo b { flex: 1; font-size: 18px; }
+.icone-loja { width: 34px; height: 34px; border-radius: 8px; background: #d97757; }
+.bchrome { background: #0b57d0; color: #fff; border-radius: 18px; padding: 8px 16px; font-weight: 600; font-size: 13px; }

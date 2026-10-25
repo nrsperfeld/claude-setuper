@@ -89,6 +89,7 @@ function comecar(modo) {
 
 function telaPedido(p) {
   const intro = estado.fase === 'perguntas' && estado.introPerguntas ? h('p', { class: 'mut pequeno' }, estado.introPerguntas) : null;
+  const explicacao = p.explicacao ? h('p', { class: 'explicacao' }, p.explicacao) : null;
   const responder = (valor) => { estado.pedido = null; S.responder(p.id, valor); desenhar(); };
 
   if (p.tipo === 'texto' || p.tipo === 'senha') {
@@ -100,7 +101,7 @@ function telaPedido(p) {
   }
 
   if (p.tipo === 'confirmar') {
-    return [intro, h('h2', {}, p.msg), h('div', { class: 'botoes' },
+    return [intro, h('h2', {}, p.msg), explicacao, h('div', { class: 'botoes' },
       botao(p.sim || 'Sim', () => responder(true), !p.padrao, p.padrao ? { 'data-foco': true } : {}),
       botao(p.nao || 'Não', () => responder(false), !!p.padrao, p.padrao ? {} : { 'data-foco': true }))];
   }
@@ -121,7 +122,7 @@ function telaPedido(p) {
     return el;
   });
   const continuar = () => responder(varios ? p.opcoes.map((o) => o.value).filter((v) => marcados.has(v)) : [...marcados][0]);
-  return [intro, h('h2', {}, p.msg), h('div', { class: 'opcoes', role: varios ? 'group' : 'radiogroup', 'aria-label': p.msg }, cartoes),
+  return [intro, h('h2', {}, p.msg), explicacao, h('div', { class: 'opcoes', role: varios ? 'group' : 'radiogroup', 'aria-label': p.msg }, cartoes),
     h('div', { class: 'botoes' }, botao('Continuar', continuar))];
 }
 
@@ -138,6 +139,8 @@ function cartaoPausa(pz) {
   return h('section', { class: 'cartao', role: 'status' },
     h('h2', {}, `✋ ${pz.titulo}`),
     pz.linhas.length ? h('ol', {}, pz.linhas.map((l) => h('li', {}, l))) : null,
+    pz.figura && FIGURAS[pz.figura] ? FIGURAS[pz.figura]() : null,
+    pz.status ? h('p', { class: 'status-cartao' }, pz.status) : null,
     extras);
 }
 
@@ -148,8 +151,25 @@ function telaInstalando() {
     h('div', { class: 'agora' }, h('span', { class: 'girando', 'aria-hidden': 'true' }),
       h('div', {}, h('b', {}, estado.tarefa || (estado.passos[estado.atual] ?? 'Preparando')),
         estado.passos.length && n > 0 ? h('div', { class: 'mut pequeno' }, `Passo ${n} de ${estado.passos.length}`) : null)),
-    h('ul', { class: 'mensagens' }, estado.msgs.slice(-6).map((m) => h('li', { class: m.nivel }, m.texto))),
+    h('ul', { class: 'mensagens' }, estado.msgs.slice(-4).map((m) => h('li', { class: m.nivel }, m.texto))),
   ];
+}
+
+// Dicas de Terminal ("rode: ...") não servem pra quem está no app; o botão de resolver cobre esses casos.
+const TECNICO = /^rode:|claude-setuper|https?:\/\//;
+// O que a pessoa faz em cada pendência comum, sem comando.
+const RESOLVER = 'O botão "Tentar resolver o que falta" abre isso de novo pra você.';
+const DICAS_APP = [
+  [/^Login no Claude/, 'Falta entrar na sua conta do Claude. ' + RESOLVER],
+  [/^Conta conectada|^Contas conectadas/, 'Falta entrar na sua conta do GitHub. ' + RESOLVER],
+  [/^git sabe/, 'Se resolve sozinho quando a conta do GitHub estiver conectada.'],
+  [/^Login na Vercel/, 'Falta entrar na sua conta da Vercel. ' + RESOLVER],
+  [/^Extensão Claude no Chrome/, 'Falta adicionar a extensão do Claude no Chrome. ' + RESOLVER],
+];
+function dicaApp(i) {
+  const d = DICAS_APP.find(([re]) => re.test(i.item));
+  if (d) return d[1];
+  return i.dica && !TECNICO.test(i.dica) ? i.dica : RESOLVER;
 }
 
 function telaFim() {
@@ -164,7 +184,7 @@ function telaFim() {
       ? `${faltas.length === 1 ? 'Ficou 1 coisa' : `Ficaram ${faltas.length} coisas`} pra você terminar, quase sempre uma conta ou um clique. Pode abrir o Claude Setuper de novo quando quiser: ele continua de onde parou.`
       : 'Tudo certo. Pode fechar esta janela.'),
     estado.grupos.map((g) => h('div', { class: 'grupo' }, h('b', {}, g.nome), h('ul', {},
-      g.itens.map((i) => h('li', { class: i.ok ? 'sim' : 'nao' }, h('span', { class: 's' }, i.ok ? '✓' : '!'), h('span', {}, i.item, !i.ok && i.dica ? h('small', {}, i.dica) : null)))))),
+      g.itens.map((i) => h('li', { class: i.ok ? 'sim' : 'nao' }, h('span', { class: 's' }, i.ok ? '✓' : '!'), h('span', {}, i.item, !i.ok ? h('small', {}, dicaApp(i)) : null)))))),
   ];
 }
 
@@ -175,6 +195,29 @@ function telaFalha() {
     h('p', { class: 'mut' }, 'Confere a internet e tenta de novo: eu continuo de onde parei. Se repetir, manda o registro pra quem te passou o Claude Setuper.'),
     h('div', { class: 'botoes' }, botao('Tentar de novo', () => comecar('instalar'), false, { 'data-foco': true }), botao('Abrir o registro', () => S.mostrarRegistro(), true)))];
 }
+
+
+// ---------- figuras: onde clicar ----------
+// Desenhos simples das janelas que a pessoa vai ver, com o botão certo marcado.
+function alvo(texto, classe = '') { return h('span', { class: `alvo ${classe}` }, texto, h('span', { class: 'seta' }, 'clica aqui')); }
+const FIGURAS = {
+  'apple-ferramentas': () => h('figure', { class: 'figura mac' },
+    h('div', { class: 'janela-mac' },
+      h('div', { class: 'icone-mac', 'aria-hidden': 'true' }, '⚙︎'),
+      h('p', {}, h('b', {}, 'O comando "xcode-select" requer as ferramentas de linha de comando para desenvolvedores.'), ' Deseja instalar as ferramentas agora?'),
+      h('div', { class: 'botoes-mac' }, h('span', { class: 'bmac' }, 'Obter Xcode'), h('span', { class: 'bmac' }, 'Agora Não'), alvo('Instalar', 'bmac azul'))),
+    h('figcaption', {}, 'É uma janela da própria Apple. Pode confiar.')),
+  'obsidian-confiar': () => h('figure', { class: 'figura obsidian' },
+    h('div', { class: 'janela-obsidian' },
+      h('b', {}, 'Do you trust the author of this vault?'),
+      h('span', { class: 'linha-cinza' }), h('span', { class: 'linha-cinza curta' }),
+      h('div', { class: 'botoes-obsidian' }, alvo('Trust author and enable plugins', 'bobs'), h('span', { class: 'bobs apagado' }, 'Browse vault in Restricted Mode'))),
+    h('figcaption', {}, 'A janela vem em inglês. Ela pergunta se pode ligar o Dataview e o Templater, os dois complementos mais usados do Obsidian. Pode confiar.')),
+  'chrome-extensao': () => h('figure', { class: 'figura chrome' },
+    h('div', { class: 'janela-chrome' },
+      h('div', { class: 'loja-topo' }, h('span', { class: 'icone-loja', 'aria-hidden': 'true' }), h('b', {}, 'Claude'), alvo('Usar no Chrome', 'bchrome'))),
+    h('figcaption', {}, 'Se o botão estiver escrito "Adicionar ao Chrome", é o mesmo.')),
+};
 
 // ---------- detalhes ----------
 function anotar(texto) {
@@ -202,15 +245,17 @@ S.aoEvento((ev) => {
     case 'msg':
       anotar(`${ev.texto}\n`);
       if (estado.fase === 'perguntas' && ev.nivel === 'info') { estado.introPerguntas = ev.texto; break; }
+      // Avisos informativos vão pros detalhes; com um cartão aberto, aparecem nele ("Estou esperando...").
+      if (ev.nivel === 'info') { if (estado.pausa) estado.pausa.status = ev.texto; break; }
       estado.msgs.push(ev);
-      if (ev.nivel !== 'info') estado.pausa = null;
+      estado.pausa = null;
       if (ev.nivel === 'erro' && estado.atual >= 0) estado.falhos.add(estado.atual);
       break;
     case 'tarefa':
       if (ev.estado === 'fazendo') estado.tarefa = ev.texto;
       else { estado.msgs.push({ nivel: ev.estado === 'feito' ? 'ok' : 'erro', texto: ev.texto }); estado.tarefa = ''; anotar(`${ev.texto}\n`); }
       break;
-    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, links: [], codigos: [] }; anotar(`✋ ${ev.titulo}\n`); break;
+    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, figura: ev.figura, links: [], codigos: [] }; anotar(`✋ ${ev.titulo}\n`); break;
     case 'link':
     case 'codigo':
       estado.pausa ||= { titulo: 'Termine no navegador e volte pra cá', linhas: [], links: [], codigos: [] };
@@ -219,7 +264,7 @@ S.aoEvento((ev) => {
     case 'saida': anotar(ev.texto); return; // não redesenha a tela a cada linha
     case 'pedido': estado.pedido = { ...ev.pergunta, id: ev.id }; break;
     case 'encerramento': estado.encerramento = ev.texto; break;
-    case 'fim': estado.fase = 'fim'; estado.grupos = ev.grupos; estado.soConferiu = ev.soConferiu; estado.pausa = null; break;
+    case 'fim': estado.fase = 'fim'; estado.grupos = ev.grupos; estado.soConferiu = ev.soConferiu; estado.pausa = null; estado.pedido = null; break;
     case 'falha': estado.fase = 'falha'; estado.falha = ev.texto; break;
   }
   desenhar();

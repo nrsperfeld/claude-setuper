@@ -81,16 +81,16 @@ export async function wizard(ctx) {
   );
 
   const pacotes = await ui.escolherVarios(
-    ctx.app ? 'Com o que você mais vai usar o Claude? (pode marcar vários)' : 'Com o que você mais vai usar o Claude? (marca com espaço, confirma com Enter)',
+    ctx.app ? 'Com o que você mais vai usar o Claude?' : 'Com o que você mais vai usar o Claude? (marca com espaço, confirma com Enter)',
     Object.entries(PACOTES).filter(([, x]) => !x.soPerfil || x.soPerfil === p.id).map(([value, x]) => ({ value, label: x.nome, hint: x.hint })),
-    { padrao: salvo.perfil === p.id && salvo.pacotes ? salvo.pacotes : p.pacotes },
+    { padrao: salvo.perfil === p.id && salvo.pacotes ? salvo.pacotes : p.pacotes, explicacao: 'Cada pacote ensina o Claude a fazer um tipo de trabalho do seu jeito. Pode marcar vários; já deixei marcados os que combinam com você.' },
   );
 
   const cat = catalogo(ctx);
   const mcps = await ui.escolherVarios(
-    'Quais dessas ferramentas você já usa? (o Claude passa a mexer nelas pra você)',
+    'Quais dessas ferramentas você já usa?',
     cat.filter((m) => !m.pacotes || m.pacotes.some((x) => pacotes.includes(x))).map((m) => ({ value: m.id, label: m.nome, hint: m.hint })),
-    { padrao: salvo.mcps || [] },
+    { padrao: salvo.mcps || [], explicacao: 'O Claude passa a conseguir ler e mexer nelas pra você. Marca só as que você usa; se não usar nenhuma, é só continuar.' },
   );
 
   let modulos = MODULOS.filter((m) => m.padrao && doSistema(m) && !p.semModulos.includes(m.id)).map((m) => m.id);

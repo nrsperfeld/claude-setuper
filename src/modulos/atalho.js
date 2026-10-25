@@ -7,6 +7,7 @@ import { apresentacao } from '../perfis.js';
 
 export const id = 'atalho';
 export const nome = 'Atalho do Claude na Área de Trabalho';
+export const nomeCurto = 'Atalho na Área de Trabalho';
 export const descricao = 'Um ícone pra abrir o Claude sem precisar do terminal';
 export const padrao = true;
 export const plataformas = ['win32', 'linux'];
