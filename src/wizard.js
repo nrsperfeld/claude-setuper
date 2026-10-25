@@ -29,8 +29,11 @@ export async function wizard(ctx) {
     return ctx.resp;
   }
 
-  ui.info('Vou preparar o seu Claude. Leva uns 10 minutos.\nEu aviso toda vez que precisar de você, e espero o tempo que for.');
-  ui.linha();
+  // No app, a tela de boas-vindas já disse isso.
+  if (!ctx.app) {
+    ui.info('Vou preparar o seu Claude. Leva uns 10 minutos.\nEu aviso toda vez que precisar de você, e espero o tempo que for.');
+    ui.linha();
+  }
 
   const nome = await ui.perguntar('Como você quer que o Claude te chame?', {
     padrao: salvo.nome,
@@ -77,7 +80,7 @@ export async function wizard(ctx) {
   );
 
   const pacotes = await ui.escolherVarios(
-    'Com o que você mais vai usar o Claude? (marca com espaço, confirma com Enter)',
+    ctx.app ? 'Com o que você mais vai usar o Claude? (pode marcar vários)' : 'Com o que você mais vai usar o Claude? (marca com espaço, confirma com Enter)',
     Object.entries(PACOTES).filter(([, x]) => !x.soPerfil || x.soPerfil === p.id).map(([value, x]) => ({ value, label: x.nome, hint: x.hint })),
     { padrao: salvo.perfil === p.id && salvo.pacotes ? salvo.pacotes : p.pacotes },
   );
@@ -107,7 +110,9 @@ export async function wizard(ctx) {
   ui.linha();
   ui.ok(`Pronto, ${c.bold(nome)}. Agora é comigo. Vai aparecendo na tela o que estou fazendo.`);
   if (tecnologia === 'pouco') {
-    ui.info('Vai aparecer bastante coisa escrita na tela, muitas vezes em inglês. É normal e não precisa ler.\nQuando eu precisar de você, aparece uma caixa amarela com a mão ✋ dizendo exatamente o que fazer.');
+    ui.info(ctx.app
+      ? 'Quando eu precisar de você, aparece um cartão amarelo com a mão ✋ dizendo exatamente o que fazer. No resto do tempo, é só esperar.'
+      : 'Vai aparecer bastante coisa escrita na tela, muitas vezes em inglês. É normal e não precisa ler.\nQuando eu precisar de você, aparece uma caixa amarela com a mão ✋ dizendo exatamente o que fazer.');
   }
   return ctx.resp;
 }

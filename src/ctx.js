@@ -28,6 +28,8 @@ export function criarCtx(flags = {}) {
     sim: !!flags.sim, // aceita todos os defaults sem perguntar
     assistido: !!flags.assistido,
     perfil: flags.perfil || '',
+    app: !!flags.app, // rodando dentro do app do Mac (sem Terminal)
+    askpass: flags.askpass || '', // programa que pede a senha numa janela do Mac (app)
     pastaSetuper,
     logPath,
     estadoPath,
@@ -188,10 +190,10 @@ export function criarCtx(flags = {}) {
     },
 
     // Espera uma condição ficar verdadeira (polling), com limite em segundos.
-    async esperar(cond, { intervalo = 3, limite = 600 } = {}) {
+    async esperar(cond, { intervalo = 3, limite = 600, semEncurtar = false } = {}) {
       if (ctx.dryRun) return true;
-      // Só pra teste na VM, onde ninguém faz login: encurta as esperas.
-      if (process.env.CLAUDE_SETUPER_ESPERA_MAX) limite = Math.min(limite, Number(process.env.CLAUDE_SETUPER_ESPERA_MAX));
+      // Só pra teste na VM, onde ninguém faz login: encurta as esperas (menos as que a VM consegue cumprir).
+      if (process.env.CLAUDE_SETUPER_ESPERA_MAX && !semEncurtar) limite = Math.min(limite, Number(process.env.CLAUDE_SETUPER_ESPERA_MAX));
       const fim = Date.now() + limite * 1000;
       while (Date.now() < fim) {
         if (await cond()) return true;

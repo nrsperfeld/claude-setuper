@@ -8,3 +8,7 @@ __pycache__/
 test/win-vm/logs/
 test/win-vm/rodada.out
 test/rodadas/
+app/node_modules/
+app/.cache/
+app/dist/
+test/mac-vm/rodada-app.out

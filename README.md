@@ -93,12 +93,27 @@ node bin/claude-setuper.js doctor --home ./.setuper-test/home
 
 `--home` aponta uma "casa" falsa; `--sem-apps` não instala nada, só escreve os arquivos; `--dry-run` nem escreve; `--plataforma win32` exercita os ramos do Windows em outro sistema (só a lógica, não os comandos).
 
+## App do Mac (`app/`)
+
+No Mac, a linha do Terminal baixa o app `Claude Setuper.app` dos Releases e abre ele: as mesmas perguntas e os mesmos módulos, em telas. Com `CLAUDE_SETUPER_TERMINAL=1` (ou se o download falhar) a instalação segue no Terminal, como antes. O app é Electron e troca só a camada de tela (`app/ui-app.js`) e os comandos interativos, que rodam num terminal invisível (`app/pty.sh`, com o `script` do macOS) de onde o app tira o link e o código dos logins. A senha do Homebrew vem numa janela do Mac (`SUDO_ASKPASS`).
+
+```bash
+cd app && npm install --registry=https://registry.yarnpkg.com && npx electron . --sem-apps   # telas, sem instalar nada
+bash app/build.sh                                  # gera app/dist/Claude-Setuper-mac-{arm64,x64}.zip
+gh release create v1.4.0 app/dist/*.zip            # publica (a linha baixa de releases/latest)
+```
+
+Sem conta de desenvolvedor da Apple a assinatura é ad-hoc: baixado pelo navegador o macOS 15/26 bloqueia, baixado pelo Terminal abre direto. Desenho em `docs/superpowers/specs/2026-10-24-app-mac-design.md`.
+
 ## Testar num Mac zerado (VM)
 
 ```bash
-python3 test/mac-vm/vm.py rodar                    # generalista
+python3 test/mac-vm/vm.py rodar                    # generalista, pelo Terminal
 python3 test/mac-vm/vm.py rodar --perfil estudante # um perfil
+python3 test/mac-vm/vm.py rodar-app --perfil X     # pelo app (gere antes com app/build.sh arm64)
 ```
+
+No `rodar-app` o app responde as telas sozinho (modo roteiro, ligado pelo arquivo `~/Claude Setuper/.teste-auto.json` que só o teste cria) e salva um print de cada tela; os prints voltam pra `test/mac-vm/logs/`.
 
 Clona uma VM macOS limpa do tart (`tahoe-limpo`), roda o `curl | bash` num terminal de verdade respondendo como uma pessoa, simula o clique das ferramentas da Apple, encerra os logins que precisam de conta real e roda o `doctor` num Terminal novo. Uns 15 a 20 minutos por rodada; log em `test/mac-vm/logs/`. Toda mudança no Setuper passa por aqui antes de ir pra alguém.
 

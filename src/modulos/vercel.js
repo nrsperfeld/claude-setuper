@@ -34,15 +34,16 @@ export async function instalar(ctx) {
     if (!tem) {
       ui.pausa('Vou abrir a página pra criar sua conta na Vercel', [
         'Escolhe "Continue with GitHub" e autoriza. Fica tudo ligado numa conta só.',
-        'Quando terminar, volta aqui e aperta Enter.',
+        ctx.app ? 'Quando terminar, volta pra cá.' : 'Quando terminar, volta aqui e aperta Enter.',
       ]);
       await ctx.abrirUrl('https://vercel.com/signup');
-      await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
+      if (ctx.app) await ui.confirmar('Já criou a conta na Vercel?', true);
+      else await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
     }
   }
   ui.pausa('Vou abrir o navegador pra conectar a Vercel', [
     'Vai aparecer aqui um link e um código (a tela fica em inglês, é normal).',
-    'Se o navegador não abrir sozinho, segura a tecla Cmd e clica no link.',
+    ctx.app ? 'Se o navegador não abrir sozinho, clica no botão do link aqui embaixo.' : 'Se o navegador não abrir sozinho, segura a tecla Cmd e clica no link.',
     'No navegador, escolhe "Continue with GitHub" e autoriza. Depois volta pra cá.',
   ]);
   await ctx.runVisivel('vercel', ['login'], { ignorarErro: true });

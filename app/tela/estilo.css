@@ -1,0 +1,114 @@
+/* Mesmas cores da página do Setuper: escuro por padrão, claro se o Mac estiver no modo claro. */
+:root {
+  --bg: #0f0f10; --fg: #f2f0ea; --mut: #9a978f; --acc: #c8873c; --acc-fg: #141414;
+  --card: #19191b; --card2: #202023; --line: #2a2a2e;
+  --ok: #5fbf7a; --aviso: #e2b04a; --erro: #e5675a; --pausa: #2a2416;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg: #faf8f3; --fg: #161616; --mut: #6a675f; --card: #ffffff; --card2: #f3f0e8; --line: #e6e2d8;
+    --ok: #2f8a4b; --aviso: #9a6a0c; --erro: #b8382b; --pausa: #fbf1dc; color-scheme: light; }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  display: grid; grid-template-columns: 250px 1fr; grid-template-rows: 1fr auto; overflow: hidden;
+  -webkit-font-smoothing: antialiased; user-select: none;
+}
+.arrasto { position: fixed; inset: 0 0 auto 0; height: 38px; -webkit-app-region: drag; z-index: 10; }
+button, input, a { -webkit-app-region: no-drag; }
+
+/* Coluna da esquerda: marca e a lista de etapas. */
+.lado { grid-row: 1 / 3; background: var(--card); border-right: 1px solid var(--line); padding: 56px 18px 18px; overflow-y: auto; }
+.marca { display: flex; gap: 10px; align-items: center; margin: 0 6px 26px; }
+.marca b { display: block; font-size: 15px; }
+.marca span { display: block; font-size: 12px; color: var(--mut); }
+.etapas { list-style: none; margin: 0; padding: 0; }
+.etapas li { display: flex; gap: 10px; align-items: flex-start; padding: 5px 8px; border-radius: 8px; font-size: 14px; color: var(--mut); }
+.etapas li .bola { flex: 0 0 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+.etapas li.atual { color: var(--fg); background: var(--card2); font-weight: 600; }
+.etapas li.atual .bola { border-color: var(--acc); border-top-color: transparent; animation: gira 1s linear infinite; }
+.etapas li.feito { color: var(--fg); }
+.etapas li.feito .bola { border-color: var(--ok); background: var(--ok); color: var(--bg); }
+.etapas li.feito .bola::after { content: "✓"; }
+.etapas li.falhou .bola { border-color: var(--erro); background: var(--erro); color: var(--bg); }
+.etapas li.falhou .bola::after { content: "!"; }
+@keyframes gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .etapas li.atual .bola { animation: none; border-top-color: var(--acc); } }
+
+/* Palco: uma coisa por vez. */
+.palco { padding: 64px 56px 24px; overflow-y: auto; }
+.palco > * { max-width: 620px; }
+h1 { font-size: 32px; line-height: 1.15; letter-spacing: -.015em; margin: 0 0 12px; }
+h2 { font-size: 24px; line-height: 1.25; letter-spacing: -.01em; margin: 0 0 20px; }
+p { margin: 0 0 14px; }
+.mut { color: var(--mut); }
+.pequeno { font-size: 14px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 12px; cursor: pointer;
+  background: var(--acc); color: var(--acc-fg); font: inherit; font-weight: 700; font-size: 17px; padding: 14px 24px;
+}
+.btn:hover { filter: brightness(1.07); }
+.btn:disabled { opacity: .45; cursor: default; filter: none; }
+.btn2 { background: var(--card); color: var(--fg); border: 1px solid var(--line); }
+.botoes { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+.botoes + p { margin-top: 16px; }
+.link { background: none; border: 0; padding: 0; color: var(--mut); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; }
+
+input[type=text], input[type=password] {
+  width: 100%; font: inherit; font-size: 20px; padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--card); color: var(--fg); user-select: text;
+}
+input[type=text]:focus, input[type=password]:focus { outline: none; border-color: var(--acc); }
+.erro-campo { color: var(--erro); font-size: 14px; margin-top: 8px; min-height: 20px; }
+
+/* Opções em cartões grandes, mais fáceis de acertar que um botãozinho de rádio. */
+.opcoes { display: grid; gap: 10px; }
+.opcao { display: flex; gap: 14px; align-items: flex-start; text-align: left; width: 100%; padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
+.opcao:hover { border-color: var(--mut); }
+.opcao .marcador { flex: 0 0 22px; height: 22px; margin-top: 1px; border: 2px solid var(--mut); border-radius: 50%; display: grid; place-items: center; }
+.opcao.varios .marcador { border-radius: 6px; }
+.opcao[aria-checked=true] { border-color: var(--acc); background: var(--card2); }
+.opcao[aria-checked=true] .marcador { border-color: var(--acc); background: var(--acc); }
+.opcao[aria-checked=true] .marcador::after { content: "✓"; color: var(--acc-fg); font-size: 13px; font-weight: 800; }
+.opcao b { display: block; font-weight: 600; }
+.opcao small { display: block; color: var(--mut); font-size: 14px; margin-top: 2px; }
+
+/* Instalação. */
+.agora { display: flex; gap: 14px; align-items: center; padding: 18px 20px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); margin-bottom: 18px; }
+.girando { flex: 0 0 22px; height: 22px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--acc); animation: gira 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .girando { animation: none; } }
+.agora b { font-size: 17px; font-weight: 600; }
+.mensagens { list-style: none; margin: 0; padding: 0; }
+.mensagens li { display: flex; gap: 10px; padding: 6px 2px; font-size: 15px; color: var(--mut); }
+.mensagens li::before { content: "•"; flex: 0 0 14px; text-align: center; }
+.mensagens li.ok { color: var(--fg); } .mensagens li.ok::before { content: "✓"; color: var(--ok); }
+.mensagens li.aviso::before { content: "!"; color: var(--aviso); font-weight: 800; }
+.mensagens li.erro { color: var(--erro); } .mensagens li.erro::before { content: "✗"; }
+
+/* O cartão do ✋: quando a pessoa precisa fazer algo. */
+.cartao { border-radius: 16px; padding: 22px 24px; background: var(--pausa); border: 2px solid var(--aviso); margin-bottom: 18px; }
+.cartao h2 { font-size: 21px; margin-bottom: 12px; }
+.cartao ol { margin: 0; padding-left: 20px; } .cartao li { margin: 6px 0; }
+.codigo { display: flex; gap: 14px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+.codigo code { font: 700 30px/1 ui-monospace, Menlo, monospace; letter-spacing: .08em; padding: 12px 16px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); user-select: all; }
+.cartao .botoes { margin-top: 16px; }
+
+.falha { border-color: var(--erro); }
+.grupo { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; margin: 12px 0; }
+.grupo b { display: block; margin-bottom: 4px; }
+.grupo ul { list-style: none; margin: 0; padding: 0; }
+.grupo li { display: flex; gap: 10px; font-size: 15px; padding: 3px 0; }
+.grupo li .s { flex: 0 0 16px; font-weight: 800; }
+.grupo li.sim .s { color: var(--ok); } .grupo li.nao .s { color: var(--aviso); }
+.grupo li small { display: block; color: var(--mut); font-size: 13px; }
+.faixa { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--acc); margin-bottom: 22px; }
+
+.rodape { grid-column: 2; padding: 10px 56px 14px; border-top: 1px solid var(--line); }
+.detalhes { max-height: 180px; overflow: auto; margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--card); border: 1px solid var(--line);
+  font: 12px/1.45 ui-monospace, Menlo, monospace; color: var(--mut); white-space: pre-wrap; word-break: break-all; user-select: text; }

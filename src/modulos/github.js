@@ -40,10 +40,11 @@ export async function instalar(ctx) {
       if (!tem) {
         ui.pausa('Vou abrir a página pra criar sua conta no GitHub', [
           'É de graça. Usa o seu e-mail principal e escolhe um nome de usuário.',
-          'Quando terminar de criar, volta aqui e aperta Enter.',
+          ctx.app ? 'Quando terminar de criar, volta pra cá.' : 'Quando terminar de criar, volta aqui e aperta Enter.',
         ]);
         await ctx.abrirUrl('https://github.com/signup');
-        await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
+        if (ctx.app) await ui.confirmar('Já criou a conta no GitHub?', true);
+        else await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
       }
     }
     await login(ctx, 'a sua conta');
@@ -64,7 +65,11 @@ export async function instalar(ctx) {
 }
 
 async function login(ctx, qual) {
-  ui.pausa(`Vou abrir o navegador pra conectar ${qual} do GitHub`, [
+  ui.pausa(`Vou abrir o navegador pra conectar ${qual} do GitHub`, ctx.app ? [
+    'Vai aparecer aqui um código de 8 letras, com um botão pra copiar.',
+    'O navegador abre sozinho. Lá, cola o código, clica em Continuar e depois em Autorizar.',
+    'Depois volta pra cá, eu continuo.',
+  ] : [
     'Vão aparecer duas perguntas em inglês aqui. Nas duas, só aperta Enter.',
     'Depois aparece um código de 8 letras. Copia ele.',
     'No navegador, cola o código, clica em Continuar e depois em Autorizar.',
