@@ -4,6 +4,7 @@ import { ui } from '../ui.js';
 
 export const id = 'base';
 export const nome = 'Base da máquina';
+export const nomeCurto = 'Preparar o computador';
 export const descricao = 'Ferramentas de sistema, Node e o próprio Claude Code';
 export const padrao = true;
 export const obrigatorio = true;
@@ -38,13 +39,14 @@ async function xcodeCLT(ctx) {
   const tem = await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true });
   if (tem) return ui.ok('Ferramentas da Apple já estão instaladas');
   if (ctx.semApps) return;
-  ui.pausa('O Mac vai abrir uma janela pedindo pra instalar as "ferramentas de linha de comando"', [
-    'Clica em Instalar e aceita o contrato.',
+  ui.pausa('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', [
+    'Clica em Instalar.',
+    'Depois aparece o contrato: clica em Concordo.',
     'Demora entre 3 e 10 minutos. Eu fico esperando aqui.',
-  ]);
+  ], { figura: 'apple-ferramentas' });
   await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
-  const ok = await ctx.esperar(async () => !!(await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true })), { intervalo: 5, limite: 1800 });
-  if (!ok) throw new Error('as ferramentas da Apple não terminaram de instalar');
+  const ok = await ctx.esperar(async () => !!(await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true })), { intervalo: 5, limite: 1800, semEncurtar: true });
+  if (!ok) throw new Error(ctx.app ? 'as ferramentas da Apple não terminaram de instalar. Se a janela da Apple sumiu, clica em Tentar de novo que ela aparece outra vez' : 'as ferramentas da Apple não terminaram de instalar');
   ui.ok('Ferramentas da Apple instaladas');
 }
 
@@ -52,12 +54,20 @@ async function homebrew(ctx) {
   brewNoPerfil(ctx);
   if (await ctx.existeComando('brew')) return ui.ok('Homebrew já está instalado');
   if (ctx.semApps) return;
-  ui.pausa('O Mac vai pedir a sua senha', [
+  if (!(await ctx.run('id', ['-Gn'], { ignorarErro: true, sempre: true })).split(/\s+/).includes('admin')) {
+    throw new Error('esse usuário do Mac não é administrador, e o Homebrew precisa de um. Peça acesso de administrador (Ajustes > Usuários e Grupos) e rode de novo');
+  }
+  ui.pausa('O Mac vai pedir a sua senha', ctx.app ? [
+    'Vai aparecer uma janela pedindo a senha. É a mesma que você usa pra ligar o computador.',
+    'Digita e clica em OK. Pode aparecer mais de uma vez.',
+  ] : [
     'É a mesma senha que você usa pra ligar o computador.',
     'Ela não aparece enquanto você digita, é normal. Digita e aperta Enter.',
   ]);
   const script = await (await fetch('https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh')).text();
-  await ctx.runVisivel('/bin/bash', ['-c', script], { env: { NONINTERACTIVE: '' } });
+  // No app não tem Terminal: o instalador do Homebrew pede a senha pelo SUDO_ASKPASS, numa janela do Mac.
+  const env = ctx.app && ctx.askpass ? { NONINTERACTIVE: '1', SUDO_ASKPASS: ctx.askpass } : { NONINTERACTIVE: '' };
+  await ctx.runVisivel('/bin/bash', ['-c', script], { env });
   // Homebrew novo não entra no PATH do processo atual; adiciona.
   for (const p of ['/opt/homebrew/bin', '/usr/local/bin']) if (!process.env.PATH.includes(p)) process.env.PATH = `${p}:${process.env.PATH}`;
   brewNoPerfil(ctx);
@@ -163,7 +173,14 @@ async function loginClaude(ctx) {
   await ctx.runVisivel('claude', ['auth', 'login'], { ignorarErro: true });
   if (!(await logado(ctx))) ui.info('Estou esperando você terminar o login no navegador...');
   const ok = await ctx.esperar(() => logado(ctx), { intervalo: 3, limite: 900 });
-  if (!ok) throw new Error('o login no Claude não terminou. Quando terminar, rode claude-setuper de novo, eu continuo de onde parei');
+  if (!ok) {
+    // Sem login o resto ainda instala; o módulo fica marcado como pendente pra próxima rodada.
+    const e = new Error(ctx.app
+      ? 'o login no Claude ficou pra depois. No fim eu te mostro como terminar'
+      : 'o login no Claude não terminou. Quando terminar, rode claude-setuper de novo, eu continuo de onde parei');
+    e.continuar = true;
+    throw e;
+  }
   ui.ok('Login no Claude feito');
 }
 

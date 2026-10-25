@@ -1,0 +1,17 @@
+{
+  "name": "claude-setuper-app",
+  "productName": "Claude Setuper",
+  "version": "1.4.0",
+  "description": "O Claude Setuper com telas, pro Mac.",
+  "type": "module",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build": "bash build.sh"
+  },
+  "devDependencies": {
+    "electron": "44.7.0"
+  },
+  "license": "MIT"
+}

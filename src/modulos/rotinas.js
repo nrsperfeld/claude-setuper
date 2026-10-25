@@ -5,6 +5,7 @@ import { ui } from '../ui.js';
 
 export const id = 'rotinas';
 export const nome = 'Rotinas automáticas';
+export const nomeCurto = 'Rotinas';
 export const descricao = 'Revisão semanal do cérebro e backup diário das suas notas';
 export const padrao = true;
 export const plataformas = ['darwin', 'linux', 'win32'];

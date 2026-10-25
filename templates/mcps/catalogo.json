@@ -1,5 +1,23 @@
 [
   {
+    "id": "gmail",
+    "nome": "Gmail",
+    "hint": "ler, buscar e rascunhar os seus e-mails",
+    "conector": true
+  },
+  {
+    "id": "google-drive",
+    "nome": "Google Drive",
+    "hint": "achar e ler os seus documentos e planilhas",
+    "conector": true
+  },
+  {
+    "id": "google-agenda",
+    "nome": "Google Agenda",
+    "hint": "ver a sua agenda e marcar compromissos",
+    "conector": true
+  },
+  {
     "id": "notion",
     "nome": "Notion",
     "hint": "ler e escrever nas suas páginas do Notion",
@@ -30,22 +48,36 @@
     "transporte": "http",
     "url": "https://api.githubcopilot.com/mcp/",
     "token": "gh",
-    "pacotes": ["dev"]
+    "pacotes": [
+      "dev"
+    ]
   },
   {
     "id": "context7",
     "nome": "Context7 (documentação de código)",
     "hint": "documentação atualizada de bibliotecas",
     "transporte": "stdio",
-    "comando": ["npx", "-y", "@upstash/context7-mcp"],
-    "pacotes": ["dev"]
+    "comando": [
+      "npx",
+      "-y",
+      "@upstash/context7-mcp"
+    ],
+    "pacotes": [
+      "dev"
+    ]
   },
   {
     "id": "playwright",
     "nome": "Playwright (testar sites)",
     "hint": "abrir e testar páginas automaticamente",
     "transporte": "stdio",
-    "comando": ["npx", "-y", "@playwright/mcp@latest"],
-    "pacotes": ["dev"]
+    "comando": [
+      "npx",
+      "-y",
+      "@playwright/mcp@latest"
+    ],
+    "pacotes": [
+      "dev"
+    ]
   }
 ]

@@ -5,10 +5,12 @@ import { ui } from '../ui.js';
 
 export const id = 'github';
 export const nome = 'GitHub (guardar e versionar o trabalho)';
+export const nomeCurto = 'GitHub';
 export const descricao = 'Conecta a sua conta do GitHub (e uma segunda, se tiver)';
 export const padrao = true;
 
 export async function verificar(ctx) {
+  if (ctx.estado.pulados?.github) return [];
   const temGh = await ctx.existeComando('gh');
   const status = temGh ? await ctx.run('gh', ['auth', 'status'], { ignorarErro: true, sempre: true }) : '';
   const contas = (status.match(/account (\S+)/g) || []).map((s) => s.replace('account ', ''));
@@ -20,7 +22,21 @@ export async function verificar(ctx) {
   ];
 }
 
+const PRA_QUE = 'O GitHub guarda uma cópia de tudo que você e o Claude criarem, com o histórico de cada mudança. Se algo der errado ou o computador quebrar, nada se perde, e dá pra voltar a qualquer versão. É opcional, mas é o que deixa o seu trabalho seguro.';
+
 export async function instalar(ctx) {
+  // Pergunta antes de instalar qualquer coisa: quem pula não precisa nem da ferramenta.
+  let escolha = 'tenho';
+  if (!ctx.sim && !ctx.semApps && !ctx.dryRun && !(await logadoNoGh(ctx))) {
+    escolha = await ui.escolher('Quer ligar o GitHub?', [
+      { value: 'criar', label: 'Sim, e quero criar uma conta', hint: 'é de graça, leva 2 minutos' },
+      { value: 'tenho', label: 'Sim, já tenho conta' },
+      { value: 'pular', label: 'Agora não', hint: 'dá pra ligar depois, abrindo o Claude Setuper de novo' },
+    ], { padrao: 'criar', explicacao: PRA_QUE });
+  }
+  ctx.estado.pulados = { ...ctx.estado.pulados, github: escolha === 'pular' };
+  if (escolha === 'pular') return ui.info('Tudo bem, deixei o GitHub pra depois.');
+
   if (!(await ctx.existeComando('gh'))) {
     if (ctx.semApps) return;
     await ui.tarefa('Instalando a ferramenta do GitHub', 'Ferramenta do GitHub instalada', async () => {
@@ -36,14 +52,14 @@ export async function instalar(ctx) {
 
   if (!contas.length) {
     if (!ctx.sim) {
-      const tem = await ui.confirmar('Você já tem uma conta no GitHub?', false);
-      if (!tem) {
+      if (escolha === 'criar') {
         ui.pausa('Vou abrir a página pra criar sua conta no GitHub', [
           'É de graça. Usa o seu e-mail principal e escolhe um nome de usuário.',
-          'Quando terminar de criar, volta aqui e aperta Enter.',
+          ctx.app ? 'Quando terminar de criar, volta pra cá.' : 'Quando terminar de criar, volta aqui e aperta Enter.',
         ]);
         await ctx.abrirUrl('https://github.com/signup');
-        await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
+        if (ctx.app) await ui.confirmar('Já criou a conta no GitHub?', true);
+        else await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
       }
     }
     await login(ctx, 'a sua conta');
@@ -64,13 +80,22 @@ export async function instalar(ctx) {
 }
 
 async function login(ctx, qual) {
-  ui.pausa(`Vou abrir o navegador pra conectar ${qual} do GitHub`, [
+  ui.pausa(`Vou abrir o navegador pra conectar ${qual} do GitHub`, ctx.app ? [
+    'Vai aparecer aqui um código de 8 letras, com um botão pra copiar.',
+    'O navegador abre sozinho. Lá, cola o código, clica em Continuar e depois em Autorizar.',
+    'Depois volta pra cá, eu continuo.',
+  ] : [
     'Vão aparecer duas perguntas em inglês aqui. Nas duas, só aperta Enter.',
     'Depois aparece um código de 8 letras. Copia ele.',
     'No navegador, cola o código, clica em Continuar e depois em Autorizar.',
     'Depois volta pra cá, eu continuo.',
   ]);
   await ctx.runVisivel('gh', ['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web', '--skip-ssh-key'], { ignorarErro: true });
+}
+
+async function logadoNoGh(ctx) {
+  if (!(await ctx.existeComando('gh'))) return false;
+  return /account \S+/.test(await ctx.run('gh', ['auth', 'status'], { ignorarErro: true, sempre: true }));
 }
 
 async function listarContas(ctx) {

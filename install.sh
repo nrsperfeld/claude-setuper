@@ -23,6 +23,24 @@ main() {
     echo "Por enquanto o Claude Setuper funciona no Mac e no Linux."; exit 1
   fi
 
+  # No Mac, o caminho principal é o app (telas em vez de texto). Baixado pelo Terminal ele abre sem o aviso
+  # da Apple, que bloqueia app sem assinatura paga quando vem do navegador. Se o download falhar, segue por aqui.
+  if [ "$SO" = "Darwin" ] && [ -z "$CLAUDE_SETUPER_TERMINAL" ]; then
+    ARQ=arm64; [ "$(uname -m)" = "x86_64" ] && ARQ=x64
+    URL="${CLAUDE_SETUPER_APP_URL:-https://github.com/$REPO/releases/latest/download/Claude-Setuper-mac-$ARQ.zip}"
+    TMP="$(mktemp -d)"
+    passo "Baixando o app do Claude Setuper (uns 130 MB, leva 1 ou 2 minutos)."
+    if curl -fL --progress-bar -o "$TMP/app.zip" "$URL" && ditto -x -k "$TMP/app.zip" "$TMP/x" && [ -d "$TMP/x/Claude Setuper.app" ]; then
+      APPS=/Applications; [ -w "$APPS" ] || { APPS="$HOME/Applications"; mkdir -p "$APPS"; }
+      rm -rf "$APPS/Claude Setuper.app"
+      ditto "$TMP/x/Claude Setuper.app" "$APPS/Claude Setuper.app"
+      open "$APPS/Claude Setuper.app" --args "$@"
+      ok "Abri o Claude Setuper. Pode fechar esta janela, o resto é na tela dele."
+      exit 0
+    fi
+    echo "  Não consegui baixar o app. Sem problema, sigo a instalação por aqui mesmo."
+  fi
+
   if [ "$SO" = "Darwin" ]; then
     if ! xcode-select -p >/dev/null 2>&1; then
       passo "O Mac vai abrir uma janela pedindo pra instalar as \"ferramentas de linha de comando\"."

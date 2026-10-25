@@ -5,6 +5,7 @@ import { ui } from '../ui.js';
 
 export const id = 'chrome';
 export const nome = 'Claude no Chrome (navegar na internet)';
+export const nomeCurto = 'Claude no Chrome';
 export const descricao = 'Extensão que deixa o Claude usar o seu navegador';
 export const padrao = true;
 
@@ -41,8 +42,11 @@ export async function instalar(ctx) {
   const temChrome = chromeInstalado(ctx) || (await ctx.existeComando('google-chrome'));
   if (!temChrome) {
     if (ctx.semApps) return;
-    const quer = ctx.sim ? true : await ui.confirmar('Você não tem o Google Chrome. Quer que eu instale? (é o navegador que o Claude sabe usar)', true);
-    if (!quer) return ui.info('Tudo bem, pulei o Chrome. Dá pra instalar depois com: claude-setuper --modulos chrome');
+    const quer = ctx.sim ? true : await ui.confirmar('Posso instalar o Google Chrome?', true, {
+      sim: 'Sim, pode instalar', nao: 'Agora não',
+      explicacao: 'O Chrome é o navegador que o Claude sabe usar sozinho: ele abre sites, preenche formulários e pesquisa por você. Você continua usando o seu navegador de sempre no dia a dia.',
+    });
+    if (!quer) return ui.info(ctx.app ? 'Tudo bem, deixei o Chrome pra depois.' : 'Tudo bem, pulei o Chrome. Dá pra instalar depois com: claude-setuper --modulos chrome');
     await ui.tarefa('Instalando o Google Chrome', 'Chrome instalado', async () => {
       if (ctx.plataforma === 'darwin') await ctx.run('brew', ['install', '--cask', 'google-chrome']);
       else if (ctx.win) await (await import('./base.js')).winget(ctx, 'Google.Chrome');
@@ -54,11 +58,10 @@ export async function instalar(ctx) {
   if (ctx.semApps || ctx.dryRun) return;
 
   ui.pausa('O Chrome vai abrir na página da extensão do Claude', [
-    'Clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e confirma.',
+    ctx.app ? 'Clica no botão marcado aqui embaixo e confirma.' : 'Clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e confirma.',
     'Se o Chrome pedir pra você entrar na sua conta Google, pode entrar.',
-    'Depois, clica no ícone do Claude na barra do Chrome e entra com a sua conta do Claude.',
-    'Eu espero.',
-  ]);
+    'Depois, clica no ícone do Claude na barra do Chrome e entra com a sua conta do Claude. Eu espero.',
+  ], { figura: 'chrome-extensao' });
   if (ctx.plataforma === 'darwin') await ctx.run('open', ['-a', 'Google Chrome', LOJA], { ignorarErro: true });
   else if (ctx.win) await ctx.run('cmd.exe', ['/c', 'start', 'chrome', LOJA], { ignorarErro: true });
   else await ctx.run('google-chrome', [LOJA], { ignorarErro: true });

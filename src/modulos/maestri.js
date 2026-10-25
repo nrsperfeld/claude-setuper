@@ -8,6 +8,7 @@ import { apresentacao } from '../perfis.js';
 
 export const id = 'maestri';
 export const nome = 'Maestri (o seu painel com o Claude)';
+export const nomeCurto = 'Painel do Claude';
 export const descricao = 'Instala o Maestri e deixa o Claude aberto com notas e lembretes do lado';
 export const padrao = true;
 export const plataformas = ['darwin'];
@@ -32,7 +33,7 @@ export async function instalar(ctx) {
   const instalado = ctx.existe('/Applications/Maestri.app') || ctx.existe('/Applications/Setapp/Maestri.app');
   if (instalado) ui.ok('Maestri já está instalado');
   else if (!ctx.semApps) {
-    await ui.tarefa('Instalando o Maestri, o seu painel com o Claude', 'Maestri instalado', () => ctx.run('brew', ['install', '--cask', 'maestri']), { demora: 'uns 2 minutos, é normal' });
+    await ui.tarefa('Instalando o Maestri, o seu painel com o Claude', 'Maestri instalado', async () => { await ctx.run('brew', ['install', '--cask', 'maestri']); }, { demora: 'uns 2 minutos, é normal' });
   }
 
   await ui.tarefa('Preparando o painel com o Claude e as suas notas', 'Painel pronto', async () => {

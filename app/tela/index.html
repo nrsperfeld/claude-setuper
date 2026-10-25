@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:">
+<title>Claude Setuper</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <div class="arrasto" aria-hidden="true"></div>
+  <aside class="lado">
+    <div class="marca">
+      <svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true"><rect width="40" height="40" rx="10" fill="var(--acc)"/><path d="M26.5 13.5a9 9 0 1 0 0 13" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round"/><circle cx="28" cy="20" r="2.6" fill="#141414"/></svg>
+      <div><b>Claude Setuper</b><span id="versao"></span></div>
+    </div>
+    <ol id="etapas" class="etapas"></ol>
+  </aside>
+  <main id="palco" class="palco" aria-live="polite"></main>
+  <footer class="rodape">
+    <button id="ver-detalhes" class="link" type="button" aria-expanded="false">Ver detalhes</button>
+    <pre id="detalhes" class="detalhes" hidden></pre>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>

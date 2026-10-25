@@ -13,7 +13,7 @@ export const ui = {
     p.outro(msg);
   },
 
-  passo(n, total, titulo) {
+  passo(n, total, titulo, _curto) {
     p.log.step(`${c.dim(`${n}/${total}`)}  ${c.bold(titulo)}`);
   },
 
@@ -34,7 +34,8 @@ export const ui = {
   },
 
   // Caixa destacada, usada nas pausas: uma ação só.
-  pausa(titulo, linhas) {
+  // `figura` é a ilustração de onde clicar; só o app desenha.
+  pausa(titulo, linhas, _opcoes) {
     p.note(Array.isArray(linhas) ? linhas.join('\n') : linhas, c.yellow(`✋ ${titulo}`));
   },
 
@@ -47,7 +48,7 @@ export const ui = {
     if (demora) timer = setTimeout(() => s.message(`${fazendo}  ${c.dim(demora)}`), 60_000);
     try {
       const r = await fn((msg) => s.message(msg));
-      s.stop(typeof r === 'string' && r ? r : feito);
+      s.stop(mensagemFeito(r, feito));
       return r;
     } catch (e) {
       s.stop(c.red(`Não consegui: ${fazendo.toLowerCase()}`));
@@ -63,20 +64,24 @@ export const ui = {
     return String(r ?? padrao ?? '').trim();
   },
 
-  async escolher(msg, opcoes, { padrao } = {}) {
+  async escolher(msg, opcoes, { padrao, explicacao } = {}) {
+    if (explicacao) p.log.message(explicacao);
     const r = await p.select({ message: msg, options: opcoes, initialValue: padrao });
     checar(r);
     return r;
   },
 
-  async escolherVarios(msg, opcoes, { padrao = [] } = {}) {
+  async escolherVarios(msg, opcoes, { padrao = [], explicacao } = {}) {
+    if (explicacao) p.log.message(explicacao);
     const r = await p.multiselect({ message: msg, options: opcoes, initialValues: padrao, required: false });
     checar(r);
     return r;
   },
 
-  async confirmar(msg, padrao = true) {
-    const r = await p.confirm({ message: msg, initialValue: padrao, active: 'Sim', inactive: 'Não' });
+  // `sim` e `nao` trocam o Sim/Não por botões que dizem o que acontece (ex.: "Não, pode instalar tudo").
+  async confirmar(msg, padrao = true, { sim = 'Sim', nao = 'Não', explicacao } = {}) {
+    if (explicacao) p.log.message(explicacao);
+    const r = await p.confirm({ message: msg, initialValue: padrao, active: sim, inactive: nao });
     checar(r);
     return r;
   },
@@ -91,6 +96,11 @@ export const ui = {
     console.log();
   },
 };
+
+// A tarefa pode devolver uma frase curta pro fim ("Obsidian instalado"); saída de comando nunca vai pra tela.
+export function mensagemFeito(r, feito) {
+  return typeof r === 'string' && r && r.length <= 100 && !r.includes('\n') && !r.includes('==>') ? r : feito;
+}
 
 function checar(r) {
   if (p.isCancel(r)) {

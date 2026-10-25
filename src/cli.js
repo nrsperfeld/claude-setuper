@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const VERSAO = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')).version;
+export const VERSAO = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')).version;
 
 const AJUDA = `
 Claude Setuper ${VERSAO}
@@ -53,13 +53,14 @@ export async function main(argv) {
   }
 }
 
-async function instalar(ctx, flags) {
+export async function instalar(ctx, flags) {
   ui.abertura('Claude Setuper', `versão ${VERSAO}${ctx.dryRun ? '  (modo de teste, nada vai ser alterado)' : ''}`);
 
   await wizard(ctx);
   const ids = flags.modulos ? flags.modulos.split(',') : ctx.resp.modulos;
   const lista = modulosParaPlataforma(ids, ctx.plataforma);
   const pulados = ids.filter((id) => !lista.some((m) => m.id === id));
+  ui.plano?.(lista.map((m) => m.nomeCurto || m.nome)); // o app mostra a lista inteira de passos antes de começar
   if (pulados.length) ui.info(`No seu sistema estes não se aplicam e vou pular: ${pulados.join(', ')}`);
 
   ctx.estado.versao = VERSAO;
@@ -68,7 +69,7 @@ async function instalar(ctx, flags) {
   for (const m of lista) {
     n++;
     ui.linha();
-    ui.passo(n, lista.length, m.nome);
+    ui.passo(n, lista.length, m.nome, m.nomeCurto);
     try {
       await m.instalar(ctx);
       ctx.estado.modulos[m.id] = { ok: true, em: new Date().toISOString() };
@@ -76,7 +77,15 @@ async function instalar(ctx, flags) {
       ctx.log('FALHA módulo', m.id, e.stack || e.message);
       ctx.estado.modulos[m.id] = { ok: false, em: new Date().toISOString(), erro: e.message };
       falhas.push(m);
-      ui.erro(`${m.nome}: não deu certo agora (${resumoErro(e)}). Sigo com o resto e te mostro no fim.`);
+      if (m.obrigatorio && !e.continuar) {
+        // Sem a base (Homebrew, Node, Claude Code) os outros passos só iam falhar um atrás do outro.
+        ctx.salvarEstado();
+        ui.erro(`${m.nome}: não deu certo (${resumoErro(e)}). Sem essa parte o resto não funciona, então parei aqui. Confere a internet e rode de novo: eu continuo de onde parei.`);
+        return { parou: m.nomeCurto || m.nome, motivo: resumoErro(e) };
+      }
+      // Pendência que depende da pessoa (um login) é aviso, não erro: o resto segue normal.
+      if (e.continuar) ui.aviso(`${m.nomeCurto || m.nome}: ${resumoErro(e)}`);
+      else ui.erro(`${m.nome}: não deu certo agora (${resumoErro(e)}). Sigo com o resto e te mostro no fim.`);
     }
     ctx.salvarEstado();
   }
@@ -84,7 +93,7 @@ async function instalar(ctx, flags) {
   ui.linha();
   if (falhas.length) {
     ui.aviso(`Terminei, mas ${falhas.length === 1 ? 'uma parte ficou' : `${falhas.length} partes ficaram`} pendente${falhas.length > 1 ? 's' : ''}: ${falhas.map((m) => m.nome).join(', ')}.`);
-    ui.info(`Rode ${c.bold('claude-setuper doctor')} pra ver o que falta, ou rode o instalador de novo que ele continua de onde parou.`);
+    if (!ctx.app) ui.info(`Rode ${c.bold('claude-setuper doctor')} pra ver o que falta, ou rode o instalador de novo que ele continua de onde parou.`);
   }
   if (ctx.assistido) gravarRelatorio(ctx, falhas);
 
@@ -120,7 +129,7 @@ function gravarRelatorio(ctx, falhas) {
 }
 
 function resumoErro(e) {
-  return String(e.message || e).split('\n')[0].slice(0, 120);
+  return String(e.message || e).split('\n')[0].slice(0, 220);
 }
 
 function parse(argv) {

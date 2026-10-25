@@ -7,6 +7,7 @@ import { ui } from '../ui.js';
 
 export const id = 'obsidian';
 export const nome = 'Segundo cérebro (Obsidian)';
+export const nomeCurto = 'Segundo cérebro';
 export const descricao = 'Instala o Obsidian e monta o cofre de notas que o Claude vai alimentar';
 export const padrao = true;
 
@@ -44,7 +45,7 @@ export async function verificar(ctx) {
   ];
   if (await ctx.existeComando('obsidian')) {
     const out = await ctx.run('obsidian', ['plugin', 'id=dataview', `vault=${path.basename(vault)}`], { ignorarErro: true, sempre: true, timeout: 15000 });
-    itens.push({ item: 'Plugins habilitados (clique de confiança)', ok: /enabled\s+true/.test(out), dica: 'abra o cofre e clique em "Confiar no autor e habilitar plugins"' });
+    itens.push({ item: 'Plugins habilitados (clique de confiança)', ok: /enabled\s+true/.test(out), dica: 'abra o Obsidian e clique em "Trust author and enable plugins"' });
   }
   return itens;
 }
@@ -100,13 +101,13 @@ async function instalarApp(ctx) {
     if (appInstalado(ctx)) return ui.ok('Obsidian já está instalado');
     if (ctx.semApps) return;
     const { winget } = await import('./base.js');
-    await ui.tarefa('Instalando o Obsidian, o seu segundo cérebro', 'Obsidian instalado', () => winget(ctx, 'Obsidian.Obsidian'), { demora: 'uns 2 minutos, é normal' });
+    await ui.tarefa('Instalando o Obsidian, o seu segundo cérebro', 'Obsidian instalado', async () => { await winget(ctx, 'Obsidian.Obsidian'); }, { demora: 'uns 2 minutos, é normal' });
     return;
   }
   if (ctx.plataforma === 'darwin') {
     if (ctx.existe('/Applications/Obsidian.app')) return ui.ok('Obsidian já está instalado');
     if (ctx.semApps) return;
-    await ui.tarefa('Instalando o Obsidian, o seu segundo cérebro', 'Obsidian instalado', () => ctx.run('brew', ['install', '--cask', 'obsidian']), { demora: 'uns 2 minutos, é normal' });
+    await ui.tarefa('Instalando o Obsidian, o seu segundo cérebro', 'Obsidian instalado', async () => { await ctx.run('brew', ['install', '--cask', 'obsidian']); }, { demora: 'uns 2 minutos, é normal' });
   } else if (ctx.plataforma === 'linux') {
     if (await ctx.existeComando('obsidian')) return ui.ok('Obsidian já está instalado');
     if (ctx.semApps) return;
@@ -149,12 +150,14 @@ async function abrirEConfiar(ctx, vault) {
     if (!(await ctx.esperar(async () => !(await rodando()), { intervalo: 1, limite: 20 }))) await ctx.run('pkill', ['-9', '-x', 'Obsidian'], { ignorarErro: true });
     await new Promise((r) => setTimeout(r, 1000));
   }
-  ui.pausa('O Obsidian vai abrir e perguntar se você confia nos plugins', [
-    ctx.win ? 'Se o Windows perguntar se pode abrir o Obsidian, clica em Permitir.' : 'Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.',
-    'No Obsidian, clica no botão da direita: "Confiar no autor e habilitar plugins".',
-    'Os plugins são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.',
-    ctx.win ? 'Se o Obsidian não aparecer, abre ele você mesmo pelo menu Iniciar. Eu espero você clicar.' : 'Se o Obsidian não aparecer, abre ele você mesmo pela pasta Aplicativos. Eu espero você clicar.',
-  ]);
+  // O Obsidian abre em inglês: o botão é "Trust author and enable plugins", o primeiro da esquerda.
+  const abrir = ctx.win ? 'Se o Windows perguntar se pode abrir o Obsidian, clica em Permitir.' : 'Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.';
+  const sumiu = ctx.win ? 'Se o Obsidian não aparecer, abre ele pelo menu Iniciar. Eu espero você clicar.' : 'Se o Obsidian não aparecer, abre ele pela pasta Aplicativos. Eu espero você clicar.';
+  ui.pausa('O Obsidian vai abrir e perguntar se pode ligar os complementos', ctx.app
+    ? [abrir, 'No Obsidian, clica no botão marcado aqui embaixo.', sumiu]
+    : [abrir, 'Na janela do Obsidian (em inglês), clica em "Trust author and enable plugins".',
+      'Os complementos são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.', sumiu],
+  { figura: 'obsidian-confiar' });
   // No Windows abre o programa direto: o link obsidian:// só funciona depois que o Obsidian abriu uma vez.
   // O cofre já está marcado como aberto no obsidian.json, então ele abre nele.
   if (ctx.win) {
@@ -179,7 +182,7 @@ async function abrirEConfiar(ctx, vault) {
     return /enabled\s+true/.test(out);
   }, { intervalo: 4, limite: 300 });
   if (ok) ui.ok('Plugins habilitados. Seu cofre está pronto.');
-  else ui.aviso('Não consegui confirmar o clique. Sem problema, dá pra fazer depois: o "doctor" avisa se faltar.');
+  else ui.aviso(ctx.app ? 'Não vi o clique no Obsidian. Sem problema, no fim eu te mostro o que ficou faltando.' : 'Não consegui confirmar o clique. Sem problema, dá pra fazer depois: o "doctor" avisa se faltar.');
 }
 
 function nfc(s) {
