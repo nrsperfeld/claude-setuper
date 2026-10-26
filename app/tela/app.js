@@ -380,7 +380,7 @@ S.aoEvento((ev) => {
       estado.pausa = null;
       if (ev.nivel === 'erro' && estado.atual >= 0) estado.falhos.add(estado.atual);
       // Aviso dentro de um passo é coisa que ficou pra depois (um login, um clique): a etapa fica âmbar, não verde.
-      if (ev.nivel === 'aviso' && estado.atual >= 0 && estado.fase === 'instalando') estado.pendentes.add(estado.atual);
+      if (ev.nivel === 'aviso' && estado.atual >= 0 && estado.fase === 'instalando' && !ev.texto.startsWith('Terminei')) estado.pendentes.add(estado.atual); // o resumo final não é da última etapa
       break;
     case 'tarefa':
       if (ev.estado === 'fazendo') estado.tarefa = ev.texto;
