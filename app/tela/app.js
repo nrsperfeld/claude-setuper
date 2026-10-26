@@ -195,9 +195,18 @@ function cartaoPausa(pz) {
     const url = pz.links[pz.links.length - 1];
     extras.push(h('div', { class: 'botoes' }, botao('Abrir no navegador', () => S.abrirLink(url))));
   }
+  let acoes = null;
+  if (pz.acoes?.length || pz.pular) {
+    acoes = (h('div', { class: 'botoes' },
+      (pz.acoes || []).map((a) => botao(a.rotulo, () => S.abrirLink(a.url))),
+      botao('Pedir ajuda', pedirAjuda, true),
+      pz.pular ? botao(pz.pular, (e) => { S.pular(); e.target.disabled = true; e.target.textContent = 'Seguindo...'; }, true) : null));
+  }
   return h('section', { class: 'cartao', role: 'status' },
     h('h2', {}, `✋ ${pz.titulo}`),
     pz.linhas.length ? h('ol', {}, pz.linhas.map((l) => h('li', {}, l))) : null,
+    // Com botões de ação, eles vêm antes do desenho: em tela baixa o desenho empurrava os botões pra fora.
+    acoes,
     pz.figura && FIGURAS[pz.figura] ? FIGURAS[pz.figura]() : null,
     pz.status ? h('p', { class: 'status-cartao' }, pz.status) : null,
     extras);
@@ -281,7 +290,7 @@ const FIGURAS = {
   'chrome-extensao': () => h('figure', { class: 'figura chrome' },
     h('div', { class: 'janela-chrome' },
       h('div', { class: 'loja-topo' }, h('span', { class: 'icone-loja', 'aria-hidden': 'true' }), h('b', {}, 'Claude'), alvo('Usar no Chrome', 'bchrome'))),
-    h('figcaption', {}, 'Isto é só um desenho pra você saber o que procurar. O botão de verdade está na janela do Chrome. Se estiver escrito "Adicionar ao Chrome", é o mesmo.')),
+    h('figcaption', {}, 'É só um desenho do botão: o clique é na janela do Chrome. Se lá estiver escrito "Adicionar ao Chrome", é o mesmo. Se ele pedir a conta Google, pode pular.')),
 };
 
 // ---------- detalhes ----------
@@ -321,7 +330,7 @@ S.aoEvento((ev) => {
       if (ev.estado === 'fazendo') estado.tarefa = ev.texto;
       else { estado.msgs.push({ nivel: ev.estado === 'feito' ? 'ok' : 'erro', texto: ev.texto }); estado.tarefa = ''; anotar(`${ev.texto}\n`); }
       break;
-    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, figura: ev.figura, links: [], codigos: [] }; anotar(`✋ ${ev.titulo}\n`); break;
+    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, figura: ev.figura, acoes: ev.acoes || [], pular: ev.pular, links: [], codigos: [] }; anotar(`✋ ${ev.titulo}\n`); break;
     case 'link':
     case 'codigo':
       estado.pausa ||= { titulo: 'Termine no navegador e volte pra cá', linhas: [], links: [], codigos: [] };

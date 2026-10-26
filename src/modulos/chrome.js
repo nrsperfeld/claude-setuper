@@ -57,14 +57,20 @@ export async function instalar(ctx) {
   if (extensaoInstalada(ctx)) return ui.ok('Extensão do Claude já está no Chrome');
   if (ctx.semApps || ctx.dryRun) return;
 
-  ui.pausa('Agora é no Chrome: adicionar a extensão do Claude', [
-    'O Chrome abre sozinho em alguns segundos, numa página da loja do Chrome.',
-    ctx.app ? 'Lá no Chrome (não aqui nesta janela), clica no botão azul "Usar no Chrome" e depois em "Adicionar extensão".' : 'Lá no Chrome, clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e depois em "Adicionar extensão".',
-    'Se o Chrome pedir pra entrar na conta Google, pode entrar ou pular. Não precisa pra extensão.',
-    'Se o Chrome não aparecer, abre ele pelo Dock: eu mando a página de novo. Assim que a extensão entrar, eu sigo sozinho.',
-  ], { figura: 'chrome-extensao' });
+  ui.pausa('Agora é no Chrome: adicionar a extensão do Claude', ctx.app ? [
+    'Abri o Chrome na página da extensão do Claude.',
+    'Lá no Chrome, clica em "Usar no Chrome" e depois em "Adicionar extensão". Quando ela entrar, eu sigo sozinho.',
+    'O Chrome não abriu nessa página? Clica em "Abrir a página da extensão", aqui embaixo.',
+  ] : [
+    'Vou abrir o Chrome na página da extensão do Claude.',
+    'Lá no Chrome, clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e depois em "Adicionar extensão".',
+    `Se o Chrome não abrir nessa página, abre este link nele: ${LOJA}`,
+    'Quando a extensão entrar, eu sigo sozinho.',
+  ], { figura: 'chrome-extensao', acoes: [{ rotulo: 'Abrir a página da extensão', url: LOJA }], pular: 'Seguir sem a extensão' });
   await abrirLoja(ctx);
-  const ok = await ctx.esperar(async () => extensaoInstalada(ctx), { intervalo: 3, limite: 600 });
+  const lembrete = setTimeout(() => ui.info('Ainda não vi a extensão chegar. Se travou, clica em "Abrir a página da extensão" ou em "Pedir ajuda".'), 90_000);
+  const ok = await ctx.esperar(async () => extensaoInstalada(ctx) || ui.pulou(), { intervalo: 3, limite: 600 }).finally(() => clearTimeout(lembrete));
+  if (ok && !extensaoInstalada(ctx)) return ui.info('Tudo bem, a extensão fica pra depois. No fim eu te mostro como fazer.');
   if (ok) ui.ok('Extensão instalada. O Claude já pode usar o seu Chrome.');
   else ui.aviso('Não vi a extensão aparecer. Sem problema: dá pra instalar depois pelo link que fica nas notas do Maestri.');
 }

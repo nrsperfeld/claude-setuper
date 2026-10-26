@@ -35,6 +35,8 @@ export const ui = {
 
   // Caixa destacada, usada nas pausas: uma ação só.
   // `figura` é a ilustração de onde clicar; só o app desenha.
+  pulou: () => false,
+
   pausa(titulo, linhas, _opcoes) {
     p.note(Array.isArray(linhas) ? linhas.join('\n') : linhas, c.yellow(`✋ ${titulo}`));
   },

@@ -8,6 +8,7 @@ const opcoesLimpas = (opcoes) => opcoes.map((o) => ({ value: o.value, label: lim
 
 export function criarUiApp(enviar, pedir) {
   let tarefas = 0;
+  let pulado = false;
   const msg = (nivel) => (texto) => enviar({ tipo: 'msg', nivel, texto: limpo(texto) });
 
   return {
@@ -28,9 +29,13 @@ export function criarUiApp(enviar, pedir) {
     info: msg('info'),
     aviso: msg('aviso'),
     erro: msg('erro'),
-    pausa(titulo, linhas, { figura } = {}) {
-      enviar({ tipo: 'pausa', titulo: limpo(titulo), linhas: (Array.isArray(linhas) ? linhas : [linhas]).map(limpo), figura });
+    // acoes: botões que abrem um link; pular: texto do botão que deixa a pessoa seguir sem fazer o passo.
+    pausa(titulo, linhas, { figura, acoes = [], pular } = {}) {
+      pulado = false;
+      enviar({ tipo: 'pausa', titulo: limpo(titulo), linhas: (Array.isArray(linhas) ? linhas : [linhas]).map(limpo), figura, acoes, pular: pular ? limpo(pular) : '' });
     },
+    pulou: () => pulado,
+    marcarPulado() { pulado = true; },
 
     async tarefa(fazendo, feito, fn, { demora } = {}) {
       const id = ++tarefas;

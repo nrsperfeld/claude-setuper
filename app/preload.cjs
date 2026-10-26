@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('setuper', {
   iniciar: (modo) => ipcRenderer.send('iniciar', modo),
   responder: (id, valor) => ipcRenderer.send('resposta', { id, valor }),
   abrirLink: (url) => ipcRenderer.send('abrir-link', url),
+  pular: () => ipcRenderer.send('pular'),
   copiar: (texto) => ipcRenderer.send('copiar', texto),
   abrirClaude: () => ipcRenderer.send('abrir-claude'),
   atualizar: () => ipcRenderer.send('atualizar'),

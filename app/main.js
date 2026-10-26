@@ -197,7 +197,7 @@ ipcMain.on('pronto', async () => {
       ['ferramentas-apple', cartao(1, 'O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', ['Clica em Instalar.', 'Depois aparece o contrato: clica em Concordo.', 'Demora entre 3 e 10 minutos. Eu fico esperando aqui.'], 'apple-ferramentas')],
       ['obsidian', cartao(4, 'O Obsidian vai abrir e perguntar se pode ligar os complementos', ['Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.', 'Na janela do Obsidian (em inglês), clica em "Trust author and enable plugins".', 'Os complementos são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.', 'Se o Obsidian não aparecer, abre ele pela pasta Aplicativos. Eu espero você clicar.'], 'obsidian-confiar', [{ tipo: 'msg', nivel: 'info', texto: 'Estou esperando você clicar no Obsidian...' }])],
       ['github-codigo', cartao(5, 'Vou abrir o navegador pra conectar a sua conta do GitHub', ['Vai aparecer aqui um código de 8 letras, com um botão pra copiar.', 'O navegador abre sozinho. Lá, cola o código, clica em Continuar e depois em Autorizar.', 'Depois volta pra cá, eu continuo.'], null, [{ tipo: 'link', url: 'https://github.com/login/device' }, { tipo: 'codigo', codigo: '07D6-0B19' }])],
-      ['chrome', cartao(6, 'Agora é no Chrome: adicionar a extensão do Claude', ['O Chrome abre sozinho em alguns segundos, numa página da loja do Chrome.', 'Lá no Chrome (não aqui nesta janela), clica no botão azul "Usar no Chrome" e depois em "Adicionar extensão".', 'Se o Chrome pedir pra entrar na conta Google, pode entrar ou pular. Não precisa pra extensão.', 'Se o Chrome não aparecer, abre ele pelo Dock: eu mando a página de novo. Assim que a extensão entrar, eu sigo sozinho.'], 'chrome-extensao')],
+      ['chrome', [{ tipo: 'passo', n: 6, total: passos.length, titulo: passos[5] }, { tipo: 'pausa', titulo: 'Agora é no Chrome: adicionar a extensão do Claude', linhas: ['Abri o Chrome na página da extensão do Claude.', 'Lá no Chrome, clica em "Usar no Chrome" e depois em "Adicionar extensão". Quando ela entrar, eu sigo sozinho.', 'O Chrome não abriu nessa página? Clica em "Abrir a página da extensão", aqui embaixo.'], figura: 'chrome-extensao', acoes: [{ rotulo: 'Abrir a página da extensão', url: 'https://chromewebstore.google.com/' }], pular: 'Seguir sem a extensão' }]],
     ];
     const dir = path.join(PASTA, 'telas');
     fs.mkdirSync(dir, { recursive: true });
@@ -256,6 +256,7 @@ ipcMain.on('resposta', (_e, { id, valor }) => {
   if (r) { pendentes.delete(id); r(valor); }
 });
 ipcMain.on('abrir-link', (_e, url) => { if (/^https?:\/\//.test(url)) shell.openExternal(url); });
+ipcMain.on('pular', async () => (await importarSetuper('ui.js')).ui.marcarPulado?.());
 ipcMain.on('copiar', (_e, texto) => clipboard.writeText(String(texto)));
 ipcMain.on('abrir-claude', () => abrirClaude());
 ipcMain.on('atualizar', () => atualizarApp());
