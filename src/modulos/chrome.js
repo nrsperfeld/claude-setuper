@@ -10,6 +10,8 @@ export const descricao = 'Extensão que deixa o Claude usar o seu navegador';
 export const padrao = true;
 
 const EXT_ID = 'fcoeoabgfenejglbffodgkkbkcdhcgfn';
+// Pelo caminho: logo depois de instalar, o Mac ainda não acha o app pelo nome ("Unable to find application").
+const APP_MAC = '/Applications/Google Chrome.app';
 const LOJA = `https://chromewebstore.google.com/detail/${EXT_ID}`;
 
 function dirChrome(ctx) {
@@ -66,7 +68,7 @@ export async function instalar(ctx) {
     'Lá no Chrome, clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e depois em "Adicionar extensão".',
     `Se o Chrome não abrir nessa página, abre este link nele: ${LOJA}`,
     'Quando a extensão entrar, eu sigo sozinho.',
-  ], { figura: 'chrome-extensao', acoes: [{ rotulo: 'Abrir a página da extensão', url: LOJA }], pular: 'Seguir sem a extensão' });
+  ], { figura: 'chrome-extensao', acoes: [{ rotulo: 'Abrir a página da extensão', url: LOJA, app: 'chrome' }], pular: 'Seguir sem a extensão' });
   await abrirLoja(ctx);
   const lembrete = setTimeout(() => ui.info('Ainda não vi a extensão chegar. Se travou, clica em "Abrir a página da extensão" ou em "Pedir ajuda".'), 90_000);
   const ok = await ctx.esperar(async () => extensaoInstalada(ctx) || ui.pulou(), { intervalo: 3, limite: 600 }).finally(() => clearTimeout(lembrete));
@@ -85,11 +87,11 @@ async function abrirLoja(ctx) {
   }
   const rodando = async () => !!(await ctx.run('pgrep', ['-x', 'Google Chrome'], { ignorarErro: true, sempre: true }));
   const jaAberto = await rodando();
-  await ctx.run('open', ['-a', 'Google Chrome', '--args', '--no-first-run', '--no-default-browser-check', LOJA], { ignorarErro: true });
-  if (jaAberto) return ctx.run('open', ['-a', 'Google Chrome', LOJA], { ignorarErro: true });
+  await ctx.run('open', ['-a', APP_MAC, '--args', '--no-first-run', '--no-default-browser-check', LOJA], { ignorarErro: true });
+  if (jaAberto) return ctx.run('open', ['-a', APP_MAC, LOJA], { ignorarErro: true });
   for (let i = 0; i < 3 && !(await ctx.esperar(rodando, { intervalo: 1, limite: 20 })); i++) {
-    await ctx.run('open', ['-a', 'Google Chrome', LOJA], { ignorarErro: true });
+    await ctx.run('open', ['-a', APP_MAC, LOJA], { ignorarErro: true });
   }
   await new Promise((r) => setTimeout(r, 6000));
-  if (!extensaoInstalada(ctx)) await ctx.run('open', ['-a', 'Google Chrome', LOJA], { ignorarErro: true });
+  if (!extensaoInstalada(ctx)) await ctx.run('open', ['-a', APP_MAC, LOJA], { ignorarErro: true });
 }

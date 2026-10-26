@@ -1,7 +1,7 @@
 // App do Claude Setuper no Mac: a mesma instalação do Terminal (src/), com telas no lugar do texto.
 // Desenho em docs/superpowers/specs/2026-10-24-app-mac-design.md.
 import { app, BrowserWindow, ipcMain, shell, clipboard, dialog, nativeTheme } from 'electron';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -255,7 +255,13 @@ ipcMain.on('resposta', (_e, { id, valor }) => {
   const r = pendentes.get(id);
   if (r) { pendentes.delete(id); r(valor); }
 });
-ipcMain.on('abrir-link', (_e, url) => { if (/^https?:\/\//.test(url)) shell.openExternal(url); });
+// programa: 'chrome' abre no Chrome mesmo que o navegador padrão seja outro (a loja de extensões só serve no Chrome).
+ipcMain.on('abrir-link', (_e, url, programa) => {
+  if (!/^https?:\/\//.test(url)) return;
+  if (programa === 'chrome' && process.platform === 'darwin') return execFile('open', ['-a', '/Applications/Google Chrome.app', url], (erro) => erro && shell.openExternal(url));
+  if (programa === 'chrome' && process.platform === 'win32') return execFile('cmd.exe', ['/c', 'start', '""', 'chrome', url], (erro) => erro && shell.openExternal(url));
+  shell.openExternal(url);
+});
 ipcMain.on('pular', async () => (await importarSetuper('ui.js')).ui.marcarPulado?.());
 ipcMain.on('copiar', (_e, texto) => clipboard.writeText(String(texto)));
 ipcMain.on('abrir-claude', () => abrirClaude());

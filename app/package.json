@@ -1,7 +1,7 @@
 {
   "name": "claude-setuper-app",
   "productName": "Claude Setuper",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "O Claude Setuper com telas, pro Mac.",
   "type": "module",
   "main": "main.js",

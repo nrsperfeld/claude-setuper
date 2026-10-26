@@ -198,7 +198,7 @@ function cartaoPausa(pz) {
   let acoes = null;
   if (pz.acoes?.length || pz.pular) {
     acoes = (h('div', { class: 'botoes' },
-      (pz.acoes || []).map((a) => botao(a.rotulo, () => S.abrirLink(a.url))),
+      (pz.acoes || []).map((a) => botao(a.rotulo, () => S.abrirLink(a.url, a.app))),
       botao('Pedir ajuda', pedirAjuda, true),
       pz.pular ? botao(pz.pular, (e) => { S.pular(); e.target.disabled = true; e.target.textContent = 'Seguindo...'; }, true) : null));
   }

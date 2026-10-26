@@ -1,6 +1,6 @@
 {
   "name": "claude-setuper",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Configura o Claude Code do zero, com segundo cérebro no Obsidian, GitHub, Chrome, Vercel e Maestri. Feito pra quem não é de tecnologia.",
   "type": "module",
   "bin": { "claude-setuper": "bin/claude-setuper.js" },

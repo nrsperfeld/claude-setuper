@@ -166,16 +166,16 @@ async function abrirEConfiar(ctx, vault) {
     else await ctx.abrirUrl(`obsidian://open?path=${encodeURIComponent(vault)}`);
   }
   else {
-    // Confere se abriu e tenta de novo: o primeiro open depois de instalar às vezes se perde.
+    // Confere se abriu e tenta de novo. Abre pelo caminho: logo depois de instalar, o Mac não acha o app pelo nome.
     for (let i = 0; i < 3; i++) {
-      await ctx.run('open', ['-a', 'Obsidian'], { ignorarErro: true });
+      await ctx.run('open', ['-a', '/Applications/Obsidian.app'], { ignorarErro: true });
       if (await ctx.esperar(rodando, { intervalo: 1, limite: 15 })) break;
     }
     // Na primeira abertura o Obsidian às vezes fecha sozinho segundos depois. Vigia um pouco e reabre.
     for (let i = 0; i < 2; i++) {
       if (await ctx.esperar(async () => !(await rodando()), { intervalo: 2, limite: 40 })) {
         await new Promise((r) => setTimeout(r, 2000));
-        await ctx.run('open', ['-a', 'Obsidian'], { ignorarErro: true });
+        await ctx.run('open', ['-a', '/Applications/Obsidian.app'], { ignorarErro: true });
         await ctx.esperar(rodando, { intervalo: 1, limite: 15 });
       } else break;
     }
