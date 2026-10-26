@@ -74,7 +74,7 @@ export async function instalar(ctx) {
   const ok = await ctx.esperar(async () => extensaoInstalada(ctx) || ui.pulou(), { intervalo: 3, limite: 600 }).finally(() => clearTimeout(lembrete));
   if (ok && !extensaoInstalada(ctx)) return ui.info('Tudo bem, a extensão fica pra depois. No fim eu te mostro como fazer.');
   if (ok) ui.ok('Extensão instalada. O Claude já pode usar o seu Chrome.');
-  else ui.aviso('Não vi a extensão aparecer. Sem problema: dá pra instalar depois pelo link que fica nas notas do Maestri.');
+  else ui.aviso('Não vi a extensão chegar. Tudo bem, no fim eu te mostro como terminar.');
 }
 
 // Chrome recém-instalado abre na tela de boas-vindas e engole o link da loja. Abre sem essa tela e,

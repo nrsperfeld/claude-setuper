@@ -8,7 +8,7 @@ import { apresentacao } from '../perfis.js';
 
 export const id = 'maestri';
 export const nome = 'Maestri (o seu painel com o Claude)';
-export const nomeCurto = 'Painel do Claude';
+export const nomeCurto = 'Janela do Claude';
 export const descricao = 'Instala o Maestri e deixa o Claude aberto com notas e lembretes do lado';
 export const padrao = true;
 export const plataformas = ['darwin'];

@@ -3,11 +3,12 @@ const S = window.setuper;
 const palco = document.getElementById('palco');
 const listaEtapas = document.getElementById('etapas');
 const detalhes = document.getElementById('detalhes');
+const anuncio = document.getElementById('anuncio');
 
 const estado = {
   fase: 'carregando', // inicio | perguntas | instalando | fim | falha
   inicio: null, atualizacao: null, auto: null,
-  passos: [], atual: -1, falhos: new Set(),
+  passos: [], atual: -1, falhos: new Set(), pendentes: new Set(), comecar: null,
   tarefa: '', msgs: [], pausa: null, pedido: null, introPerguntas: '',
   encerramento: '', grupos: [], soConferiu: false, falha: '',
   ajuda: null, // null | 'gerando' | { arquivo, nome, pasta } | { erro }
@@ -39,12 +40,13 @@ function desenharEtapas() {
     estado.passos.forEach((nome, i) => {
       let classe = '';
       if (estado.falhos.has(i)) classe = 'falhou';
+      else if (estado.pendentes.has(i) && (i < estado.atual || estado.fase === 'fim')) classe = 'pendente';
       else if (i < estado.atual || estado.fase === 'fim') classe = 'feito';
       else if (i === estado.atual) classe = 'atual';
       itens.push([nome, classe]);
     });
   } else itens.push(['Instalação', '']);
-  itens.push(['Pronto', estado.fase === 'fim' ? 'feito' : '']);
+  itens.push(['Pronto', estado.fase === 'fim' ? (estado.pendentes.size || estado.falhos.size ? 'pendente' : 'feito') : '']);
   listaEtapas.replaceChildren(...itens.map(([nome, classe]) => h('li', { class: classe, 'aria-current': classe === 'atual' ? 'step' : null }, h('span', { class: 'bola' }), h('span', {}, nome))));
 }
 
@@ -60,9 +62,31 @@ function desenhar() {
   else if (estado.fase === 'fim') conteudo = telaFim();
   else if (estado.fase === 'falha') conteudo = telaFalha();
   else conteudo = [];
+  // Redesenhar a cada evento jogava a rolagem pro topo e apagava o que a pessoa estava digitando.
+  const tela = chaveDaTela();
+  const mesmaTela = tela === ultimaTela;
+  const rolagem = palco.scrollTop;
+  const digitado = palco.querySelector('input')?.value;
   palco.replaceChildren(...[avisoAjuda(), conteudo].flat(3).filter((x) => x != null && x !== false));
-  const foco = palco.querySelector('[data-foco]');
-  if (foco) foco.focus();
+  if (mesmaTela) {
+    palco.scrollTop = rolagem;
+    const campo = palco.querySelector('input');
+    if (campo && digitado != null) campo.value = digitado;
+  } else {
+    ultimaTela = tela;
+    palco.scrollTop = 0;
+    const foco = palco.querySelector('[data-foco]');
+    if (foco) foco.focus();
+    // O leitor de tela anuncia só o título da tela nova, não a tela inteira a cada tarefa.
+    const titulo = palco.querySelector('h1, h2');
+    if (titulo) anuncio.textContent = titulo.textContent;
+  }
+}
+let ultimaTela = '';
+function chaveDaTela() {
+  if (estado.pedido) return `pedido:${estado.pedido.id}`;
+  if (estado.fase === 'instalando') return `pausa:${estado.pausa?.titulo || ''}`;
+  return `${estado.fase}:${estado.slide ?? ''}`;
 }
 
 function telaInicio() {
@@ -75,7 +99,12 @@ function telaInicio() {
     h('h1', {}, temInstalacao && nome ? `Que bom te ver de novo, ${nome}.` : 'Vamos preparar o seu Claude.'),
     h('p', { class: 'mut' }, temInstalacao
       ? 'Posso continuar a instalação de onde ela parou, ou só conferir se está tudo no lugar.'
-      : 'Leva uns 15 minutos. Primeiro umas perguntas rápidas, depois eu instalo tudo sozinho. Quando eu precisar de você, aparece um cartão amarelo dizendo exatamente o que fazer.'),
+      : 'Leva de 15 a 30 minutos. Primeiro umas perguntas rápidas, depois eu instalo tudo sozinho. Quando eu precisar de você, aparece um cartão amarelo dizendo exatamente o que fazer.'),
+    !temInstalacao && h('section', { class: 'grupo' }, h('b', {}, 'Antes de começar, deixa à mão'),
+      h('ul', { class: 'lista-simples' },
+        h('li', {}, 'O computador na tomada e com internet.'),
+        h('li', {}, 'A senha do computador, a mesma que você usa pra ligar ele.'),
+        h('li', {}, 'O e-mail da sua conta do Claude. A conta precisa ter um plano pago (Pro ou maior).'))),
     h('div', { class: 'botoes' },
       botao(temInstalacao ? 'Continuar a instalação' : 'Começar', () => (temInstalacao ? comecar('instalar') : apresentar(0)), false, { 'data-foco': true }),
       temInstalacao && botao('Só conferir', () => comecar('conferir'), true)),
@@ -92,7 +121,7 @@ const APRESENTACAO = [
   { icone: 'computador', titulo: 'Um Claude que trabalha no seu computador',
     texto: 'No chat, você pergunta, copia a resposta e cola em outro lugar. Aqui o Claude abre os seus arquivos, escreve, organiza pastas, monta planilhas e leva o trabalho até o fim. No que for importante, ele pede licença antes.' },
   { icone: 'memoria', titulo: 'E que lembra de você',
-    texto: 'Antes de começar, ele lê o seu segundo cérebro: o que você já decidiu, como gosta das coisas, onde cada projeto parou. Quando você corrige alguma coisa, ele anota e não repete o erro. Quanto mais você usa, mais ele fica do seu jeito.' },
+    texto: 'Ele guarda num caderno de notas, aqui no seu computador, o que você já decidiu, como gosta das coisas e onde cada projeto parou, e lê esse caderno antes de começar. A gente chama esse caderno de segundo cérebro. Quando você corrige alguma coisa, ele anota e não repete o erro.' },
   { icone: 'estrela', titulo: 'Do jeito que os usuários mais avançados trabalham',
     texto: 'Memória que não se perde, comandos prontos pro seu tipo de trabalho, rotinas que rodam sozinhas e o Claude ligado nas ferramentas que você já usa. É assim que trabalha o 1% que mais tira proveito do Claude, e o Claude Setuper monta tudo isso pra você em uns 15 minutos.' },
 ];
@@ -120,6 +149,7 @@ function telaApresentacao() {
 
 function comecar(modo) {
   estado.fase = modo === 'instalar' ? 'perguntas' : 'instalando';
+  estado.falhos.clear(); estado.pendentes.clear(); estado.msgs = [];
   if (modo !== 'instalar') estado.tarefa = 'Conferindo o que está instalado';
   desenhar();
   S.iniciar(modo);
@@ -156,11 +186,11 @@ function telaPedido(p) {
     if (p.padrao) campo.value = p.padrao;
     const enviarCampo = () => responder(campo.value);
     campo.addEventListener('keydown', (e) => { if (e.key === 'Enter') enviarCampo(); });
-    return [intro, h('h2', {}, p.msg), campo, h('div', { class: 'erro-campo', role: 'alert' }, p.erro || ''), h('div', { class: 'botoes' }, botao('Continuar', enviarCampo))];
+    return [intro, h('h2', {}, p.msg), explicacao, campo, h('div', { class: 'erro-campo', role: 'alert' }, p.erro || ''), h('div', { class: 'botoes fixo' }, botao('Continuar', enviarCampo))];
   }
 
   if (p.tipo === 'confirmar') {
-    return [intro, h('h2', {}, p.msg), explicacao, p.figura && FIGURAS[p.figura] ? FIGURAS[p.figura]() : null, h('div', { class: 'botoes' },
+    return [intro, h('h2', {}, p.msg), explicacao, p.figura && FIGURAS[p.figura] ? FIGURAS[p.figura]() : null, h('div', { class: 'botoes fixo' },
       botao(p.sim || 'Sim', () => responder(true), !p.padrao, p.padrao ? { 'data-foco': true } : {}),
       p.nao === '' ? null : botao(p.nao || 'Não', () => responder(false), !!p.padrao, p.padrao ? {} : { 'data-foco': true }))];
   }
@@ -182,7 +212,7 @@ function telaPedido(p) {
   });
   const continuar = () => responder(varios ? p.opcoes.map((o) => o.value).filter((v) => marcados.has(v)) : [...marcados][0]);
   return [intro, h('h2', {}, p.msg), explicacao, h('div', { class: 'opcoes', role: varios ? 'group' : 'radiogroup', 'aria-label': p.msg }, cartoes),
-    h('div', { class: 'botoes' }, botao('Continuar', continuar))];
+    h('div', { class: 'botoes fixo' }, botao('Continuar', continuar))];
 }
 
 function cartaoPausa(pz) {
@@ -191,19 +221,17 @@ function cartaoPausa(pz) {
     const cod = pz.codigos[pz.codigos.length - 1];
     extras.push(h('div', { class: 'codigo' }, h('code', {}, cod), botao('Copiar o código', (e) => { S.copiar(cod); e.target.textContent = 'Copiado'; }, true)));
   }
-  if (pz.links.length) {
-    const url = pz.links[pz.links.length - 1];
-    extras.push(h('div', { class: 'botoes' }, botao('Abrir no navegador', () => S.abrirLink(url))));
-  }
+  const link = pz.links.length ? pz.links[pz.links.length - 1] : null;
   let acoes = null;
-  if (pz.acoes?.length || pz.pular) {
+  if (pz.acoes?.length || pz.pular || pz.links.length) {
     acoes = (h('div', { class: 'botoes' },
+      link && botao('Abrir no navegador', () => S.abrirLink(link)),
       (pz.acoes || []).map((a) => botao(a.rotulo, () => S.abrirLink(a.url, a.app))),
       botao('Pedir ajuda', pedirAjuda, true),
       pz.pular ? botao(pz.pular, (e) => { S.pular(); e.target.disabled = true; e.target.textContent = 'Seguindo...'; }, true) : null));
   }
-  return h('section', { class: 'cartao', role: 'status' },
-    h('h2', {}, `✋ ${pz.titulo}`),
+  return h('section', { class: pz.espera ? 'cartao espera' : 'cartao', role: 'status' },
+    h('h2', {}, pz.espera ? pz.titulo : `✋ ${pz.titulo}`),
     pz.linhas.length ? h('ol', {}, pz.linhas.map((l) => h('li', {}, l))) : null,
     // Com botões de ação, eles vêm antes do desenho: em tela baixa o desenho empurrava os botões pra fora.
     acoes,
@@ -226,14 +254,14 @@ function telaInstalando() {
 // Dicas de Terminal ("rode: ...") não servem pra quem está no app; o botão de resolver cobre esses casos.
 const TECNICO = /^rode:|claude-setuper|https?:\/\//;
 // O que a pessoa faz em cada pendência comum, sem comando.
-const RESOLVER = 'O botão "Tentar resolver o que falta" abre isso de novo pra você.';
+const RESOLVER = 'O botão "Resolver o que falta" abre isso de novo pra você.';
 const DICAS_APP = [
-  [/^Login no Claude/, 'Falta entrar na sua conta do Claude. ' + RESOLVER],
+  [/^Login no Claude/, 'Falta entrar na sua conta do Claude. Sem isso ele ainda não consegue conversar com você.'],
   [/^Conta conectada|^Contas conectadas/, 'Falta entrar na sua conta do GitHub. ' + RESOLVER],
   [/^git sabe/, 'Se resolve sozinho quando a conta do GitHub estiver conectada.'],
   [/^Login na Vercel/, 'Falta entrar na sua conta da Vercel. ' + RESOLVER],
   [/^Extensão Claude no Chrome/, 'Falta adicionar a extensão do Claude no Chrome. ' + RESOLVER],
-  [/^Plugins habilitados/, 'Falta clicar em "Trust author and enable plugins" no Obsidian. ' + RESOLVER],
+  [/^Complementos do Obsidian ligados/, 'Falta clicar em "Trust author and enable plugins" no Obsidian. ' + RESOLVER],
 ];
 function dicaApp(i) {
   const d = DICAS_APP.find(([re]) => re.test(i.item));
@@ -245,21 +273,46 @@ function telaFim() {
   // O que falta (em português simples) primeiro; o que ficou pronto vem resumido pelos nomes curtos.
   const faltas = estado.grupos.flatMap((g) => g.itens.filter((i) => !i.ok).map((i) => ({ ...i, grupo: g.nome })));
   const prontos = estado.grupos.filter((g) => g.itens.every((i) => i.ok)).map((g) => g.nome);
-  const titulo = estado.soConferiu ? 'Conferência da instalação' : (estado.encerramento.split('.')[0] + '.');
+  const cm = estado.comecar || {};
+  const nome = cm.nome || (estado.encerramento.match(/^Pronto, ([^.]+)\./) || [])[1] || '';
+  // Sem login o Claude não conversa: dizer "Pronto" e pôr "Abrir o Claude" em destaque seria mentir pra pessoa.
+  const semLogin = faltas.some((i) => /^Login no Claude/.test(i.item));
+  const resolver = () => comecar('instalar');
+  let titulo, texto;
+  if (estado.soConferiu) { titulo = 'Conferência da instalação'; texto = ''; }
+  else if (semLogin) { titulo = nome ? `Quase pronto, ${nome}.` : 'Quase pronto.'; texto = 'Falta só entrar na sua conta do Claude. Sem isso ele ainda não consegue conversar com você.'; }
+  else { titulo = estado.encerramento.split('.')[0] + '.'; texto = estado.encerramento.split('. ').slice(1).join('. '); }
   return [
     h('h1', {}, titulo),
-    !estado.soConferiu && h('p', { class: 'mut' }, estado.encerramento.split('. ').slice(1).join('. ')),
-    h('div', { class: 'botoes' }, botao('Abrir o Claude', () => S.abrirClaude(), false, { 'data-foco': true }),
-      faltas.length ? botao('Tentar resolver o que falta', () => comecar('instalar'), true) : null,
-      faltas.length ? botao('Pedir ajuda', pedirAjuda, true) : null),
+    texto && h('p', { class: 'mut' }, texto),
+    h('div', { class: 'botoes' },
+      semLogin
+        ? [botao('Entrar na minha conta do Claude', resolver, false, { 'data-foco': true }), botao('Abrir o Claude mesmo assim', () => S.abrirClaude(), true)]
+        : [botao('Abrir o Claude', () => S.abrirClaude(), false, { 'data-foco': true }), faltas.length ? botao('Resolver o que falta', resolver, true) : null]),
+    !estado.soConferiu && !semLogin && paraComecar(cm),
     faltas.length
       ? h('section', { class: 'grupo' }, h('b', {}, faltas.length === 1 ? 'Falta 1 coisa, que depende de você' : `Faltam ${faltas.length} coisas, que dependem de você`),
         h('ul', {}, faltas.map((i) => h('li', { class: 'nao' }, h('span', { class: 's' }, '!'), h('span', {}, i.item, h('small', {}, dicaApp(i)))))),
-        h('p', { class: 'mut pequeno rodape-grupo' }, 'Pode abrir o Claude Setuper de novo quando quiser: ele continua de onde parou.'))
+        h('p', { class: 'mut pequeno rodape-grupo' }, 'Pode abrir o Claude Setuper de novo quando quiser: ele usa as mesmas respostas e faz só o que falta.'))
       : h('p', { class: 'mut' }, 'Tudo certo. Pode fechar esta janela.'),
     prontos.length > 0 && h('section', { class: 'grupo' }, h('b', {}, 'Pronto pra usar'),
       h('ul', { class: 'prontos' }, prontos.map((n) => h('li', { class: 'sim' }, h('span', { class: 's' }, '✓'), h('span', {}, n))))),
   ];
+}
+
+// "Pra começar": onde o Claude está, como voltar amanhã e três pedidos do cardápio do perfil.
+function paraComecar(cm) {
+  const ondeEsta = cm.maestri
+    ? 'O Claude está na janela do Maestri. É só escrever pra ele, como numa conversa de mensagem.'
+    : 'O Claude abre pelo atalho "Claude" na sua Área de Trabalho. É só escrever pra ele, como numa conversa de mensagem.';
+  const voltar = cm.maestri
+    ? 'Pra voltar amanhã, abre o Maestri: ele fica na pasta Aplicativos e no Launchpad.'
+    : 'Pra voltar amanhã, é só abrir o mesmo atalho.';
+  return h('section', { class: 'grupo comecar' }, h('b', {}, 'Pra começar'),
+    h('ul', { class: 'lista-simples' }, h('li', {}, ondeEsta), h('li', {}, voltar),
+      cm.notas ? h('li', {}, 'Nas suas notas tem o "Cardápio do Claude", com pedidos prontos do seu tipo de trabalho.') : null),
+    cm.exemplos?.length ? [h('p', { class: 'mut pequeno exemplos-titulo' }, 'Alguns pedidos pra copiar e trocar o que está entre colchetes:'),
+      h('ul', { class: 'exemplos' }, cm.exemplos.map((e) => h('li', {}, h('span', {}, e), botao('Copiar', (ev) => { S.copiar(e); ev.target.textContent = 'Copiado'; }, true))))] : null);
 }
 
 function telaFalha() {
@@ -301,8 +354,9 @@ function anotar(texto) {
 document.getElementById('pedir-ajuda').addEventListener('click', () => pedirAjuda());
 document.getElementById('ver-detalhes').addEventListener('click', (e) => {
   detalhes.hidden = !detalhes.hidden;
+  document.getElementById('aviso-detalhes').hidden = detalhes.hidden;
   e.target.setAttribute('aria-expanded', String(!detalhes.hidden));
-  e.target.textContent = detalhes.hidden ? 'Ver detalhes' : 'Esconder detalhes';
+  e.target.textContent = detalhes.hidden ? 'Ver detalhes técnicos' : 'Esconder detalhes técnicos';
   detalhes.scrollTop = detalhes.scrollHeight;
 });
 
@@ -325,12 +379,14 @@ S.aoEvento((ev) => {
       estado.msgs.push(ev);
       estado.pausa = null;
       if (ev.nivel === 'erro' && estado.atual >= 0) estado.falhos.add(estado.atual);
+      // Aviso dentro de um passo é coisa que ficou pra depois (um login, um clique): a etapa fica âmbar, não verde.
+      if (ev.nivel === 'aviso' && estado.atual >= 0 && estado.fase === 'instalando') estado.pendentes.add(estado.atual);
       break;
     case 'tarefa':
       if (ev.estado === 'fazendo') estado.tarefa = ev.texto;
       else { estado.msgs.push({ nivel: ev.estado === 'feito' ? 'ok' : 'erro', texto: ev.texto }); estado.tarefa = ''; anotar(`${ev.texto}\n`); }
       break;
-    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, figura: ev.figura, acoes: ev.acoes || [], pular: ev.pular, links: [], codigos: [] }; anotar(`✋ ${ev.titulo}\n`); break;
+    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, figura: ev.figura, acoes: ev.acoes || [], pular: ev.pular, espera: !!ev.espera, links: [], codigos: [] }; anotar(`✋ ${ev.titulo}\n`); break;
     case 'link':
     case 'codigo':
       estado.pausa ||= { titulo: 'Termine no navegador e volte pra cá', linhas: [], links: [], codigos: [] };
@@ -339,7 +395,7 @@ S.aoEvento((ev) => {
     case 'saida': anotar(ev.texto); return; // não redesenha a tela a cada linha
     case 'pedido': estado.pedido = { ...ev.pergunta, id: ev.id }; break;
     case 'encerramento': estado.encerramento = ev.texto; break;
-    case 'fim': estado.fase = 'fim'; estado.grupos = ev.grupos; estado.soConferiu = ev.soConferiu; estado.pausa = null; estado.pedido = null; break;
+    case 'fim': estado.fase = 'fim'; estado.grupos = ev.grupos; estado.soConferiu = ev.soConferiu; estado.comecar = ev.comecar || null; estado.pausa = null; estado.pedido = null; break;
     case 'falha': estado.fase = 'falha'; estado.falha = ev.texto; break;
   }
   desenhar();
@@ -361,7 +417,7 @@ function roteiro(ev) {
     return;
   }
   if (ev.tipo === 'pedido') {
-    print('pergunta');
+    setTimeout(() => S.print('pergunta'), 300); // antes da resposta automática, que sai em 1,2 s
     const p = estado.pedido;
     const msg = p.msg || '';
     let valor = p.padrao;

@@ -60,7 +60,8 @@ export const ui = {
     }
   },
 
-  async perguntar(msg, { padrao, placeholder, validar } = {}) {
+  async perguntar(msg, { padrao, placeholder, validar, explicacao } = {}) {
+    if (explicacao) p.log.message(explicacao);
     const r = await p.text({ message: msg, defaultValue: padrao, placeholder, validate: validar });
     checar(r);
     return String(r ?? padrao ?? '').trim();

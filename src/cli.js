@@ -64,8 +64,10 @@ export async function instalar(ctx, flags) {
   if (ctx.app) await (await import('./modulos/base.js')).adiantarFerramentasApple(ctx);
   await wizard(ctx);
   const ids = flags.modulos ? flags.modulos.split(',') : ctx.resp.modulos;
-  const lista = modulosParaPlataforma(ids, ctx.plataforma);
+  let lista = modulosParaPlataforma(ids, ctx.plataforma);
   const pulados = ids.filter((id) => !lista.some((m) => m.id === id));
+  // Com as mesmas respostas de antes, roda só o que ficou faltando (um login, um clique), em vez de tudo de novo.
+  if (ctx.reaproveitou && !flags.modulos) lista = await soOQueFalta(ctx, lista);
   ui.plano?.(lista.map((m) => m.nomeCurto || m.nome)); // o app mostra a lista inteira de passos antes de começar
   if (pulados.length) ui.info(`No seu sistema estes não se aplicam e vou pular: ${pulados.join(', ')}`);
 
@@ -98,7 +100,7 @@ export async function instalar(ctx, flags) {
 
   ui.linha();
   if (falhas.length) {
-    ui.aviso(`Terminei, mas ${falhas.length === 1 ? 'uma parte ficou' : `${falhas.length} partes ficaram`} pendente${falhas.length > 1 ? 's' : ''}: ${falhas.map((m) => m.nome).join(', ')}.`);
+    ui.aviso(`Terminei, mas ${falhas.length === 1 ? 'uma parte ficou' : `${falhas.length} partes ficaram`} pendente${falhas.length > 1 ? 's' : ''}: ${falhas.map((m) => m.nomeCurto || m.nome).join(', ')}.`);
     if (!ctx.app) ui.info(`Rode ${c.bold('claude-setuper doctor')} pra ver o que falta, ou rode o instalador de novo que ele continua de onde parou.`);
   }
   if (ctx.assistido) gravarRelatorio(ctx, falhas);
@@ -107,11 +109,15 @@ export async function instalar(ctx, flags) {
   ui.info('Gmail, Google Agenda, Drive, Planilhas, QuickBooks e outros apps se conectam pelo site: claude.ai > Configurações > Conectores > escolhe o app > Conectar. Depois é só abrir o Claude de novo.');
   ui.linha();
 
-  const okMaestri = lista.some((m) => m.id === 'maestri') && !falhas.some((m) => m.id === 'maestri');
-  const okAtalho = lista.some((m) => m.id === 'atalho') && !falhas.some((m) => m.id === 'atalho');
+  // Olha as respostas, não só esta rodada: voltando pra terminar um login, o Maestri já estava instalado de antes.
+  const pronto = (id) => (ctx.resp.modulos || []).includes(id) && ctx.estado.modulos[id]?.ok !== false && !falhas.some((m) => m.id === id);
+  const okMaestri = pronto('maestri') && ctx.plataforma === 'darwin';
+  const okAtalho = pronto('atalho') && ctx.plataforma !== 'darwin';
   ui.encerramento(
     okMaestri
-      ? `Pronto, ${ctx.resp.nome}. O Maestri está abrindo com o Claude e as suas notas do lado. Vai lá.`
+      ? lista.some((m) => m.id === 'maestri')
+        ? `Pronto, ${ctx.resp.nome}. O Maestri está abrindo com o Claude e as suas notas do lado.`
+        : `Pronto, ${ctx.resp.nome}. O Claude está no Maestri, com as suas notas do lado.`
       : okAtalho
         ? `Pronto, ${ctx.resp.nome}. O Claude está abrindo numa janela nova, e deixei um atalho "Claude" na sua Área de Trabalho pra próxima vez.`
         : `Pronto, ${ctx.resp.nome}. Abra o Terminal e digite ${c.bold('claude')} pra começar.`,
@@ -163,4 +169,20 @@ function parse(argv) {
     else if (!a.startsWith('-')) cmd = a;
   }
   return { cmd, flags };
+}
+
+// Módulos que falharam, que nunca rodaram ou cuja conferência ainda acusa alguma coisa (a extensão do Chrome
+// que ficou pra depois termina "ok", mas a conferência sabe que falta).
+async function soOQueFalta(ctx, lista) {
+  const faltam = [];
+  for (const m of lista) {
+    const st = ctx.estado.modulos?.[m.id];
+    let pendente = !st || st.ok === false;
+    if (!pendente) {
+      try { pendente = (await m.verificar(ctx)).some((i) => !i.ok); } catch { pendente = true; }
+    }
+    if (pendente) faltam.push(m);
+  }
+  ctx.log('só o que falta:', faltam.map((m) => m.id).join(', ') || '(nada)');
+  return faltam;
 }

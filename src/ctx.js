@@ -105,6 +105,7 @@ export function criarCtx(flags = {}) {
         const p = process.platform === 'win32'
           ? spawn('cmd.exe', ['/d', '/s', '/c', `"${[cmd, ...args].map(aspasWin).join(' ')}"`], { stdio: 'inherit', env: { ...process.env, ...opts.env }, windowsVerbatimArguments: true })
           : spawn(cmd, args, { stdio: 'inherit', env: { ...process.env, ...opts.env }, shell: opts.shell });
+        opts.sinal?.addEventListener('abort', () => p.kill());
         p.on('exit', (c) => (c === 0 || opts.ignorarErro ? res(c) : rej(new Error(`${cmd} saiu com código ${c}`))));
         p.on('error', rej);
       });

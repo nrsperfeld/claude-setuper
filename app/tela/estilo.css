@@ -26,7 +26,7 @@ button, input, a { -webkit-app-region: no-drag; }
 .marca b { display: block; font-size: 15px; }
 .marca span { display: block; font-size: 12px; color: var(--mut); }
 .etapas { list-style: none; margin: 0; padding: 0; }
-.etapas li { display: flex; gap: 10px; align-items: flex-start; padding: 5px 8px; border-radius: 8px; font-size: 14px; color: var(--mut); }
+.etapas li { display: flex; gap: 10px; align-items: flex-start; padding: 5px 8px; border-radius: 8px; font-size: 15px; color: var(--mut); }
 .etapas li .bola { flex: 0 0 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
 .etapas li.atual { color: var(--fg); background: var(--card2); font-weight: 600; }
 .etapas li.atual .bola { border-color: var(--acc); border-top-color: transparent; animation: gira 1s linear infinite; }
@@ -35,6 +35,9 @@ button, input, a { -webkit-app-region: no-drag; }
 .etapas li.feito .bola::after { content: "✓"; }
 .etapas li.falhou .bola { border-color: var(--erro); background: var(--erro); color: var(--bg); }
 .etapas li.falhou .bola::after { content: "!"; }
+.etapas li.pendente { color: var(--fg); }
+.etapas li.pendente .bola { border-color: var(--aviso); background: var(--aviso); color: var(--bg); }
+.etapas li.pendente .bola::after { content: "!"; }
 @keyframes gira { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .etapas li.atual .bola { animation: none; border-top-color: var(--acc); } }
 
@@ -45,7 +48,7 @@ h1 { font-size: 32px; line-height: 1.15; letter-spacing: -.015em; margin: 0 0 12
 h2 { font-size: 24px; line-height: 1.25; letter-spacing: -.01em; margin: 0 0 20px; }
 p { margin: 0 0 14px; }
 .mut { color: var(--mut); }
-.pequeno { font-size: 14px; }
+.pequeno { font-size: 15px; }
 
 .btn {
   display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 12px; cursor: pointer;
@@ -56,7 +59,7 @@ p { margin: 0 0 14px; }
 .btn2 { background: var(--card); color: var(--fg); border: 1px solid var(--line); }
 .botoes { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
 .botoes + p { margin-top: 16px; }
-.link { background: none; border: 0; padding: 0; color: var(--mut); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.link { background: none; border: 0; padding: 0; color: var(--mut); font: inherit; font-size: 15px; text-decoration: underline; cursor: pointer; }
 :focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; }
 
 input[type=text], input[type=password] {
@@ -68,7 +71,7 @@ input[type=text]:focus, input[type=password]:focus { outline: none; border-color
 
 /* Opções em cartões grandes, mais fáceis de acertar que um botãozinho de rádio. */
 .opcoes { display: grid; gap: 10px; }
-.opcao { display: flex; gap: 14px; align-items: flex-start; text-align: left; width: 100%; padding: 14px 16px; border-radius: 12px;
+.opcao { display: flex; gap: 14px; align-items: flex-start; text-align: left; width: 100%; padding: 11px 16px; border-radius: 12px;
   border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
 .opcao:hover { border-color: var(--mut); }
 .opcao .marcador { flex: 0 0 22px; height: 22px; margin-top: 1px; border: 2px solid var(--mut); border-radius: 50%; display: grid; place-items: center; }
@@ -106,7 +109,7 @@ input[type=text]:focus, input[type=password]:focus { outline: none; border-color
 .grupo li { display: flex; gap: 10px; font-size: 15px; padding: 3px 0; }
 .grupo li .s { flex: 0 0 16px; font-weight: 800; }
 .grupo li.sim .s { color: var(--ok); } .grupo li.nao .s { color: var(--aviso); }
-.grupo li small { display: block; color: var(--mut); font-size: 13px; }
+.grupo li small { display: block; color: var(--mut); font-size: 15px; }
 .faixa { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--acc); margin-bottom: 22px; }
 
 .rodape { grid-column: 2; padding: 10px 56px 14px; border-top: 1px solid var(--line); }
@@ -119,7 +122,7 @@ input[type=text]:focus, input[type=password]:focus { outline: none; border-color
 
 /* Figuras: desenho da janela que vai aparecer, com o botão certo marcado. */
 .figura { margin: 18px 0 4px; }
-.figura figcaption { font-size: 13px; color: var(--mut); margin-top: 8px; }
+.figura figcaption { font-size: 15px; color: var(--fg); margin-top: 10px; }
 .alvo { position: relative; outline: 3px solid var(--acc); outline-offset: 3px; animation: pulsa 1.6s ease-in-out infinite; }
 .alvo .seta { position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); white-space: nowrap;
   font: 700 11px/1 -apple-system, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--acc-fg); background: var(--acc); padding: 5px 8px; border-radius: 6px; }
@@ -130,7 +133,7 @@ input[type=text]:focus, input[type=password]:focus { outline: none; border-color
 .janela-mac .icone-mac { font-size: 30px; line-height: 1; margin-bottom: 8px; color: #666; }
 .janela-mac p { margin: 0 0 14px; }
 .botoes-mac { display: flex; gap: 8px; justify-content: flex-end; }
-.bmac { background: #fff; border: 1px solid #c8c8c8; border-radius: 6px; padding: 4px 12px; font-size: 13px; }
+.bmac { background: #fff; border: 1px solid #c8c8c8; border-radius: 6px; padding: 4px 12px; font-size: 14px; }
 .bmac.azul { background: #0a6cff; color: #fff; border-color: #0a6cff; }
 
 .janela-obsidian { background: #262626; color: #dadada; border-radius: 10px; padding: 18px 18px 34px; max-width: 460px; box-shadow: 0 8px 30px rgba(0,0,0,.3); font: 13px/1.4 -apple-system, sans-serif; display: grid; gap: 8px; }
@@ -138,7 +141,7 @@ input[type=text]:focus, input[type=password]:focus { outline: none; border-color
 .linha-cinza { display: block; height: 8px; border-radius: 4px; background: #3a3a3a; }
 .linha-cinza.curta { width: 70%; }
 .botoes-obsidian { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.bobs { background: #3f3f3f; color: #dadada; border-radius: 6px; padding: 6px 10px; font-size: 12px; }
+.bobs { background: #3f3f3f; color: #dadada; border-radius: 6px; padding: 6px 10px; font-size: 14px; }
 .bobs.apagado { opacity: .55; }
 
 .janela-chrome { background: #fff; color: #1f1f1f; border-radius: 10px; padding: 16px 16px 34px; max-width: 460px; box-shadow: 0 8px 30px rgba(0,0,0,.2); font: 14px/1.4 -apple-system, sans-serif; }
@@ -161,3 +164,17 @@ input[type=text]:focus, input[type=password]:focus { outline: none; border-color
 .cartao.ajuda { background: var(--card2); border-color: var(--line); }
 .cartao.ajuda p { margin: 0 0 8px; }
 .rodape .link + .link { margin-left: 22px; }
+
+/* Botões das perguntas presos embaixo: com muitas opções, o Continuar sumia abaixo da dobra num notebook de 13". */
+.botoes.fixo { position: sticky; bottom: -24px; margin-top: 18px; padding: 16px 0 24px; background: linear-gradient(to bottom, transparent, var(--bg) 30%); }
+/* Cartão de espera: nada pra fazer agora, então sem o amarelo de "faça isso". */
+.cartao.espera { background: var(--card); border-color: var(--line); }
+.lista-simples { list-style: disc; padding-left: 20px; margin: 6px 0 0; }
+.lista-simples li { display: list-item; padding: 3px 0; font-size: 15px; }
+.grupo.comecar { border-color: var(--acc); }
+.exemplos-titulo { margin: 12px 0 6px; }
+.exemplos { display: grid; gap: 8px; }
+.grupo .exemplos li { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 10px; background: var(--card2); }
+.exemplos .btn { padding: 6px 12px; font-size: 14px; flex: none; }
+.aviso-detalhes { margin: 10px 0 0; font-size: 14px; color: var(--mut); }
+.so-leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -5,7 +5,7 @@ import { ui } from '../ui.js';
 
 export const id = 'effortless';
 export const nome = 'Esforço automático (Effortless)';
-export const nomeCurto = 'Esforço automático';
+export const nomeCurto = 'Ajuste automático';
 export const descricao = 'O Claude escolhe sozinho quanto pensar em cada pedido';
 export const padrao = true;
 

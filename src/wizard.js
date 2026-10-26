@@ -29,6 +29,19 @@ export async function wizard(ctx) {
     return ctx.resp;
   }
 
+  // Voltando pra terminar o que faltou: não refaz as perguntas, a não ser que a pessoa queira.
+  if (salvo.nome && salvo.perfil && salvo.modulos?.length) {
+    const mesmas = await ui.confirmar(`Que bom te ver de novo, ${salvo.nome}. Posso usar as mesmas respostas da outra vez?`, true, {
+      sim: 'Pode, usa as mesmas', nao: 'Quero responder de novo',
+      explicacao: 'Assim eu vou direto ao que ficou faltando, sem repetir o que já está pronto.',
+    });
+    if (mesmas) {
+      ctx.resp = { ...salvo };
+      ctx.reaproveitou = true;
+      return ctx.resp;
+    }
+  }
+
   // No app, a tela de boas-vindas já disse isso.
   if (!ctx.app) {
     ui.info('Vou preparar o seu Claude. Leva uns 15 minutos.\nEu aviso toda vez que precisar de você, e espero o tempo que for.');
@@ -53,6 +66,7 @@ export async function wizard(ctx) {
   const idade = await ui.perguntar('Quantos anos você tem?', {
     padrao: salvo.idade,
     placeholder: 'Só o número',
+    explicacao: 'Uso só pra ajustar o jeito do Claude falar com você. Fica guardado só no seu computador.',
     validar: (v) => (!v && salvo.idade) || /^\d{1,3}$/.test(String(v || '').trim()) && +v >= 6 && +v <= 110 ? undefined : 'Só o número, por exemplo 34.',
   });
 
@@ -71,14 +85,17 @@ export async function wizard(ctx) {
   const trabalho = await ui.perguntar(p.trabalho.pergunta, {
     padrao: salvo.perfil === p.id ? salvo.trabalho : undefined,
     placeholder: p.trabalho.placeholder,
+    explicacao: 'Ajuda o Claude a entender o seu dia a dia. Se preferir, pode deixar em branco.',
   });
 
-  const menor = Number(idade) < 18;
+  // "Nunca pede licença" não aparece pra menor de idade nem pra quem ainda está começando com tecnologia ou IA.
+  const semLivre = Number(idade) < 18 || tecnologia === 'pouco' || ia === 'nunca';
   const autonomia = await ui.escolher(
     'Como você prefere que o Claude trabalhe?',
-    AUTONOMIAS.filter((a) => !(menor && a.value === 'livre')),
+    AUTONOMIAS.filter((a) => !(semLivre && a.value === 'livre')),
     // Quem já usa IA pra código costuma preferir menos interrupção; o resto começa no equilibrado.
-    { padrao: salvo.autonomia && !(menor && salvo.autonomia === 'livre') ? salvo.autonomia : ia === 'code' && !menor ? 'confiante' : 'equilibrado' },
+    { padrao: salvo.autonomia && !(semLivre && salvo.autonomia === 'livre') ? salvo.autonomia : ia === 'code' && !semLivre ? 'confiante' : 'equilibrado',
+      explicacao: 'Dá pra mudar depois. Em qualquer opção, o Claude nunca apaga pastas inteiras nem mexe nas suas senhas.' },
   );
 
   const pacotes = await ui.escolherVarios(
@@ -96,7 +113,12 @@ export async function wizard(ctx) {
 
   let modulos = MODULOS.filter((m) => m.padrao && doSistema(m) && !p.semModulos.includes(m.id)).map((m) => m.id);
   // A resposta recomendada fica no "Sim": com ela no "Não", a pessoa lia "não" e achava que estava recusando a instalação.
-  const tudo = await ui.confirmar('Posso instalar tudo o que faz sentido pro seu perfil?', true, { sim: 'Sim, pode instalar tudo (recomendado)', nao: 'Quero escolher o que vai ser instalado' });
+  const tudo = await ui.confirmar('Posso instalar tudo o que faz sentido pro seu perfil?', true, {
+    sim: 'Sim, pode instalar tudo (recomendado)', nao: 'Quero escolher o que vai ser instalado',
+    explicacao: ctx.plataforma === 'darwin'
+      ? 'Vou instalar o Claude, o Obsidian (onde ficam as suas notas), o Maestri (a janela onde você conversa com o Claude) e o Google Chrome, se ainda não tiver. Também deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pro Claude conseguir ler. Nada que você já tem é apagado.'
+      : 'Vou instalar o Claude, o Obsidian (onde ficam as suas notas) e o Google Chrome, se ainda não tiver, e deixo um atalho do Claude na Área de Trabalho. Também deixo agendados um backup das notas e uma atualização por semana. Nada que você já tem é apagado.',
+  });
   const avancado = !tudo;
   if (avancado) {
     modulos = await ui.escolherVarios(

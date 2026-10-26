@@ -44,6 +44,7 @@ export function criarTerminal(ctx, enviar) {
           setTimeout(() => p.stdin.writable && p.stdin.write('\r'), 3000);
         }
       };
+      opts.sinal?.addEventListener('abort', () => p.kill());
       p.stdout.on('data', ler);
       p.stderr.on('data', ler);
       p.on('exit', (c) => (c === 0 || opts.ignorarErro ? res(c) : rej(new Error(`${cmd} saiu com código ${c}`))));

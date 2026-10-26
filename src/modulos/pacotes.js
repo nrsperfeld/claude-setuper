@@ -5,7 +5,7 @@ import { ui } from '../ui.js';
 
 export const id = 'pacotes';
 export const nome = 'Pacotes de habilidades';
-export const nomeCurto = 'Habilidades';
+export const nomeCurto = 'Comandos prontos';
 export const descricao = 'Comandos prontos pro seu tipo de trabalho (escrita, negócios, pesquisa...)';
 export const padrao = true;
 

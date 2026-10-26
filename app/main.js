@@ -60,7 +60,7 @@ function criarAskpass() {
 # Pede a senha do Mac numa janela. Criado pelo Claude Setuper (app).
 if [ -f "${teste}" ]; then sed -n 's/.*"senha" *: *"\\([^"]*\\)".*/\\1/p' "${teste}"; exit 0; fi
 exec /usr/bin/osascript \\
-  -e 'display dialog "O Claude Setuper precisa da senha do seu Mac pra instalar o Homebrew. É a mesma senha que você usa pra ligar o computador." default answer "" with hidden answer with title "Claude Setuper" with icon caution buttons {"Cancelar", "OK"} default button "OK"' \\
+  -e 'display dialog "O Claude Setuper precisa da senha do seu Mac pra instalar as ferramentas de base. É a mesma senha que você usa pra ligar o computador. Ela não fica guardada em lugar nenhum." default answer "" with hidden answer with title "Claude Setuper" with icon note buttons {"Cancelar", "OK"} default button "OK"' \\
   -e 'text returned of result'
 `, { mode: 0o700 });
   fs.chmodSync(arquivo, 0o700);
@@ -107,6 +107,18 @@ async function instalarComando(ctx) {
   } catch (e) {
     ctx.log('aviso comando claude-setuper', e.message);
   }
+}
+
+// O que a tela final mostra em "Pra começar": onde o Claude está e três pedidos do cardápio do perfil.
+function paraComecar() {
+  const r = lerJson(path.join(PASTA, 'estado.json'))?.respostas || {};
+  let exemplos = [];
+  try {
+    const cardapio = fs.readFileSync(path.join(SETUPER, 'templates', 'cardapio', `${r.perfil || 'dia-a-dia'}.md`), 'utf8');
+    exemplos = cardapio.split('\n').filter((l) => l.startsWith('- ')).slice(0, 3).map((l) => l.slice(2).trim());
+  } catch {}
+  const maestri = ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'].some((p) => fs.existsSync(p));
+  return { nome: r.nome || '', exemplos, maestri, notas: (r.modulos || []).includes('obsidian') };
 }
 
 // Mesma conferência do "claude-setuper doctor", devolvida em dados pra tela.
@@ -186,7 +198,7 @@ function criarJanela() {
 ipcMain.on('pronto', async () => {
   // Só pra conferir o visual das telas sem rodar uma instalação inteira: cada cena vira um print em telas/.
   if (process.argv.includes('--demo-cartoes')) {
-    const passos = ['Preparar o computador', 'Configurar o Claude', 'Esforço automático', 'Segundo cérebro', 'GitHub', 'Claude no Chrome', 'Publicar sites', 'Habilidades', 'Ferramentas', 'Rotinas', 'Manter atualizado', 'Painel do Claude'];
+    const passos = ['Preparar o computador', 'Configurar o Claude', 'Ajuste automático', 'Segundo cérebro', 'GitHub', 'Claude no Chrome', 'Publicar sites', 'Comandos prontos', 'Apps conectados', 'Rotinas', 'Manter atualizado', 'Janela do Claude'];
     const { ui } = await importarSetuper('ui.js');
     const cartao = (n, titulo, linhas, figura, extras = []) => [
       { tipo: 'passo', n, total: passos.length, titulo: passos[n - 1] },
@@ -216,15 +228,22 @@ ipcMain.on('pronto', async () => {
     await github;
     enviar({ tipo: 'fim', soConferiu: false, grupos: [
       { nome: 'Preparar o computador', itens: [{ item: 'Claude Code', ok: true }, { item: 'Login no Claude', ok: false, dica: 'rode: claude auth login' }] },
-      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Plugins habilitados (clique de confiança)', ok: false, dica: 'abra o cofre e clique em "Trust author and enable plugins"' }] },
+      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Complementos do Obsidian ligados (clique de confiança)', ok: false, dica: 'abra o cofre e clique em "Trust author and enable plugins"' }] },
     ] });
     enviar({ tipo: 'encerramento', texto: 'Pronto, Ana. O Maestri está abrindo com o Claude e as suas notas do lado. Vai lá.' });
     enviar({ tipo: 'fim', soConferiu: false, grupos: [
       { nome: 'Preparar o computador', itens: [{ item: 'Claude Code', ok: true }, { item: 'Login no Claude', ok: false, dica: 'rode: claude auth login' }] },
-      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Plugins habilitados (clique de confiança)', ok: false, dica: 'abra o cofre e clique em "Trust author and enable plugins"' }] },
-      ...['Configurar o Claude', 'Esforço automático', 'Habilidades', 'Ferramentas', 'Rotinas', 'Painel do Claude'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] })),
+      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Complementos do Obsidian ligados (clique de confiança)', ok: false, dica: 'abra o cofre e clique em "Trust author and enable plugins"' }] },
+      ...['Configurar o Claude', 'Ajuste automático', 'Comandos prontos', 'Apps conectados', 'Rotinas', 'Janela do Claude'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] })),
     ] });
     await print('fim');
+    // A mesma tela com o login feito: aparece o "Pra começar" com os pedidos do cardápio.
+    enviar({ tipo: 'encerramento', texto: 'Pronto, Ana. O Maestri está abrindo com o Claude e as suas notas do lado.' });
+    enviar({ tipo: 'fim', soConferiu: false, comecar: { nome: 'Ana', maestri: true, notas: true, exemplos: ['Monta um plano de estudo pra prova de [matéria] no dia [data], que caiba na minha rotina.', 'Me faz 5 perguntas sobre [assunto], uma de cada vez, sem dar a resposta antes de eu tentar.', 'Me explica [conteúdo difícil] com um exemplo do meu dia a dia, e depois eu explico de volta.'] }, grupos: [
+      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Complementos do Obsidian ligados (clique de confiança)', ok: false, dica: '' }] },
+      ...['Preparar o computador', 'Configurar o Claude', 'Ajuste automático', 'Comandos prontos', 'Rotinas', 'Janela do Claude'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] })),
+    ] });
+    await print('fim-com-login');
     await janela.webContents.executeJavaScript("document.getElementById('pedir-ajuda').click()");
     await new Promise((r) => setTimeout(r, 6000));
     await print('pedir-ajuda');
@@ -242,7 +261,7 @@ ipcMain.on('iniciar', async (_e, modo) => {
   try {
     if (modo === 'instalar') await instalarTudo();
     enviar({ tipo: 'tarefa', id: 0, estado: 'fazendo', texto: 'Conferindo se ficou tudo no lugar' });
-    enviar({ tipo: 'fim', grupos: await conferencia(), soConferiu: modo !== 'instalar' });
+    enviar({ tipo: 'fim', grupos: await conferencia(), soConferiu: modo !== 'instalar', comecar: paraComecar() });
   } catch (e) {
     fs.appendFileSync(path.join(PASTA, 'registro.log'), `[app] ${e.stack || e.message}\n`);
     enviar({ tipo: 'falha', texto: String(e.message || e).split('\n')[0] });
@@ -257,6 +276,11 @@ ipcMain.on('resposta', (_e, { id, valor }) => {
 });
 // programa: 'chrome' abre no Chrome mesmo que o navegador padrão seja outro (a loja de extensões só serve no Chrome).
 ipcMain.on('abrir-link', (_e, url, programa) => {
+  // programa: 'obsidian' abre o próprio app (recém-instalado, o link obsidian:// ainda pode não funcionar).
+  if (programa === 'obsidian' && /^obsidian:\/\//.test(url)) {
+    if (process.platform === 'darwin') return execFile('open', ['-a', '/Applications/Obsidian.app'], (erro) => erro && shell.openExternal(url));
+    return shell.openExternal(url);
+  }
   if (!/^https?:\/\//.test(url)) return;
   if (programa === 'chrome' && process.platform === 'darwin') return execFile('open', ['-a', '/Applications/Google Chrome.app', url], (erro) => erro && shell.openExternal(url));
   if (programa === 'chrome' && process.platform === 'win32') return execFile('cmd.exe', ['/c', 'start', '""', 'chrome', url], (erro) => erro && shell.openExternal(url));

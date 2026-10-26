@@ -5,7 +5,7 @@ import { ui } from '../ui.js';
 
 export const id = 'mcps';
 export const nome = 'Ferramentas conectadas (Gmail, Drive, Notion...)';
-export const nomeCurto = 'Ferramentas';
+export const nomeCurto = 'Apps conectados';
 export const descricao = 'Liga o Claude às ferramentas que você já usa';
 export const padrao = true;
 

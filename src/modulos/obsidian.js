@@ -39,13 +39,13 @@ export async function verificar(ctx) {
   const registrado = Object.values(reg.vaults || {}).some((v) => nfc(v.path) === nfc(vault));
   const itens = [
     { item: 'Obsidian instalado', ok: temApp },
-    { item: 'Cofre com pasta CLAUDE/', ok: ctx.existe(path.join(vault, 'CLAUDE', 'projetos')) },
-    { item: 'Cofre registrado no Obsidian', ok: registrado },
-    { item: 'Plugins Dataview e Templater', ok: PLUGINS.every((p) => ctx.existe(path.join(vault, '.obsidian', 'plugins', p.id, 'main.js'))) },
+    { item: 'Notas com a pasta CLAUDE/', ok: ctx.existe(path.join(vault, 'CLAUDE', 'projetos')) },
+    { item: 'Notas ligadas ao Obsidian', ok: registrado },
+    { item: 'Complementos Dataview e Templater', ok: PLUGINS.every((p) => ctx.existe(path.join(vault, '.obsidian', 'plugins', p.id, 'main.js'))) },
   ];
   if (await ctx.existeComando('obsidian')) {
     const out = await ctx.run('obsidian', ['plugin', 'id=dataview', `vault=${path.basename(vault)}`], { ignorarErro: true, sempre: true, timeout: 15000 });
-    itens.push({ item: 'Plugins habilitados (clique de confiança)', ok: /enabled\s+true/.test(out), dica: 'abra o Obsidian e clique em "Trust author and enable plugins"' });
+    itens.push({ item: 'Complementos do Obsidian ligados (clique de confiança)', ok: /enabled\s+true/.test(out), dica: 'abra o Obsidian e clique em "Trust author and enable plugins"' });
   }
   return itens;
 }
@@ -56,7 +56,7 @@ export async function instalar(ctx) {
 
   await instalarApp(ctx);
 
-  await ui.tarefa('Montando o seu cofre de notas', 'Cofre montado', async () => {
+  await ui.tarefa('Montando o seu caderno de notas', 'Caderno de notas montado', async () => {
     const pastas = { feedback: 'feedback', 'decisões': 'decisão', 'padrões': 'padrão', descobertas: 'descoberta', projetos: 'projeto' };
     for (const [pasta, tag] of Object.entries(pastas)) {
       fs.mkdirSync(path.join(vault, 'CLAUDE', pasta), { recursive: true });
@@ -78,18 +78,17 @@ export async function instalar(ctx) {
     ctx.escreverSeFaltar(path.join(obs, 'plugins', 'templater-obsidian', 'data.json'), { templates_folder: 'TEMPLATES', trigger_on_file_creation: false });
   });
 
-  await ui.tarefa('Baixando os plugins do cofre', 'Plugins baixados', async (msg) => {
+  await ui.tarefa('Preparando os complementos das notas', 'Complementos prontos', async (msg) => {
     for (const p of PLUGINS) {
       const dest = path.join(vault, '.obsidian', 'plugins', p.id);
       if (ctx.existe(path.join(dest, 'main.js'))) continue;
-      msg(`Baixando ${p.id}`);
       const rel = await ctx.baixarJson(`https://api.github.com/repos/${p.repo}/releases/latest`);
       const assets = Object.fromEntries(rel.assets.map((a) => [a.name, a.browser_download_url]));
       for (const f of ['main.js', 'manifest.json', 'styles.css']) if (assets[f]) await ctx.baixar(assets[f], path.join(dest, f));
     }
   });
 
-  await ui.tarefa('Registrando o cofre no Obsidian', 'Cofre registrado', async () => {
+  await ui.tarefa('Ligando as suas notas ao Obsidian', 'Notas ligadas ao Obsidian', async () => {
     registrarVault(ctx, vault);
   });
 
@@ -154,10 +153,11 @@ async function abrirEConfiar(ctx, vault) {
   const abrir = ctx.win ? 'Se o Windows perguntar se pode abrir o Obsidian, clica em Permitir.' : 'Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.';
   const sumiu = ctx.win ? 'Se o Obsidian não aparecer, abre ele pelo menu Iniciar. Eu espero você clicar.' : 'Se o Obsidian não aparecer, abre ele pela pasta Aplicativos. Eu espero você clicar.';
   ui.pausa('O Obsidian vai abrir e perguntar se pode ligar os complementos', ctx.app
-    ? [abrir, 'No Obsidian, clica no botão marcado aqui embaixo.', sumiu]
+    ? [abrir, 'No Obsidian, clica em "Trust author and enable plugins", o botão marcado no desenho aqui embaixo.',
+      'Se o Obsidian não aparecer, clica em Abrir o Obsidian, aqui embaixo.']
     : [abrir, 'Na janela do Obsidian (em inglês), clica em "Trust author and enable plugins".',
       'Os complementos são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.', sumiu],
-  { figura: 'obsidian-confiar' });
+  { figura: 'obsidian-confiar', acoes: [{ rotulo: 'Abrir o Obsidian', url: `obsidian://open?path=${encodeURIComponent(vault)}`, app: 'obsidian' }], pular: 'Fazer isso depois' });
   // No Windows abre o programa direto: o link obsidian:// só funciona depois que o Obsidian abriu uma vez.
   // O cofre já está marcado como aberto no obsidian.json, então ele abre nele.
   if (ctx.win) {
@@ -182,14 +182,13 @@ async function abrirEConfiar(ctx, vault) {
   }
   const cli = await ctx.existeComando('obsidian');
   if (!cli) {
-    ui.info('Quando terminar, ative também o "Command line interface" nas Configurações do Obsidian (General). Sigo em frente.');
+    if (!ctx.app) ui.info('Quando terminar, ative também o "Command line interface" nas Configurações do Obsidian (General). Sigo em frente.');
     return;
   }
-  const ok = await ctx.esperar(async () => {
-    const out = await ctx.run('obsidian', ['plugin', 'id=dataview', `vault=${path.basename(vault)}`], { ignorarErro: true, sempre: true, timeout: 15000 });
-    return /enabled\s+true/.test(out);
-  }, { intervalo: 4, limite: 300 });
-  if (ok) ui.ok('Plugins habilitados. Seu cofre está pronto.');
+  const ligado = async () => /enabled\s+true/.test(await ctx.run('obsidian', ['plugin', 'id=dataview', `vault=${path.basename(vault)}`], { ignorarErro: true, sempre: true, timeout: 15000 }));
+  const ok = await ctx.esperar(async () => ui.pulou() || (await ligado()), { intervalo: 4, limite: 300 });
+  if (ok && ui.pulou() && !(await ligado())) return ui.info('Tudo bem, fica pra depois. No fim eu te mostro como terminar.');
+  if (ok) ui.ok('Complementos ligados. Suas notas estão prontas.');
   else ui.aviso(ctx.app ? 'Não vi o clique no Obsidian. Sem problema, no fim eu te mostro o que ficou faltando.' : 'Não consegui confirmar o clique. Sem problema, dá pra fazer depois: o "doctor" avisa se faltar.');
 }
 

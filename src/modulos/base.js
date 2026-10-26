@@ -45,12 +45,18 @@ export async function instalar(ctx) {
 export async function adiantarFerramentasApple(ctx) {
   if (ctx.plataforma !== 'darwin' || ctx.semApps || ctx.dryRun) return;
   if (await cltPronto(ctx)) return;
-  await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
   ctx.cltPedido = true;
-  await ui.confirmar('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', true, {
-    sim: 'Já cliquei em Instalar', nao: '', figura: 'apple-ferramentas',
-    explicacao: 'Clica em Instalar e depois em Concordo. O Mac leva de 3 a 10 minutos pra instalar, e enquanto isso eu te faço umas perguntas.',
-  });
+  // A janela da Apple costuma abrir atrás desta. Quem não viu, pede de novo e eu abro outra vez.
+  for (let vez = 0; vez < 3; vez++) {
+    await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
+    const viu = await ui.confirmar('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', true, {
+      sim: 'Já cliquei em Instalar', nao: vez < 2 ? 'Não apareceu nenhuma janela' : '', figura: 'apple-ferramentas',
+      explicacao: vez === 0
+        ? 'Clica em Instalar e depois em Concordo. O Mac leva de 3 a 10 minutos pra instalar, e enquanto isso eu te faço umas perguntas.'
+        : 'Pedi a janela de novo. Ela pode estar atrás desta: dá uma olhada nas outras janelas abertas. Clica em Instalar e depois em Concordo.',
+    });
+    if (viu || await cltPronto(ctx)) return;
+  }
 }
 
 async function cltPronto(ctx) {
@@ -61,10 +67,12 @@ async function xcodeCLT(ctx) {
   if (await cltPronto(ctx)) return ui.ok('Ferramentas da Apple já estão instaladas');
   if (ctx.semApps) return;
   if (ctx.cltPedido) {
-    ui.pausa('Esperando as ferramentas da Apple terminarem de instalar', [
-      'Elas estão instalando numa janela da Apple, que pode estar atrás desta.',
-      'Se você ainda não clicou em Instalar, procura essa janela e clica lá. Sem essas ferramentas eu não consigo seguir.',
-    ], { figura: 'apple-ferramentas' });
+    // Aqui a pessoa já clicou: é espera, não pedido. Sem a mão e sem o desenho, pra não parecer que ela errou.
+    ui.pausa('As ferramentas da Apple estão instalando', [
+      'Leva de 3 a 10 minutos. Você não precisa fazer nada, é só esperar.',
+      'A janela da Apple mostra uma barrinha andando. Quando ela terminar, pode clicar em Concluído.',
+      'Se a janela da Apple sumiu antes de terminar, eu abro ela de novo sozinho.',
+    ], { espera: true });
   } else {
     ui.pausa('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', [
       'Clica em Instalar.',
@@ -127,14 +135,15 @@ export async function brewInstalar(ctx, modulo, args) {
 
 async function homebrew(ctx) {
   brewNoPerfil(ctx);
-  if (await ctx.existeComando('brew')) return ui.ok('Homebrew já está instalado');
+  if (await ctx.existeComando('brew')) return ui.ok('Ferramentas de base já estão instaladas');
   if (ctx.semApps) return;
   if (!(await ctx.run('id', ['-Gn'], { ignorarErro: true, sempre: true })).split(/\s+/).includes('admin')) {
     throw new Error('esse usuário do Mac não é administrador, e o Homebrew precisa de um. Peça acesso de administrador (Ajustes > Usuários e Grupos) e rode de novo');
   }
   ui.pausa('O Mac vai pedir a sua senha', ctx.app ? [
-    'Vai aparecer uma janela pedindo a senha. É a mesma que você usa pra ligar o computador.',
-    'Digita e clica em OK. Pode aparecer mais de uma vez.',
+    'Vai aparecer uma janela do Claude Setuper pedindo a senha do Mac, a mesma que você usa pra ligar o computador. Ela não fica guardada em lugar nenhum.',
+    'Digita e clica em OK. Se a janela aparecer de novo, é normal: o Mac pede mais de uma vez.',
+    'Depois disso leva uns 5 minutos, é só esperar.',
   ] : [
     'É a mesma senha que você usa pra ligar o computador.',
     'Ela não aparece enquanto você digita, é normal. Digita e aperta Enter.',
@@ -146,7 +155,7 @@ async function homebrew(ctx) {
   // Homebrew novo não entra no PATH do processo atual; adiciona.
   for (const p of ['/opt/homebrew/bin', '/usr/local/bin']) if (!process.env.PATH.includes(p)) process.env.PATH = `${p}:${process.env.PATH}`;
   brewNoPerfil(ctx);
-  ui.ok('Homebrew instalado');
+  ui.ok('Ferramentas de base instaladas');
 }
 
 export async function winget(ctx, id) {
@@ -166,9 +175,9 @@ function atualizarPathWindows() {
 }
 
 async function node(ctx) {
-  if (await ctx.existeComando('node')) return ui.ok('Node já está instalado');
+  if (await ctx.existeComando('node')) return ui.ok('Ferramentas de base já estão instaladas');
   if (ctx.semApps) return;
-  await ui.tarefa('Instalando o Node', 'Node instalado', async () => {
+  await ui.tarefa('Instalando as ferramentas de base', 'Ferramentas de base instaladas', async () => {
     if (ctx.plataforma === 'darwin') await ctx.run('brew', ['install', 'node']);
     else if (ctx.win) await winget(ctx, 'OpenJS.NodeJS.LTS');
     else await ctx.runVisivel('/bin/bash', ['-c', 'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs']);
@@ -182,7 +191,7 @@ async function git(ctx) {
     return;
   }
   if (ctx.semApps) return;
-  await ui.tarefa('Instalando o git', 'git instalado', async () => {
+  await ui.tarefa('Instalando as ferramentas de base', 'Ferramentas de base instaladas', async () => {
     if (ctx.plataforma === 'darwin') await ctx.run('brew', ['install', 'git']);
     else if (ctx.win) await winget(ctx, 'Git.Git');
     else await ctx.runVisivel('/bin/bash', ['-c', 'sudo apt-get install -y git']);
@@ -226,9 +235,9 @@ async function instalarClaudeScript(ctx) {
 async function claudeCode(ctx) {
   pathLocalNoPerfil(ctx);
   const adiantado = ctx.temAdiantado('claude');
-  if (!adiantado && await ctx.existeComando('claude')) return ui.ok('Claude Code já está instalado');
+  if (!adiantado && await ctx.existeComando('claude')) return ui.ok('O Claude já está instalado');
   if (ctx.semApps) return;
-  await ui.tarefa('Instalando o Claude Code', 'Claude Code instalado', async () => {
+  await ui.tarefa('Instalando o Claude', 'O Claude foi instalado', async () => {
     // No Mac ele já veio instalando junto com o Homebrew; só confere e, se não deu, instala agora.
     if (adiantado && (await ctx.adiantado('claude')) && (await ctx.existeComando('claude'))) return;
     if (ctx.win) {
@@ -247,15 +256,27 @@ async function claudeCode(ctx) {
 async function loginClaude(ctx) {
   if (ctx.semApps || ctx.dryRun) return;
   if (await logado(ctx)) return ui.ok('Você já está logado no Claude');
-  ui.pausa('Vou abrir o navegador pra você entrar na sua conta do Claude', [
+  ui.pausa(ctx.app ? 'Agora é no navegador: entrar na sua conta do Claude' : 'Vou abrir o navegador pra você entrar na sua conta do Claude', ctx.app ? [
+    'Abri uma página do Claude no navegador. Se ela não apareceu, clica em Abrir no navegador, aqui embaixo.',
+    'Entra com o seu e-mail. Se ainda não tem conta, dá pra criar ali mesmo.',
+    'Pra usar o Claude no computador, a conta precisa ter um plano pago (Pro ou maior). Se a sua for gratuita, a própria página mostra como assinar.',
+    'Quando a página disser que deu certo, volta pra esta janela do Claude Setuper. Eu sigo sozinho.',
+  ] : [
     'Entra com o mesmo e-mail que você usa no Claude.',
-    'Se ainda não tem conta, cria ali mesmo. Depois volta pra cá, eu continuo sozinho.',
-    'Não feche esta janela: eu espero até 15 minutos.',
-  ]);
-  await ctx.runVisivel('claude', ['auth', 'login'], { ignorarErro: true });
-  if (!(await logado(ctx))) ui.info('Estou esperando você terminar o login no navegador...');
-  const ok = await ctx.esperar(() => logado(ctx), { intervalo: 3, limite: 900 });
-  if (!ok) {
+    'Pra usar o Claude no computador, a conta precisa ter um plano pago (Pro ou maior).',
+    'Se ainda não tem conta, cria ali mesmo. Depois volta pra cá, eu continuo sozinho. Eu espero até 15 minutos.',
+  ], { pular: 'Fazer o login depois' });
+  // "Fazer o login depois" encerra o login que está esperando no navegador; o resto da instalação segue.
+  const parar = new AbortController();
+  const vigia = setInterval(() => ui.pulou() && parar.abort(), 1000);
+  try {
+    await ctx.runVisivel('claude', ['auth', 'login'], { ignorarErro: true, sinal: parar.signal });
+    if (!(await logado(ctx)) && !ui.pulou()) ui.info('Estou esperando você terminar o login no navegador...');
+    await ctx.esperar(async () => ui.pulou() || (await logado(ctx)), { intervalo: 3, limite: 900 });
+  } finally {
+    clearInterval(vigia);
+  }
+  if (!(await logado(ctx))) {
     // Sem login o resto ainda instala; o módulo fica marcado como pendente pra próxima rodada.
     const e = new Error(ctx.app
       ? 'o login no Claude ficou pra depois. No fim eu te mostro como terminar'

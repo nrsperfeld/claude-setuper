@@ -30,9 +30,10 @@ export function criarUiApp(enviar, pedir) {
     aviso: msg('aviso'),
     erro: msg('erro'),
     // acoes: botões que abrem um link; pular: texto do botão que deixa a pessoa seguir sem fazer o passo.
-    pausa(titulo, linhas, { figura, acoes = [], pular } = {}) {
+    // espera: a pessoa não precisa fazer nada agora (o cartão vem sem a mão).
+    pausa(titulo, linhas, { figura, acoes = [], pular, espera = false } = {}) {
       pulado = false;
-      enviar({ tipo: 'pausa', titulo: limpo(titulo), linhas: (Array.isArray(linhas) ? linhas : [linhas]).map(limpo), figura, acoes, pular: pular ? limpo(pular) : '' });
+      enviar({ tipo: 'pausa', titulo: limpo(titulo), linhas: (Array.isArray(linhas) ? linhas : [linhas]).map(limpo), figura, acoes, pular: pular ? limpo(pular) : '', espera });
     },
     pulou: () => pulado,
     marcarPulado() { pulado = true; },
@@ -55,10 +56,10 @@ export function criarUiApp(enviar, pedir) {
     },
 
     // Igual ao Terminal: a validação recebe o que a pessoa digitou; vazio com padrão vira o padrão.
-    async perguntar(texto, { padrao, placeholder, validar } = {}) {
+    async perguntar(texto, { padrao, placeholder, validar, explicacao } = {}) {
       let erro;
       for (;;) {
-        const v = String((await pedir({ tipo: 'texto', msg: limpo(texto), padrao: padrao ?? '', placeholder: limpo(placeholder), erro })) ?? '').trim();
+        const v = String((await pedir({ tipo: 'texto', msg: limpo(texto), explicacao: limpo(explicacao), padrao: padrao ?? '', placeholder: limpo(placeholder), erro })) ?? '').trim();
         erro = validar ? validar(v) : undefined;
         if (!erro) return String(v || padrao || '').trim();
       }
