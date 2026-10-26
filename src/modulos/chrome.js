@@ -57,15 +57,33 @@ export async function instalar(ctx) {
   if (extensaoInstalada(ctx)) return ui.ok('Extensão do Claude já está no Chrome');
   if (ctx.semApps || ctx.dryRun) return;
 
-  ui.pausa('O Chrome vai abrir na página da extensão do Claude', [
-    ctx.app ? 'Clica no botão marcado aqui embaixo e confirma.' : 'Clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e confirma.',
-    'Se o Chrome pedir pra você entrar na sua conta Google, pode entrar.',
-    'Depois, clica no ícone do Claude na barra do Chrome e entra com a sua conta do Claude. Eu espero.',
+  ui.pausa('Agora é no Chrome: adicionar a extensão do Claude', [
+    'O Chrome abre sozinho em alguns segundos, numa página da loja do Chrome.',
+    ctx.app ? 'Lá no Chrome (não aqui nesta janela), clica no botão azul "Usar no Chrome" e depois em "Adicionar extensão".' : 'Lá no Chrome, clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e depois em "Adicionar extensão".',
+    'Se o Chrome pedir pra entrar na conta Google, pode entrar ou pular. Não precisa pra extensão.',
+    'Se o Chrome não aparecer, abre ele pelo Dock: eu mando a página de novo. Assim que a extensão entrar, eu sigo sozinho.',
   ], { figura: 'chrome-extensao' });
-  if (ctx.plataforma === 'darwin') await ctx.run('open', ['-a', 'Google Chrome', LOJA], { ignorarErro: true });
-  else if (ctx.win) await ctx.run('cmd.exe', ['/c', 'start', 'chrome', LOJA], { ignorarErro: true });
-  else await ctx.run('google-chrome', [LOJA], { ignorarErro: true });
+  await abrirLoja(ctx);
   const ok = await ctx.esperar(async () => extensaoInstalada(ctx), { intervalo: 3, limite: 600 });
   if (ok) ui.ok('Extensão instalada. O Claude já pode usar o seu Chrome.');
   else ui.aviso('Não vi a extensão aparecer. Sem problema: dá pra instalar depois pelo link que fica nas notas do Maestri.');
+}
+
+// Chrome recém-instalado abre na tela de boas-vindas e engole o link da loja. Abre sem essa tela e,
+// se ele acabou de ser aberto, manda o link de novo quando a janela já existe.
+async function abrirLoja(ctx) {
+  if (ctx.plataforma !== 'darwin') {
+    if (ctx.win) await ctx.run('cmd.exe', ['/c', 'start', 'chrome', '--no-first-run', '--no-default-browser-check', LOJA], { ignorarErro: true });
+    else await ctx.run('google-chrome', ['--no-first-run', LOJA], { ignorarErro: true });
+    return;
+  }
+  const rodando = async () => !!(await ctx.run('pgrep', ['-x', 'Google Chrome'], { ignorarErro: true, sempre: true }));
+  const jaAberto = await rodando();
+  await ctx.run('open', ['-a', 'Google Chrome', '--args', '--no-first-run', '--no-default-browser-check', LOJA], { ignorarErro: true });
+  if (jaAberto) return ctx.run('open', ['-a', 'Google Chrome', LOJA], { ignorarErro: true });
+  for (let i = 0; i < 3 && !(await ctx.esperar(rodando, { intervalo: 1, limite: 20 })); i++) {
+    await ctx.run('open', ['-a', 'Google Chrome', LOJA], { ignorarErro: true });
+  }
+  await new Promise((r) => setTimeout(r, 6000));
+  if (!extensaoInstalada(ctx)) await ctx.run('open', ['-a', 'Google Chrome', LOJA], { ignorarErro: true });
 }

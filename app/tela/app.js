@@ -281,7 +281,7 @@ const FIGURAS = {
   'chrome-extensao': () => h('figure', { class: 'figura chrome' },
     h('div', { class: 'janela-chrome' },
       h('div', { class: 'loja-topo' }, h('span', { class: 'icone-loja', 'aria-hidden': 'true' }), h('b', {}, 'Claude'), alvo('Usar no Chrome', 'bchrome'))),
-    h('figcaption', {}, 'Se o botão estiver escrito "Adicionar ao Chrome", é o mesmo.')),
+    h('figcaption', {}, 'Isto é só um desenho pra você saber o que procurar. O botão de verdade está na janela do Chrome. Se estiver escrito "Adicionar ao Chrome", é o mesmo.')),
 };
 
 // ---------- detalhes ----------

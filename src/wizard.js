@@ -95,7 +95,9 @@ export async function wizard(ctx) {
   );
 
   let modulos = MODULOS.filter((m) => m.padrao && doSistema(m) && !p.semModulos.includes(m.id)).map((m) => m.id);
-  const avancado = await ui.confirmar('Quer escolher o que entra na instalação?', false, { sim: 'Sim, quero escolher', nao: 'Não, pode instalar tudo' });
+  // A resposta recomendada fica no "Sim": com ela no "Não", a pessoa lia "não" e achava que estava recusando a instalação.
+  const tudo = await ui.confirmar('Posso instalar tudo o que faz sentido pro seu perfil?', true, { sim: 'Sim, pode instalar tudo (recomendado)', nao: 'Quero escolher o que entra' });
+  const avancado = !tudo;
   if (avancado) {
     modulos = await ui.escolherVarios(
       'O que você quer instalar?',

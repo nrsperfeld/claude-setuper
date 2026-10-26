@@ -19,7 +19,8 @@ const NIVEIS = {
   livre: { defaultMode: 'bypassPermissions', allow: ['Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'Bash', 'WebSearch', 'WebFetch'], extra: { skipDangerousModePermissionPrompt: true } },
 };
 // Edit(...) cobre todas as ferramentas de edição de arquivo; Write(...) em deny gera aviso no Claude Code.
-const DENY = ['Bash(rm -rf:*)', 'Bash(sudo rm:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)'];
+// AskUserQuestion fica de fora: a caixinha de múltipla escolha deixa a entrevista rasa. Pergunta em texto aprofunda.
+const DENY = ['AskUserQuestion', 'Bash(rm -rf:*)', 'Bash(sudo rm:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)'];
 
 export async function verificar(ctx) {
   const d = ctx.claudeDir;

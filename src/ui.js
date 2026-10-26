@@ -78,7 +78,7 @@ export const ui = {
     return r;
   },
 
-  // `sim` e `nao` trocam o Sim/Não por botões que dizem o que acontece (ex.: "Não, pode instalar tudo").
+  // `sim` e `nao` trocam o Sim/Não por botões que dizem o que acontece (ex.: "Sim, pode instalar tudo").
   async confirmar(msg, padrao = true, { sim = 'Sim', nao = 'Não', explicacao } = {}) {
     if (explicacao) p.log.message(explicacao);
     const r = await p.confirm({ message: msg, initialValue: padrao, active: sim, inactive: nao });

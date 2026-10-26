@@ -171,6 +171,14 @@ async function abrirEConfiar(ctx, vault) {
       await ctx.run('open', ['-a', 'Obsidian'], { ignorarErro: true });
       if (await ctx.esperar(rodando, { intervalo: 1, limite: 15 })) break;
     }
+    // Na primeira abertura o Obsidian às vezes fecha sozinho segundos depois. Vigia um pouco e reabre.
+    for (let i = 0; i < 2; i++) {
+      if (await ctx.esperar(async () => !(await rodando()), { intervalo: 2, limite: 40 })) {
+        await new Promise((r) => setTimeout(r, 2000));
+        await ctx.run('open', ['-a', 'Obsidian'], { ignorarErro: true });
+        await ctx.esperar(rodando, { intervalo: 1, limite: 15 });
+      } else break;
+    }
   }
   const cli = await ctx.existeComando('obsidian');
   if (!cli) {
