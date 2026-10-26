@@ -50,7 +50,17 @@ main() {
       ok "Ferramentas da Apple instaladas"
     fi
 
-    if ! command -v brew >/dev/null 2>&1 && [ ! -x /opt/homebrew/bin/brew ] && [ ! -x /usr/local/bin/brew ]; then
+    # Mac Intel: o Homebrew passou a recusar. O Node vem do site oficial pra ~/.local/node, sem senha.
+    if [ "$(sysctl -in hw.optional.arm64 2>/dev/null)" != "1" ]; then
+      if ! command -v node >/dev/null 2>&1 && [ ! -x "$HOME/.local/node/bin/node" ]; then
+        passo "Instalando o Node (uns 2 minutos, é normal)."
+        V=$(curl -fsSL https://nodejs.org/dist/index.json | grep -o '"version":"v[0-9.]*"[^}]*"lts":"[A-Za-z]' | head -1 | sed 's/.*"version":"\(v[0-9.]*\)".*/\1/')
+        mkdir -p "$HOME/.local/node"
+        curl -fsSL "https://nodejs.org/dist/$V/node-$V-darwin-x64.tar.gz" | tar -xz -C "$HOME/.local/node" --strip-components 1
+      fi
+      export PATH="$HOME/.local/node/bin:$PATH"
+      grep -q '.local/node/bin' "$HOME/.zprofile" 2>/dev/null || printf '\n# Claude Setuper\nexport PATH="$HOME/.local/node/bin:$PATH"\n' >> "$HOME/.zprofile"
+    elif ! command -v brew >/dev/null 2>&1 && [ ! -x /opt/homebrew/bin/brew ] && [ ! -x /usr/local/bin/brew ]; then
       if ! id -Gn | tr ' ' '\n' | grep -qx admin; then
         echo "  Esse usuário do Mac não é administrador, e o Homebrew precisa de um."
         echo "  Peça pra quem administra o Mac te dar acesso de administrador (Ajustes > Usuários e Grupos) e rode de novo."
@@ -61,14 +71,15 @@ main() {
       # stdin vem do curl | bash; sem o /dev/tty o Homebrew entra em modo não interativo e não consegue pedir a senha
       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" < /dev/tty
     fi
-    for b in /opt/homebrew/bin /usr/local/bin; do [ -x "$b/brew" ] && eval "$($b/brew shellenv)"; done
-    ok "Homebrew pronto"
-
-    if ! command -v node >/dev/null 2>&1; then
-      passo "Instalando o Node (uns 2 minutos, é normal)."
-      brew install node >/dev/null </dev/null
+    if command -v brew >/dev/null 2>&1 || [ -x /opt/homebrew/bin/brew ] || [ -x /usr/local/bin/brew ]; then
+      for b in /opt/homebrew/bin /usr/local/bin; do [ -x "$b/brew" ] && eval "$($b/brew shellenv)"; done
+      ok "Homebrew pronto"
+      if ! command -v node >/dev/null 2>&1; then
+        passo "Instalando o Node (uns 2 minutos, é normal)."
+        brew install node >/dev/null </dev/null
+      fi
+      if ! command -v git >/dev/null 2>&1; then brew install git >/dev/null </dev/null; fi
     fi
-    if ! command -v git >/dev/null 2>&1; then brew install git >/dev/null </dev/null; fi
   else
     if ! command -v node >/dev/null 2>&1; then
       passo "Instalando o Node."

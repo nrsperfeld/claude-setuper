@@ -20,7 +20,7 @@ const TESTE = lerJson(path.join(PASTA, '.teste-auto.json')); // só existe nos t
 
 // Aberto pelo Finder, o app herda um PATH mínimo; sem isso não acha brew, node, claude, gh.
 process.env.PATH = [...new Set([
-  '/opt/homebrew/bin', '/opt/homebrew/sbin', '/usr/local/bin', path.join(HOME, '.local', 'bin'),
+  '/opt/homebrew/bin', '/opt/homebrew/sbin', '/usr/local/bin', path.join(HOME, '.local', 'bin'), path.join(HOME, '.local', 'node', 'bin'),
   ...(process.env.PATH || '').split(':').filter(Boolean), '/usr/bin', '/bin', '/usr/sbin', '/sbin',
 ])].join(':');
 process.env.LANG ||= 'pt_BR.UTF-8';
@@ -71,10 +71,15 @@ async function importarSetuper(rel) {
   return import(pathToFileURL(path.join(SETUPER, 'src', rel)).href);
 }
 
+let jaTentou = false;
+
 async function instalarTudo() {
   const { criarCtx } = await importarSetuper('ctx.js');
   const { instalar } = await importarSetuper('cli.js');
   const ctx = criarCtx({ app: true, askpass: criarAskpass(), perfil, semApps });
+  // "Tentar de novo" na mesma abertura do app: as respostas acabaram de ser dadas, vai direto ao que falta.
+  ctx.repetirDireto = jaTentou;
+  jaTentou = true;
   ctx.runVisivel = criarTerminal(ctx, enviar);
   ctx.log('--- app', VERSAO, perfil);
   const r = await instalar(ctx, { perfil });

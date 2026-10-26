@@ -31,7 +31,7 @@ export async function wizard(ctx) {
 
   // Voltando pra terminar o que faltou: não refaz as perguntas, a não ser que a pessoa queira.
   if (salvo.nome && salvo.perfil && salvo.modulos?.length) {
-    const mesmas = await ui.confirmar(`Que bom te ver de novo, ${salvo.nome}. Posso usar as mesmas respostas da outra vez?`, true, {
+    const mesmas = ctx.repetirDireto || await ui.confirmar(`Que bom te ver de novo, ${salvo.nome}. Posso usar as mesmas respostas da outra vez?`, true, {
       sim: 'Pode, usa as mesmas', nao: 'Quero responder de novo',
       explicacao: 'Assim eu vou direto ao que ficou faltando, sem repetir o que já está pronto.',
     });

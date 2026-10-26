@@ -1,6 +1,7 @@
 // Módulo base: o que a máquina precisa ter antes de qualquer coisa.
 import fs from 'node:fs';
 import { ui } from '../ui.js';
+import { macIntel, instalarSemBrew, colocarNoPath } from './semBrew.js';
 
 export const id = 'base';
 export const nome = 'Base da máquina';
@@ -13,7 +14,7 @@ export async function verificar(ctx) {
   const itens = [];
   if (ctx.plataforma === 'darwin') {
     itens.push({ item: 'Ferramentas da Apple (Xcode CLT)', ok: !!(await ctx.run('xcode-select', ['-p'], { ignorarErro: true, sempre: true })) });
-    itens.push({ item: 'Homebrew', ok: await ctx.existeComando('brew'), dica: 'rode o instalador de novo' });
+    if (!(await macIntel(ctx))) itens.push({ item: 'Homebrew', ok: await ctx.existeComando('brew'), dica: 'rode o instalador de novo' });
   }
   if (ctx.win) {
     itens.push({ item: 'winget (instalador do Windows)', ok: await ctx.existeComando('winget'), dica: 'instale o "Instalador de Aplicativo" pela Microsoft Store' });
@@ -32,8 +33,11 @@ export async function instalar(ctx) {
     // O instalador do Claude Code só precisa da internet: roda junto com o Homebrew e o Node.
     pathLocalNoPerfil(ctx);
     ctx.adiantar('claude', () => instalarClaudeScript(ctx));
-    await homebrew(ctx);
-    adiantarDownloads(ctx);
+    nodeLocalNoPerfil(ctx);
+    if (!(await macIntel(ctx))) {
+      await homebrew(ctx);
+      adiantarDownloads(ctx);
+    }
   }
   await node(ctx);
   await git(ctx);
@@ -123,6 +127,7 @@ function adiantarDownloads(ctx) {
 // brew install depois do download adiantado. Se esbarrar num download que ainda corre em segundo plano,
 // espera a fila terminar e tenta de novo uma vez.
 export async function brewInstalar(ctx, modulo, args) {
+  if (await macIntel(ctx)) return instalarSemBrew(ctx, args);
   await ctx.adiantado(`brew:${modulo}`);
   try {
     await ctx.run('brew', ['install', ...args]);
@@ -178,10 +183,12 @@ async function node(ctx) {
   if (await ctx.existeComando('node')) return ui.ok('Ferramentas de base já estão instaladas');
   if (ctx.semApps) return;
   await ui.tarefa('Instalando as ferramentas de base', 'Ferramentas de base instaladas', async () => {
-    if (ctx.plataforma === 'darwin') await ctx.run('brew', ['install', 'node']);
+    if (await macIntel(ctx)) await instalarSemBrew(ctx, ['node']);
+    else if (ctx.plataforma === 'darwin') await ctx.run('brew', ['install', 'node']);
     else if (ctx.win) await winget(ctx, 'OpenJS.NodeJS.LTS');
     else await ctx.runVisivel('/bin/bash', ['-c', 'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs']);
   }, { demora: 'uns 2 minutos, é normal' });
+  nodeLocalNoPerfil(ctx);
 }
 
 async function git(ctx) {
@@ -214,6 +221,14 @@ function gravarNoPerfil(ctx, marca, linha) {
 function brewNoPerfil(ctx) {
   const brew = ['/opt/homebrew/bin/brew', '/usr/local/bin/brew'].find((b) => fs.existsSync(b));
   if (brew) gravarNoPerfil(ctx, 'brew shellenv', `eval "$(${brew} shellenv)"`);
+}
+
+// Mac Intel: o Node vem do site oficial pra ~/.local/node, fora do PATH padrão.
+function nodeLocalNoPerfil(ctx) {
+  const bin = `${ctx.homeReal}/.local/node/bin`;
+  if (!fs.existsSync(bin)) return;
+  colocarNoPath(bin);
+  gravarNoPerfil(ctx, '.local/node/bin', 'export PATH="$HOME/.local/node/bin:$PATH"');
 }
 
 function pathLocalNoPerfil(ctx) {
