@@ -8,6 +8,7 @@ const opcoesLimpas = (opcoes) => opcoes.map((o) => ({ value: o.value, label: lim
 
 export function criarUiApp(enviar, pedir) {
   let tarefas = 0;
+  let andamentoAtual = null;
   let pulado = false;
   const msg = (nivel) => (texto) => enviar({ tipo: 'msg', nivel, texto: limpo(texto) });
 
@@ -40,9 +41,11 @@ export function criarUiApp(enviar, pedir) {
 
     async tarefa(fazendo, feito, fn, { demora } = {}) {
       const id = ++tarefas;
-      const mostrar = (estado, texto) => enviar({ tipo: 'tarefa', id, estado, texto: limpo(texto) });
+      // A demora vai à parte: a tela mostra "costuma levar ..." ao lado do tempo que já passou.
+      const mostrar = (estado, texto) => enviar({ tipo: 'tarefa', id, estado, texto: limpo(texto), demora: demora ? limpo(demora) : '' });
       mostrar('fazendo', fazendo);
-      const timer = demora ? setTimeout(() => mostrar('fazendo', `${fazendo} (${demora})`), 60_000) : null;
+      andamentoAtual = (m) => mostrar('fazendo', m);
+      const timer = null;
       try {
         const r = await fn((m) => mostrar('fazendo', m));
         mostrar('feito', mensagemFeito(r, feito));
@@ -52,8 +55,11 @@ export function criarUiApp(enviar, pedir) {
         throw e;
       } finally {
         clearTimeout(timer);
+        andamentoAtual = null;
       }
     },
+
+    andamento(m) { andamentoAtual?.(m); },
 
     // Igual ao Terminal: a validação recebe o que a pessoa digitou; vazio com padrão vira o padrão.
     async perguntar(texto, { padrao, placeholder, validar, explicacao } = {}) {

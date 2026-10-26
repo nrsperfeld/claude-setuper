@@ -2,6 +2,8 @@
 import * as p from '@clack/prompts';
 import c from 'picocolors';
 
+let andamentoAtual = null;
+
 export const ui = {
   abertura(titulo, sub) {
     console.clear();
@@ -46,6 +48,7 @@ export const ui = {
   async tarefa(fazendo, feito, fn, { demora } = {}) {
     const s = p.spinner();
     s.start(fazendo);
+    andamentoAtual = (msg) => s.message(msg);
     let timer;
     if (demora) timer = setTimeout(() => s.message(`${fazendo}  ${c.dim(demora)}`), 60_000);
     try {
@@ -57,8 +60,12 @@ export const ui = {
       throw e;
     } finally {
       clearTimeout(timer);
+      andamentoAtual = null;
     }
   },
+
+  // Atualiza a frase da tarefa em andamento ("Baixando o Chrome: 120 de 250 MB").
+  andamento(msg) { andamentoAtual?.(msg); },
 
   async perguntar(msg, { padrao, placeholder, validar, explicacao } = {}) {
     if (explicacao) p.log.message(explicacao);

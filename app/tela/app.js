@@ -240,13 +240,35 @@ function cartaoPausa(pz) {
     extras);
 }
 
+// Nunca deixar a pessoa olhando um spinner sem saber o que acontece: tempo passado, quanto costuma
+// levar e, se ficar muito tempo sem novidade, o que ela pode fazer.
+function tempo(ms) {
+  const min = Math.floor(ms / 60000);
+  return min < 1 ? `${Math.floor(ms / 1000)} segundos` : min === 1 ? '1 minuto' : `${min} minutos`;
+}
+function textoRelogio() {
+  if (!estado.desde) return '';
+  const passou = `Trabalhando há ${tempo(Date.now() - estado.desde)}`;
+  return estado.demora ? `${passou}. Costuma levar ${estado.demora.replace(/, é normal$/, '')}.` : `${passou}.`;
+}
+const PARADO = 4 * 60000;
+function avisoParado() {
+  if (!estado.mexeu || estado.pausa || Date.now() - estado.mexeu < PARADO) return null;
+  return h('div', { class: 'parado', id: 'parado' },
+    h('p', {}, `Faz ${tempo(Date.now() - estado.mexeu)} que essa parte não muda na tela. Em computador mais antigo ou internet mais lenta isso acontece, e o app continua trabalhando por trás: se der algum problema, eu aviso aqui.`),
+    h('p', {}, 'Se passar de 15 minutos assim, mande um pedido de ajuda pra quem está te ajudando com a instalação.'),
+    h('div', { class: 'botoes' }, botao('Pedir ajuda', pedirAjuda, true)));
+}
+
 function telaInstalando() {
   const n = estado.atual + 1;
   return [
     estado.pausa && cartaoPausa(estado.pausa),
     h('div', { class: 'agora' }, h('span', { class: 'girando', 'aria-hidden': 'true' }),
       h('div', {}, h('b', {}, estado.tarefa || (estado.passos[estado.atual] ?? 'Preparando')),
-        estado.passos.length && n > 0 ? h('div', { class: 'mut pequeno' }, `Passo ${n} de ${estado.passos.length}`) : null)),
+        estado.passos.length && n > 0 ? h('div', { class: 'mut pequeno' }, `Passo ${n} de ${estado.passos.length}`) : null,
+        estado.pausa ? null : h('div', { class: 'mut pequeno', id: 'relogio' }, textoRelogio()))),
+    estado.pausa ? null : avisoParado(),
     h('ul', { class: 'mensagens' }, estado.msgs.slice(-4).map((m) => h('li', { class: m.nivel }, m.texto))),
   ];
 }
@@ -370,7 +392,7 @@ S.aoEvento((ev) => {
     case 'atualizacao': estado.atualizacao = ev.versao; break;
     case 'abertura': if (estado.fase !== 'instalando') estado.fase = 'perguntas'; break;
     case 'plano': estado.passos = ev.passos; estado.atual = -1; estado.fase = 'instalando'; break;
-    case 'passo': estado.atual = ev.n - 1; estado.pausa = null; estado.tarefa = ''; anotar(`\n── ${ev.n}/${ev.total} ${ev.titulo}\n`); break;
+    case 'passo': estado.atual = ev.n - 1; estado.pausa = null; estado.tarefa = ''; estado.desde = estado.mexeu = Date.now(); estado.demora = ''; anotar(`\n── ${ev.n}/${ev.total} ${ev.titulo}\n`); break;
     case 'msg':
       anotar(`${ev.texto}\n`);
       if (estado.fase === 'perguntas' && ev.nivel === 'info') { estado.introPerguntas = ev.texto; break; }
@@ -383,8 +405,14 @@ S.aoEvento((ev) => {
       if (ev.nivel === 'aviso' && estado.atual >= 0 && estado.fase === 'instalando' && !ev.texto.startsWith('Terminei')) estado.pendentes.add(estado.atual); // o resumo final não é da última etapa
       break;
     case 'tarefa':
-      if (ev.estado === 'fazendo') estado.tarefa = ev.texto;
-      else { estado.msgs.push({ nivel: ev.estado === 'feito' ? 'ok' : 'erro', texto: ev.texto }); estado.tarefa = ''; anotar(`${ev.texto}\n`); }
+      if (ev.estado === 'fazendo') {
+        // Tarefa nova zera o relógio; a mesma tarefa só atualizando o andamento conta como sinal de vida.
+        if (estado.tarefaId !== ev.id) { estado.tarefaId = ev.id; estado.desde = Date.now(); }
+        if (estado.tarefa !== ev.texto) estado.mexeu = Date.now();
+        estado.tarefa = ev.texto;
+        estado.demora = ev.demora || '';
+        if (ev.atras) { estado.desde -= ev.atras; estado.mexeu -= ev.atras; } // só a demonstração usa
+      } else { estado.msgs.push({ nivel: ev.estado === 'feito' ? 'ok' : 'erro', texto: ev.texto }); estado.tarefa = ''; anotar(`${ev.texto}\n`); }
       break;
     case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, figura: ev.figura, acoes: ev.acoes || [], pular: ev.pular, espera: !!ev.espera, links: [], codigos: [] }; anotar(`✋ ${ev.titulo}\n`); break;
     case 'link':
@@ -431,3 +459,11 @@ function roteiro(ev) {
 }
 
 S.pronto();
+
+setInterval(() => {
+  if (estado.fase !== 'instalando' || estado.pausa || estado.pedido) return;
+  const r = document.getElementById('relogio');
+  if (r) r.textContent = textoRelogio();
+  const precisa = estado.mexeu && Date.now() - estado.mexeu >= PARADO;
+  if (precisa !== !!document.getElementById('parado')) desenhar();
+}, 1000);

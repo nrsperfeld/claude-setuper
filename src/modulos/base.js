@@ -265,7 +265,7 @@ async function claudeCode(ctx) {
       const pastas = [`${process.env.USERPROFILE}\\.local\\bin`, `${process.env.APPDATA}\\npm`].map((p) => p.replace(/'/g, "''"));
       await ctx.run('powershell', ['-NoProfile', '-Command', `$a=[Environment]::GetEnvironmentVariable('Path','User'); foreach($p in @('${pastas.join("','")}')){ if((Test-Path $p) -and (($a -split ';') -notcontains $p)){ $a=$a.TrimEnd(';')+';'+$p } }; [Environment]::SetEnvironmentVariable('Path',$a,'User')`], { ignorarErro: true });
     }
-  }, { demora: 'quase lá' });
+  }, { demora: 'uns 2 minutos' });
 }
 
 async function loginClaude(ctx) {

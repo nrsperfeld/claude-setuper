@@ -87,6 +87,8 @@ input[type=text]:focus, input[type=password]:focus { outline: none; border-color
 .girando { flex: 0 0 22px; height: 22px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--acc); animation: gira 1s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .girando { animation: none; } }
 .agora b { font-size: 17px; font-weight: 600; }
+.parado { padding: 16px 20px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); margin-bottom: 18px; }
+.parado p { margin: 0 0 10px; font-size: 15px; }
 .mensagens { list-style: none; margin: 0; padding: 0; }
 .mensagens li { display: flex; gap: 10px; padding: 6px 2px; font-size: 15px; color: var(--mut); }
 .mensagens li::before { content: "•"; flex: 0 0 14px; text-align: center; }

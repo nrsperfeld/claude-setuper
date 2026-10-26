@@ -53,7 +53,7 @@ export async function instalar(ctx) {
       if (ctx.plataforma === 'darwin') await (await import('./base.js')).brewInstalar(ctx, 'chrome', ['--cask', 'google-chrome']);
       else if (ctx.win) await (await import('./base.js')).winget(ctx, 'Google.Chrome');
       else await ctx.runVisivel('/bin/bash', ['-c', 'wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && sudo apt-get install -y /tmp/chrome.deb']);
-    }, { demora: 'uns 2 minutos, é normal' });
+    }, { demora: 'de 2 a 10 minutos, depende da internet e do computador' });
   }
 
   if (extensaoInstalada(ctx)) return ui.ok('Extensão do Claude já está no Chrome');

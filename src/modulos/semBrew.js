@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { ui } from '../ui.js';
 
 let intel;
 
@@ -17,10 +18,42 @@ export async function macIntel(ctx) {
 
 const AGENTE = 'Claude Setuper';
 
-async function baixar(url, destino) {
+// Baixa gravando aos pedaços e mostra quanto já veio, pra tela nunca ficar parada sem dizer nada.
+async function baixar(url, destino, nome) {
   const r = await fetch(url, { headers: { 'User-Agent': AGENTE } });
   if (!r.ok) throw new Error(`não consegui baixar (${r.status})`);
-  fs.writeFileSync(destino, Buffer.from(await r.arrayBuffer()));
+  const total = Number(r.headers.get('content-length')) || 0;
+  const mb = (n) => Math.round(n / 1048576);
+  const arquivo = fs.openSync(destino, 'w');
+  let veio = 0;
+  let ultimo = 0;
+  try {
+    for await (const pedaco of r.body) {
+      fs.writeSync(arquivo, pedaco);
+      veio += pedaco.length;
+      if (nome && Date.now() - ultimo > 1000) {
+        ultimo = Date.now();
+        ui.andamento(total ? `Baixando ${nome}: ${mb(veio)} de ${mb(total)} MB (${Math.floor((veio / total) * 100)}%)` : `Baixando ${nome}: ${mb(veio)} MB até agora`);
+      }
+    }
+  } finally {
+    fs.closeSync(arquivo);
+  }
+}
+
+// Copia o app mostrando a porcentagem: o Chrome tem quase 1 GB aberto e a cópia passa de um minuto.
+async function copiarApp(ctx, origem, destino, nome) {
+  const tamanho = async (p) => Number((await ctx.run('du', ['-sk', p], { ignorarErro: true, sempre: true })).split(/\s/)[0]) || 0;
+  const total = await tamanho(origem);
+  const vigia = setInterval(async () => {
+    const feito = await tamanho(destino);
+    if (total) ui.andamento(`Copiando o ${nome} pra pasta Aplicativos: ${Math.min(99, Math.floor((feito / total) * 100))}%`);
+  }, 3000);
+  try {
+    await ctx.run('ditto', [origem, destino]);
+  } finally {
+    clearInterval(vigia);
+  }
 }
 
 function pastaTemp() {
@@ -36,23 +69,26 @@ async function instalarApp(ctx, cask) {
   if (fs.existsSync(destinoFinal)) return;
   const tmp = pastaTemp();
   const arquivo = path.join(tmp, path.basename(new URL(ficha.url).pathname) || 'download');
-  await baixar(ficha.url, arquivo);
+  const nome = (ficha.name?.[0] || nomeApp.replace('.app', ''));
+  await baixar(ficha.url, arquivo, `o ${nome}`);
+  ui.andamento(`Copiando o ${nome} pra pasta Aplicativos`);
   let origem;
   if (/\.dmg$/i.test(arquivo)) {
     const montagem = path.join(tmp, 'disco');
     await ctx.run('hdiutil', ['attach', '-nobrowse', '-readonly', '-noautoopen', '-mountpoint', montagem, arquivo]);
     try {
-      await ctx.run('ditto', [path.join(montagem, nomeApp), destinoFinal]);
+      await copiarApp(ctx, path.join(montagem, nomeApp), destinoFinal, nome);
     } finally {
       await ctx.run('hdiutil', ['detach', '-force', montagem], { ignorarErro: true });
     }
   } else {
     await ctx.run('ditto', ['-x', '-k', arquivo, tmp]);
     origem = path.join(tmp, nomeApp);
-    await ctx.run('ditto', [origem, destinoFinal]);
+    await copiarApp(ctx, origem, destinoFinal, nome);
   }
   // Baixado fora do Homebrew, o Mac marca como "da internet" e pergunta antes de abrir. Tira a marca.
   await ctx.run('xattr', ['-dr', 'com.apple.quarantine', destinoFinal], { ignorarErro: true });
+  ui.andamento(`Conferindo se o ${nome} ficou certo`);
   const exe = path.join(destinoFinal, 'Contents', 'MacOS');
   const binario = fs.existsSync(exe) ? fs.readdirSync(exe).map((f) => path.join(exe, f))[0] : null;
   if (binario && !(await ctx.run('lipo', ['-archs', binario], { ignorarErro: true, sempre: true })).includes('x86_64')) {
@@ -68,7 +104,8 @@ export async function instalarNode(ctx) {
   const v = lista.find((x) => x.lts).version;
   const tmp = pastaTemp();
   const arquivo = path.join(tmp, 'node.tar.gz');
-  await baixar(`https://nodejs.org/dist/${v}/node-${v}-darwin-x64.tar.gz`, arquivo);
+  await baixar(`https://nodejs.org/dist/${v}/node-${v}-darwin-x64.tar.gz`, arquivo, 'as ferramentas de base');
+  ui.andamento('Abrindo as ferramentas de base');
   const destino = path.join(ctx.homeReal, '.local', 'node');
   fs.rmSync(destino, { recursive: true, force: true });
   fs.mkdirSync(destino, { recursive: true });
@@ -84,7 +121,7 @@ async function instalarGh(ctx) {
   if (!asset) throw new Error('não achei o GitHub CLI pra Mac Intel');
   const tmp = pastaTemp();
   const arquivo = path.join(tmp, asset.name);
-  await baixar(asset.browser_download_url, arquivo);
+  await baixar(asset.browser_download_url, arquivo, 'o GitHub');
   await ctx.run('ditto', ['-x', '-k', arquivo, tmp]);
   const pasta = fs.readdirSync(tmp).find((f) => f.startsWith('gh_') && !f.endsWith('.zip'));
   const bin = path.join(ctx.homeReal, '.local', 'bin');
