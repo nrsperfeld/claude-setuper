@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { MODULOS, modulosParaPlataforma } from './modulos/index.js';
+import { cuidados } from './cuidados.js';
 
 const NOME = 'Claude Setuper - pedido de ajuda.txt';
 
@@ -37,6 +38,7 @@ export async function gerarPedidoDeAjuda(ctx, versao) {
     try { itens = await m.verificar(ctx); } catch (e) { itens = [{ item: m.nome, ok: false, dica: e.message }]; }
     conferencia.push(`  ${m.nome}`, ...itens.map((i) => `    ${i.ok ? '✓' : '✗'} ${i.item}${!i.ok && i.dica ? `  (${i.dica})` : ''}`));
   }
+  conferencia.push('  Cuidados', ...cuidados(ctx).map((i) => `    ${i.ok ? '✓' : '✗'} ${i.item}${!i.ok && i.dica ? `  (${i.dica})` : ''}`));
   const r = ctx.estado.respostas || {};
   const linhas = [
     'Pedido de ajuda do Claude Setuper',

@@ -22,5 +22,15 @@
     "Pegar um arquivo grande (contrato, manual, PDF) e me explicar em cinco linhas o que importa nele.",
     "Planejar um passeio ou viagem curta com horários, custos e um plano B se chover.",
     "Revisar comigo o que a gente fez nesta semana e anotar no cérebro o que eu gostei e o que não gostei."
+  ],
+  "wiki": [
+    {
+      "pasta": "pessoas",
+      "oQue": "gente com quem você trabalha ou convive, uma página por pessoa"
+    },
+    {
+      "pasta": "assuntos",
+      "oQue": "temas que voltam sempre, como casa, saúde, dinheiro, um hobby ou o trabalho"
+    }
   ]
 }

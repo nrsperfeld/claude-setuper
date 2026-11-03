@@ -20,7 +20,7 @@ lerEntrada(main);
 
 function main(entrada) {
 
-  const norm = (s) => String(s || '').replace(/\\/g, '/').replace(/\/+$/, '');
+  const norm = (s) => String(s || '').normalize('NFC').replace(/\\/g, '/').replace(/\/+$/, '');
   const vaultBruto = process.env.CLAUDE_SETUPER_VAULT;
   const vault = norm(vaultBruto);
   const eq = (a, b) => (process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b);
@@ -37,6 +37,9 @@ function main(entrada) {
   }
 
   if (!fp.endsWith('.md') || fp.endsWith('/README.md')) process.exit(0);
+  const pasta = fp.slice(vault.length + '/CLAUDE/'.length).split('/')[0];
+  // A pasta de entrada recebe material de fora (o Web Clipper salva com frontmatter): não é nota do Claude.
+  if (pasta.toLowerCase() === 'inbox') process.exit(0);
   let txt = '';
   try { txt = fs.readFileSync(fpBruto, 'utf8'); } catch { process.exit(0); }
 
@@ -44,8 +47,7 @@ function main(entrada) {
   if (txt.trimStart().startsWith('---')) problemas.push('tem frontmatter (---), e as notas do cérebro não levam');
   if (/^#{1,6}\s/m.test(txt)) problemas.push('tem título com # e as notas não usam título, a primeira linha já é a ideia');
   if (!/#claude\b/.test(txt)) problemas.push('falta a tag #claude');
-  const pasta = fp.slice(vault.length + '/CLAUDE/'.length).split('/')[0];
-  const tagPasta = { feedback: '#feedback', 'decisões': '#decisão', 'padrões': '#padrão', descobertas: '#descoberta', projetos: '#projeto' }[pasta];
+  const tagPasta = { feedback: '#feedback', 'decisões': '#decisão', 'padrões': '#padrão', descobertas: '#descoberta', projetos: '#projeto', wiki: '#wiki', fontes: '#fonte' }[pasta];
   if (tagPasta && !txt.includes(tagPasta)) problemas.push(`falta a tag ${tagPasta}`);
 
   if (problemas.length) {

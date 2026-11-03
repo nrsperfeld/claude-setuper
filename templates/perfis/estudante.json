@@ -25,5 +25,15 @@
     "Montar um cronograma da semana que caiba na minha rotina real.",
     "Criar um jeito de lembrar uma lista difícil (fórmulas, datas, vocabulário).",
     "Anotar no cérebro o que funcionou pra mim nesta semana, pra repetir antes da próxima prova."
+  ],
+  "wiki": [
+    {
+      "pasta": "matérias",
+      "oQue": "uma página por matéria: o que já foi estudado, onde você mais erra, as próximas provas"
+    },
+    {
+      "pasta": "assuntos",
+      "oQue": "temas que atravessam as matérias, como redação, vestibular ou um projeto da escola"
+    }
   ]
 }

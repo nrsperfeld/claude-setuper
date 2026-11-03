@@ -3,6 +3,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { ui } from '../ui.js';
 import { perfil, NIVEL_TEC, NIVEL_IA, IA_ANTIGA, MENOR_DE_IDADE } from '../perfis.js';
+import { montarWiki, verificarWiki, removerTrava } from './wiki.js';
+import { chaveDaApi } from '../cuidados.js';
 
 export const id = 'nucleo';
 export const nome = 'Núcleo do Claude';
@@ -20,6 +22,10 @@ const NIVEIS = {
 };
 // Edit(...) cobre todas as ferramentas de edição de arquivo; Write(...) em deny gera aviso no Claude Code.
 // AskUserQuestion fica de fora: a caixinha de múltipla escolha deixa a entrevista rasa. Pergunta em texto aprofunda.
+const HOOKS = ['cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs', 'cerebro-trava.cjs', 'ativacao.cjs'];
+const SKILLS = ['decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar', 'guardar'];
+const INICIO = '<!-- claude-setuper -->';
+const FIM = '<!-- /claude-setuper -->';
 const DENY = ['AskUserQuestion', 'Bash(rm -rf:*)', 'Bash(sudo rm:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)'];
 
 export async function verificar(ctx) {
@@ -31,7 +37,15 @@ export async function verificar(ctx) {
     { item: 'Skills (/decisão, /retro...)', ok: ctx.existe(path.join(d, 'skills', 'retro', 'SKILL.md')) },
     { item: 'Pasta de memória', ok: ctx.existe(path.join(d, 'memoria', 'MEMORIA.md')) },
     { item: 'Primeira semana guiada', ok: ctx.existe(path.join(d, 'hooks', 'ativacao.cjs')) && ctx.existe(path.join(d, 'setuper-ativacao.json')) },
+    { item: 'Trava das notas que são suas', ok: ctx.existe(path.join(d, 'hooks', 'cerebro-trava.cjs')) },
+    ...(comCofre(ctx) ? verificarWiki(ctx, ctx.estado.respostas.vault) : []),
   ];
+}
+
+// O cofre já foi montado numa instalação anterior (a wiki entra nele pelo núcleo, sem reabrir o Obsidian).
+function comCofre(ctx) {
+  const r = ctx.estado.respostas || {};
+  return (r.modulos || []).includes('obsidian') && !!r.vault && ctx.existe(path.join(r.vault, 'CLAUDE', 'projetos'));
 }
 
 export async function instalar(ctx) {
@@ -66,18 +80,12 @@ export async function instalar(ctx) {
   ].filter(Boolean).join('\n');
 
   await ui.tarefa('Ensinando o Claude quem você é', 'O Claude já sabe quem você é', async () => {
-    const claudeMd = path.join(d, 'CLAUDE.md');
-    if (ctx.existe(claudeMd) && !ctx.estado.modulos.nucleo?.ok) {
-      // Já existia um CLAUDE.md da pessoa: preserva e acrescenta o bloco do Setuper.
-      const atual = fs.readFileSync(claudeMd, 'utf8');
-      if (!atual.includes('<!-- claude-setuper -->')) ctx.escrever(claudeMd, atual + '\n\n' + ctx.template('CLAUDE.md.tpl'));
-    } else {
-      ctx.escrever(claudeMd, ctx.template('CLAUDE.md.tpl'));
-    }
+    escreverClaudeMd(ctx, path.join(d, 'CLAUDE.md'), ctx.template('CLAUDE.md.tpl'));
   });
 
   await ui.tarefa('Configurando como o Claude trabalha', 'Permissões configuradas', async () => {
     const nivel = NIVEIS[ctx.resp.autonomia] || NIVEIS.equilibrado;
+    tirarAvisoAntigo(ctx, path.join(d, 'settings.json'));
     ctx.mesclarJson(path.join(d, 'settings.json'), {
       permissions: { allow: nivel.allow, deny: DENY, defaultMode: nivel.defaultMode },
       hooks: {
@@ -86,6 +94,8 @@ export async function instalar(ctx) {
           { hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'ativacao.cjs'))}"`, timeout: 10 }] },
         ],
         Stop: [{ hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-fim.cjs'))}"`, timeout: 10 }] }],
+        // Antes de escrever: trava o cofre fora de CLAUDE/. Depois de escrever: confere o formato da nota.
+        PreToolUse: [{ matcher: 'Write|Edit|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-trava.cjs'))}"`, timeout: 10 }] }],
         PostToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-nota.cjs'))}"`, timeout: 10 }] }],
       },
       env: { CLAUDE_SETUPER_VAULT: vault },
@@ -95,16 +105,28 @@ export async function instalar(ctx) {
     });
     if (ctx.plataforma === 'darwin') {
       ctx.mesclarJson(path.join(d, 'settings.json'), {
-        hooks: { Stop: [{ hooks: [{ type: 'command', command: `osascript -e 'display notification "Terminei, pode olhar." with title "Claude" sound name "Glass"'`, timeout: 5 }] }] },
+        // Nas rotinas automáticas (revisão, leitura diária) não avisa: a pessoa não pediu nada.
+        hooks: { Stop: [{ hooks: [{ type: 'command', command: AVISO_MAC, timeout: 5 }] }] },
       });
     }
   });
 
   await ui.tarefa('Montando a memória e os lembretes do Claude', 'Memória e lembretes prontos', async () => {
-    for (const h of ['cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs', 'ativacao.cjs']) ctx.copiarTemplate(`hooks/${h}`, path.join(d, 'hooks', h));
-    for (const s of ['decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar']) ctx.copiarTemplate(`skills/${s}.md`, path.join(d, 'skills', s, 'SKILL.md'));
+    for (const h of HOOKS) ctx.copiarTemplate(`hooks/${h}`, path.join(d, 'hooks', h));
+    for (const s of SKILLS) ctx.copiarTemplate(`skills/${s}.md`, path.join(d, 'skills', s, 'SKILL.md'));
     ctx.escreverSeFaltar(path.join(d, 'memoria', 'MEMORIA.md'), ctx.template('memoria/MEMORIA.md'));
   });
+
+  // Instalação que já tinha o cofre: a wiki, a pasta de entrada e a trava entram aqui, sem reabrir o Obsidian.
+  // Na instalação nova quem monta é o passo do Obsidian, que vem depois.
+  if (comCofre(ctx)) {
+    await ui.tarefa('Organizando o seu segundo cérebro', 'Segundo cérebro organizado', () => montarWiki(ctx, ctx.estado.respostas.vault));
+  }
+
+  // Uma chave da API no computador faz o Claude do Terminal cobrar pela API em vez da assinatura, e desliga os
+  // conectores do claude.ai (Gmail, Agenda). Só avisa: o arquivo é da pessoa.
+  const chave = chaveDaApi(ctx);
+  if (chave) ui.aviso(`Achei uma chave da API da Anthropic ${chave}. Com ela, o Claude cobra pelo uso avulso em vez de usar a sua assinatura, e o Gmail e a Agenda não conectam. Se não foi de propósito, peça pra quem te ajuda tirar.`);
 
   await ui.tarefa('Preparando a sua primeira semana com o Claude', 'Primeira semana preparada', async () => {
     // Cardápio de pedidos do perfil: a pessoa pode editar à vontade, então só cria se faltar.
@@ -118,6 +140,37 @@ export async function instalar(ctx) {
       vault: (ctx.resp.modulos || []).includes('obsidian') ? vault : '',
     });
   });
+}
+
+const AVISO_MAC = `[ -n "$CLAUDE_SETUPER_ROTINA" ] || osascript -e 'display notification "Terminei, pode olhar." with title "Claude" sound name "Glass"'`;
+
+// O aviso de "Terminei" das versões antigas tocava também nas rotinas automáticas. Tira o antigo antes de pôr o novo,
+// senão a mesclagem deixaria os dois (e o Mac avisaria duas vezes).
+function tirarAvisoAntigo(ctx, arquivo) {
+  const s = ctx.lerJson(arquivo, null);
+  if (!s?.hooks?.Stop) return;
+  const antes = s.hooks.Stop.length;
+  s.hooks.Stop = s.hooks.Stop.filter((g) => !g.hooks?.some((h) => /Terminei, pode olhar/.test(h.command || '') && h.command !== AVISO_MAC));
+  if (s.hooks.Stop.length !== antes) ctx.escrever(arquivo, s);
+}
+
+// O CLAUDE.md pode ter coisas da pessoa antes e depois do bloco do Setuper: troca só o bloco.
+// Versões antigas não tinham a marca de fim (o bloco ia até o fim do arquivo). Antes de mudar, guarda uma cópia.
+export function escreverClaudeMd(ctx, arquivo, bloco) {
+  if (!ctx.existe(arquivo)) return ctx.escrever(arquivo, bloco);
+  const atual = fs.readFileSync(arquivo, 'utf8');
+  const i = atual.indexOf(INICIO);
+  let novo;
+  if (i < 0) novo = atual.trimEnd() + '\n\n' + bloco;
+  else {
+    const j = atual.indexOf(FIM, i);
+    const depois = j >= 0 ? atual.slice(j + FIM.length) : '\n';
+    novo = atual.slice(0, i) + bloco.trimEnd() + (depois.startsWith('\n') ? depois : '\n' + depois);
+  }
+  if (novo === atual) return;
+  const agora = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  ctx.escrever(path.join(ctx.pastaSetuper, 'backups', `CLAUDE.md antes de ${agora}.md`), atual);
+  ctx.escrever(arquivo, novo);
 }
 
 // Com o segundo cérebro, o cardápio fica na raiz do cofre (a pessoa vê no Obsidian); sem ele, na pasta do Setuper.
@@ -157,11 +210,17 @@ export async function remover(ctx) {
   const claudeMd = path.join(d, 'CLAUDE.md');
   if (fs.existsSync(claudeMd)) {
     const txt = fs.readFileSync(claudeMd, 'utf8');
-    const i = txt.indexOf('<!-- claude-setuper -->');
-    if (i === 0) fs.rmSync(claudeMd, { force: true });
-    else if (i > 0) fs.writeFileSync(claudeMd, txt.slice(0, i).trimEnd() + '\n');
+    const i = txt.indexOf(INICIO);
+    if (i >= 0) {
+      const j = txt.indexOf(FIM, i);
+      const resto = (txt.slice(0, i).trimEnd() + '\n\n' + (j >= 0 ? txt.slice(j + FIM.length).trim() : '')).trim();
+      if (!resto) fs.rmSync(claudeMd, { force: true });
+      else fs.writeFileSync(claudeMd, resto + '\n');
+    }
   }
   for (const f of ['setuper-ativacao.json', 'setuper-ativacao-estado.json']) fs.rmSync(path.join(d, f), { force: true });
-  for (const h of ['ativacao.cjs', 'cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs', 'cerebro-inicio.js', 'cerebro-fim.js', 'cerebro-nota.js']) fs.rmSync(path.join(d, 'hooks', h), { force: true });
-  for (const s of ['decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar']) fs.rmSync(path.join(d, 'skills', s), { recursive: true, force: true });
+  for (const h of [...HOOKS, 'cerebro-inicio.js', 'cerebro-fim.js', 'cerebro-nota.js']) fs.rmSync(path.join(d, 'hooks', h), { force: true });
+  for (const s of SKILLS) fs.rmSync(path.join(d, 'skills', s), { recursive: true, force: true });
+  // A trava do cofre sai junto com os hooks. As notas e a wiki ficam: são da pessoa.
+  if (ctx.estado.respostas?.vault) removerTrava(ctx, ctx.estado.respostas.vault);
 }

@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { ui } from '../ui.js';
+import { montarWiki } from './wiki.js';
 
 export const id = 'obsidian';
 export const nome = 'Segundo cérebro (Obsidian)';
@@ -76,6 +77,9 @@ export async function instalar(ctx) {
     ctx.escreverSeFaltar(path.join(obs, 'hotkeys.json'), {});
     ctx.mesclarJson(path.join(obs, 'community-plugins.json'), PLUGINS.map((p) => p.id));
     ctx.escreverSeFaltar(path.join(obs, 'plugins', 'templater-obsidian', 'data.json'), { templates_folder: 'TEMPLATES', trigger_on_file_creation: false });
+    // Depois das notas iniciais (a página "Como trabalhar comigo" nasce com elas) e por último, pra primeira foto
+    // do histórico já pegar o cofre inteiro.
+    await montarWiki(ctx, vault);
   });
 
   await ui.tarefa('Preparando os complementos das notas', 'Complementos prontos', async (msg) => {
@@ -92,6 +96,8 @@ export async function instalar(ctx) {
     registrarVault(ctx, vault);
   });
 
+  // No "atualizar" o Obsidian já foi aberto e confiado antes: não fecha o app da pessoa nem pede o clique de novo.
+  if (ctx.atualizando && PLUGINS.every((p) => ctx.existe(path.join(vault, '.obsidian', 'plugins', p.id, 'main.js')))) return;
   await abrirEConfiar(ctx, vault);
 }
 

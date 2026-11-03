@@ -23,5 +23,19 @@
     "Analisar 3 concorrentes que eu indicar e me dizer o que eles fazem que eu não faço.",
     "Reescrever uma página ou bio minha pra ficar mais clara pra quem chega pela primeira vez.",
     "Anotar no cérebro o tom de voz que a gente usou nesta semana, pra você acertar de primeira daqui pra frente."
+  ],
+  "wiki": [
+    {
+      "pasta": "clientes",
+      "oQue": "uma página por marca ou cliente atendido: público, tom de voz, o que funcionou e o que não funcionou"
+    },
+    {
+      "pasta": "pessoas",
+      "oQue": "gente do time e contatos dos clientes"
+    },
+    {
+      "pasta": "assuntos",
+      "oQue": "temas que voltam sempre, como canais, tipos de campanha e referências"
+    }
   ]
 }

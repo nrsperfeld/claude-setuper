@@ -30,6 +30,8 @@ const hoje = (agora) => { const d = new Date(agora); return `${d.getFullYear()}-
 lerEntrada((entrada) => {
   // Só quando a pessoa abre o Claude, não quando retoma ou limpa uma conversa.
   if (entrada.source && entrada.source !== 'startup') process.exit(0);
+  // Rotina automática (revisão semanal, leitura diária) não é a pessoa abrindo: não gasta a missão do dia.
+  if (process.env.CLAUDE_SETUPER_ROTINA) process.exit(0);
   const config = ler(CONFIG, null);
   if (!config?.instalado) process.exit(0);
   const estado = ler(ESTADO, { missoesFeitas: 0, ultimoDia: '', ultimoResumo: 0 });

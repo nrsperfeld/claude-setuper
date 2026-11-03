@@ -15,6 +15,7 @@ export async function atualizar(ctx) {
   const ids = Object.keys(ctx.estado.modulos || {});
   if (!ids.length) return ui.encerramento('Nada instalado ainda. Rode: claude-setuper');
   ctx.sim = true;
+  ctx.atualizando = true;
   ctx.resp = { ...(ctx.estado.respostas || {}) };
   for (const m of modulosParaPlataforma(ids, ctx.plataforma)) {
     ui.linha();

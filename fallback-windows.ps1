@@ -515,6 +515,8 @@ $Passos += @{ id = 'pacotes'; n = 7; nome = 'Comandos do seu tipo de trabalho'; 
 
 $Passos += @{ id = 'rotinas'; n = 8; nome = 'Rotinas (revisão semanal e backup diário)'; pular = $SemRotinas; acao = {
   BaixarTemplates
+  # A revisão semanal lê o pedido pro Claude de um arquivo ao lado do script (linha de comando comprida não cabe no cmd).
+  foreach ($pr in @('prompt-revisao.md', 'prompt-ingest.md')) { if (Test-Path (Join-Path $TplDir "rotinas/$pr")) { Escrever (Join-Path $RotDir $pr) (Tpl "rotinas/$pr" @{ vault = $Vault }) } }
   foreach ($r in @(@{ id = 'revisao-semanal'; hora = '09:00'; sc = @('/SC', 'WEEKLY', '/D', 'MON') }, @{ id = 'backup-diario'; hora = '21:00'; sc = @('/SC', 'DAILY') })) {
     $script = Join-Path $RotDir "$($r.id).cmd"
     Escrever $script (Tpl "rotinas/$($r.id).cmd" @{ vault = $Vault; logs = $RotDir })

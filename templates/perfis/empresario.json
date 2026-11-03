@@ -23,5 +23,19 @@
     "Ler os últimos e-mails ou mensagens de um cliente que eu colar e me dizer o que ele realmente quer.",
     "Montar a pauta da próxima reunião com a equipe, com o que decidir em cada ponto.",
     "Revisar comigo a semana da empresa e anotar no cérebro as decisões que a gente tomou."
+  ],
+  "wiki": [
+    {
+      "pasta": "clientes",
+      "oQue": "uma página por cliente importante: quem é, o que comprou, como está a relação"
+    },
+    {
+      "pasta": "pessoas",
+      "oQue": "gente do time, sócios e parceiros"
+    },
+    {
+      "pasta": "assuntos",
+      "oQue": "temas que voltam sempre no negócio, como vendas, financeiro, equipe e fornecedores"
+    }
   ]
 }

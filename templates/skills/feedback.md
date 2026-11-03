@@ -10,4 +10,8 @@ Formato (sem frontmatter, sem título):
 - Depois: o que fazer em vez disso nas próximas vezes, em termos práticos.
 - Última linha: `#claude #feedback`
 
-Uma correção por nota. Não se desculpe na nota; a nota é instrução pro futuro, não pedido de desculpa. Confirme pra pessoa em uma linha o que ficou anotado.
+Uma correção por nota. Não se desculpe na nota; a nota é instrução pro futuro, não pedido de desculpa.
+
+Depois abra `$CLAUDE_SETUPER_VAULT/CLAUDE/wiki/Como trabalhar comigo.md` e acrescente no bloco **Regras** uma linha com a regra prática e o link da nota que você acabou de criar: `- <regra> [[<nome da nota sem .md>]]`. Se já existe uma regra parecida, junte o link novo na mesma linha em vez de repetir a regra. Se a página não existir, pule este passo.
+
+Confirme pra pessoa em uma linha o que ficou anotado.

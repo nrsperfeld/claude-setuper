@@ -24,5 +24,19 @@
     "Revisar um texto ou roteiro com a voz da ELOS, apontando o que soa artificial.",
     "Montar uma planilha simples pra acompanhar algo que hoje eu controlo de cabeça.",
     "Anotar no cérebro as decisões e os aprendizados da semana."
+  ],
+  "wiki": [
+    {
+      "pasta": "pessoas",
+      "oQue": "gente do time com quem você trabalha"
+    },
+    {
+      "pasta": "produtos",
+      "oQue": "cursos, programas e eventos em que você trabalha"
+    },
+    {
+      "pasta": "assuntos",
+      "oQue": "temas que voltam sempre no seu trabalho"
+    }
   ]
 }

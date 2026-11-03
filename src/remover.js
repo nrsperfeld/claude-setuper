@@ -36,7 +36,7 @@ function removerHooksDoSettings(ctx) {
   const s = ctx.lerJson(p, null);
   if (!s?.hooks) return;
   for (const ev of Object.keys(s.hooks)) {
-    s.hooks[ev] = s.hooks[ev].filter((g) => !g.hooks?.some((h) => /cerebro-(inicio|fim|nota)\.c?js|Terminei, pode olhar/.test(h.command || '')));
+    s.hooks[ev] = s.hooks[ev].filter((g) => !g.hooks?.some((h) => /cerebro-(inicio|fim|nota|trava)\.c?js|Terminei, pode olhar/.test(h.command || '')));
     if (!s.hooks[ev].length) delete s.hooks[ev];
   }
   if (s.env) delete s.env.CLAUDE_SETUPER_VAULT;

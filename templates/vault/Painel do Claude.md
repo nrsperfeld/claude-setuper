@@ -49,3 +49,22 @@ WHERE file.name != "README"
 SORT file.mtime DESC
 LIMIT 15
 ```
+
+Wiki (uma página por pessoa, projeto ou assunto)
+
+```dataview
+TABLE WITHOUT ID file.link AS "Página", dateformat(file.mtime, "dd/MM/yyyy") AS "Atualizada"
+FROM "CLAUDE/wiki"
+WHERE file.name != "SCHEMA" AND file.name != "log"
+SORT file.mtime DESC
+```
+
+Fontes guardadas
+
+```dataview
+LIST
+FROM "CLAUDE/fontes"
+WHERE file.name != "README"
+SORT file.mtime DESC
+LIMIT 15
+```

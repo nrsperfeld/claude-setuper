@@ -172,6 +172,11 @@ export function criarCtx(flags = {}) {
 
     // Faz merge raso+profundo de um objeto num JSON existente, sem perder chaves da pessoa.
     mesclarJson(p, patch) {
+      // Arquivo que existe mas não abre (a pessoa editou e quebrou): guarda uma cópia antes, senão ia se perder.
+      if (fs.existsSync(p) && lerJson(p, undefined) === undefined && !ctx.dryRun) {
+        fs.copyFileSync(p, `${p}.quebrado-${Date.now()}`);
+        ctx.log('aviso', 'json que não abre, copiado antes de mesclar', p);
+      }
       const atual = lerJson(p, {});
       const novo = mesclar(atual, patch);
       ctx.escrever(p, novo);

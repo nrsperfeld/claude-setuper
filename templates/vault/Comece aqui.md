@@ -7,6 +7,11 @@ A parte importante: o Claude lê este cérebro antes de trabalhar com você e es
 Onde ficam as coisas:
 
 - `CLAUDE/` é a pasta do Claude. Ele escreve ali o que aprende sobre você: correções, decisões, padrões, ideias e o estado de cada projeto. Pode ler à vontade, e pode editar ou apagar o que quiser. Você é quem manda.
+- `CLAUDE/wiki/` junta, numa página por assunto, o que as notas dizem sobre cada pessoa, projeto ou tema. A página [[Como trabalhar comigo]] reúne as regras que o Claude aprendeu com as suas correções, e ele lê essa página no começo de toda conversa.
+- `CLAUDE/inbox/` é a pasta de entrada. Arraste pra lá um PDF, um texto ou um print que você quer guardar, e o Claude lê uma vez por dia. Se quiser na hora, peça /guardar pra ele.
+
+As pastas abaixo são suas. O Claude lê, mas não escreve nelas.
+
 - `1. PROJETOS/` é pra coisas com começo, meio e fim.
 - `2. ÁREAS/` é pra coisas que não acabam: saúde, família, o seu negócio.
 - `3. RECURSOS/` é pra material de consulta: livros, cursos, referências.

@@ -11,11 +11,11 @@ rem Cópia local compactada (guarda as últimas 14).
 powershell -NoProfile -Command "Compress-Archive -Path '%VAULT%\*' -DestinationPath '%DEST%\notas-%HOJE%.zip' -Force" >nul 2>&1
 powershell -NoProfile -Command "Get-ChildItem '%DEST%\notas-*.zip' | Sort-Object LastWriteTime -Descending | Select-Object -Skip 14 | Remove-Item -Force" >nul 2>&1
 
-rem Backup remoto, se existir.
+rem Histórico das notas (guarda cada versão das páginas que o Claude reescreve) e backup remoto, se existir.
 if exist ".git" (
-  git remote get-url origin >nul 2>&1 && (
+  where git >nul 2>&1 && (
     git add -A >nul 2>&1
     git -c user.name="Claude Setuper" -c user.email="setuper@localhost" commit -q -m "Backup %HOJE%" >nul 2>&1
-    git push -q origin HEAD >nul 2>&1
+    git remote get-url origin >nul 2>&1 && git push -q origin HEAD >nul 2>&1
   )
 )

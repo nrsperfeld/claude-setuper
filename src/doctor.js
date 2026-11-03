@@ -1,6 +1,7 @@
 // doctor: confere cada módulo instalado e mostra uma lista verde/vermelha com dica do que fazer.
 import { ui, c } from './ui.js';
 import { MODULOS, modulosParaPlataforma } from './modulos/index.js';
+import { cuidados } from './cuidados.js';
 
 export async function doctor(ctx) {
   ui.abertura('Claude Setuper · doctor', 'Conferindo se está tudo no lugar');
@@ -21,6 +22,14 @@ export async function doctor(ctx) {
       ctx.log('doctor', i.ok ? '✓' : '✗', m.id, i.item);
       console.log(`    ${i.ok ? c.green('✓') : c.red('✗')} ${i.item}${!i.ok && i.dica ? c.dim(`  → ${i.dica}`) : ''}`);
     }
+  }
+  // O que já existia no computador e atrapalha (chave da API solta, outra memória disputando com o cérebro).
+  const extras = cuidados(ctx);
+  console.log(`\n  ${c.bold('Cuidados')}`);
+  for (const i of extras) {
+    if (!i.ok) faltando++;
+    ctx.log('doctor', i.ok ? '✓' : '✗', 'cuidados', i.item);
+    console.log(`    ${i.ok ? c.green('✓') : c.red('✗')} ${i.item}${!i.ok && i.dica ? c.dim(`  → ${i.dica}`) : ''}`);
   }
   console.log();
   if (!faltando) ui.encerramento(c.green('Tudo certo. Pode usar.'));

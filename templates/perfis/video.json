@@ -22,5 +22,19 @@
     "Revisar um roteiro meu e cortar o que está sobrando, sem perder o meu jeito de falar.",
     "Planejar uma série de 3 vídeos que contam uma história em partes.",
     "Anotar no cérebro o que funcionou nos vídeos desta semana, pra usar de referência."
+  ],
+  "wiki": [
+    {
+      "pasta": "canais",
+      "oQue": "uma página por canal ou cliente: formato, público, o que dá mais resultado"
+    },
+    {
+      "pasta": "pessoas",
+      "oQue": "gente com quem você grava, edita ou negocia"
+    },
+    {
+      "pasta": "assuntos",
+      "oQue": "temas que voltam sempre, como estilo de edição, músicas, equipamento"
+    }
   ]
 }
