@@ -17,12 +17,15 @@ export function criarTerminal(ctx, enviar) {
     ctx.log('$ (terminal do app)', cmd, args.join(' ').slice(0, 200));
     if (ctx.dryRun) return Promise.resolve(0);
     // Só nos logins o link e o código interessam; o Homebrew também imprime links, mas de documentação.
+    // O próprio login pode imprimir link de leitura (o gh 2.103 abre com um "Read more" que cai no blog),
+    // então quem chama diz em opts.link qual é o link do login, e só ele vira botão.
     const login = args.includes('login');
     return new Promise((res, rej) => {
       const p = spawn(PTY, [cmd, ...args], { env: { ...process.env, TERM: 'xterm-256color', ...opts.env }, stdio: ['pipe', 'pipe', 'pipe'] });
       const vistos = new Set();
       let recente = '';
-      let ultimoEnter = 0;
+      let desdeEnter = ''; // o que o programa imprimiu depois do último Enter que mandamos
+      let enterNaFila = false;
       const ler = (buf) => {
         const texto = buf.toString().replace(ANSI, '');
         fs.appendFile(ctx.logPath, texto, () => {});
@@ -31,7 +34,7 @@ export function criarTerminal(ctx, enviar) {
         if (login) {
           for (const m of recente.matchAll(LINK)) {
             const url = m[0].replace(/[.,;:]+$/, '');
-            if (!vistos.has(url)) { vistos.add(url); enviar({ tipo: 'link', url }); }
+            if (!vistos.has(url)) { vistos.add(url); if (!opts.link || opts.link.test(url)) enviar({ tipo: 'link', url }); }
           }
           for (const m of recente.matchAll(CODIGO)) {
             if (!vistos.has(m[1])) { vistos.add(m[1]); enviar({ tipo: 'codigo', codigo: m[1] }); }
@@ -39,9 +42,12 @@ export function criarTerminal(ctx, enviar) {
         }
         // "Press Enter to open github.com" e as perguntas (Y/n) do gh: o padrão é sempre o certo.
         // Espera uns segundos pra pessoa ver o código antes do navegador abrir por cima.
-        if (ENTER.test(texto) && Date.now() - ultimoEnter > 4000) {
-          ultimoEnter = Date.now();
-          setTimeout(() => p.stdin.writable && p.stdin.write('\r'), 3000);
+        // Um Enter por pergunta, contando só o que veio depois do anterior. Antes era um a cada 4 s, e com
+        // internet rápida o "Press Enter" do gh chegava menos de 4 s depois do (Y/n) e ficava sem resposta.
+        desdeEnter = (desdeEnter + texto).slice(-500);
+        if (!enterNaFila && ENTER.test(desdeEnter)) {
+          enterNaFila = true;
+          setTimeout(() => { enterNaFila = false; desdeEnter = ''; if (p.stdin.writable) p.stdin.write('\r'); }, 3000);
         }
       };
       opts.sinal?.addEventListener('abort', () => p.kill());

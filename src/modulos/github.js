@@ -90,7 +90,7 @@ async function login(ctx, qual) {
     'No navegador, cola o código, clica em Continuar e depois em Autorizar.',
     'Depois volta pra cá, eu continuo.',
   ]);
-  await ctx.runVisivel('gh', ['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web', '--skip-ssh-key'], { ignorarErro: true });
+  await ctx.runVisivel('gh', ['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web', '--skip-ssh-key'], { ignorarErro: true, link: /^https:\/\/github\.com\/login\/device/ });
 }
 
 async function logadoNoGh(ctx) {

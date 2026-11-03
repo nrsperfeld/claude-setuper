@@ -86,14 +86,34 @@ async function xcodeCLT(ctx) {
     await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
   }
   // Se a pessoa fechar a janela da Apple sem instalar, ela volta a aparecer, em vez de eu esperar meia hora por nada.
+  // Enquanto isso, o cartão diz o que está acontecendo e há quanto tempo, pra ninguém achar que travou.
   let semJanela = 0;
+  let viuJanela = !!ctx.cltPedido;
+  let ultimoAviso = '';
+  const inicio = Date.now();
   const ok = await ctx.esperar(async () => {
     if (await cltPronto(ctx)) return true;
-    semJanela = (await ctx.run('pgrep', ['-f', 'Install Command Line Developer Tools'], { ignorarErro: true, sempre: true })) ? 0 : semJanela + 1;
+    const janela = !!(await ctx.run('pgrep', ['-f', 'Install Command Line Developer Tools'], { ignorarErro: true, sempre: true }));
+    semJanela = janela ? 0 : semJanela + 1;
+    if (janela && !viuJanela) {
+      // A pessoa já clicou em Instalar: troca o cartão de pedido pelo de espera.
+      viuJanela = true;
+      ui.pausa('As ferramentas da Apple estão instalando', [
+        'Leva de 3 a 10 minutos. Você não precisa fazer nada, é só esperar.',
+        'A janela da Apple mostra uma barrinha andando. Quando ela terminar, pode clicar em Concluído.',
+        'Assim que a Apple terminar, eu sigo sozinho pro próximo passo.',
+      ], { espera: true });
+    }
     if (semJanela >= 3) {
       semJanela = 0;
       await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
     }
+    const min = Math.floor((Date.now() - inicio) / 60000);
+    const quanto = min < 1 ? 'menos de 1 minuto' : min === 1 ? '1 minuto' : `${min} minutos`;
+    const aviso = janela
+      ? `Esperando a Apple terminar de instalar. Já faz ${quanto}, costuma levar de 3 a 10 minutos.`
+      : `Esperando a janela da Apple. Se ela não estiver na frente, procure nas outras janelas abertas. Já faz ${quanto}.`;
+    if (aviso !== ultimoAviso) { ultimoAviso = aviso; ui.info(aviso); }
     return false;
   }, { intervalo: 5, limite: 1800, semEncurtar: true });
   if (!ok) throw new Error(ctx.app ? 'as ferramentas da Apple não terminaram de instalar. Se a janela da Apple sumiu, clica em Tentar de novo que ela aparece outra vez' : 'as ferramentas da Apple não terminaram de instalar');
@@ -146,11 +166,11 @@ async function homebrew(ctx) {
     throw new Error('esse usuário do Mac não é administrador, e o Homebrew precisa de um. Peça acesso de administrador (Ajustes > Usuários e Grupos) e rode de novo');
   }
   ui.pausa('O Mac vai pedir a sua senha', ctx.app ? [
-    'Vai aparecer uma janela do Claude Setuper pedindo a senha do Mac, a mesma que você usa pra ligar o computador. Ela não fica guardada em lugar nenhum.',
+    'Vai aparecer uma janela do Claude Setuper pedindo a senha do Mac. É a senha que você digita na tela de bloqueio, pra desbloquear o computador. Não é a senha do e-mail, do iCloud nem do Claude. Ela não fica guardada em lugar nenhum.',
     'Digita e clica em OK. Se a janela aparecer de novo, é normal: o Mac pede mais de uma vez.',
     'Depois disso leva uns 5 minutos, é só esperar.',
   ] : [
-    'É a mesma senha que você usa pra ligar o computador.',
+    'É a senha que você digita na tela de bloqueio, pra desbloquear o computador. Não é a senha do e-mail, do iCloud nem do Claude.',
     'Ela não aparece enquanto você digita, é normal. Digita e aperta Enter.',
   ]);
   const script = await (await fetch('https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh')).text();

@@ -103,7 +103,7 @@ function telaInicio() {
     !temInstalacao && h('section', { class: 'grupo' }, h('b', {}, 'Antes de começar, deixa à mão'),
       h('ul', { class: 'lista-simples' },
         h('li', {}, 'O computador na tomada e com internet.'),
-        h('li', {}, 'A senha do computador, a mesma que você usa pra ligar ele.'),
+        h('li', {}, 'A senha do computador, a que você digita na tela de bloqueio pra desbloquear ele.'),
         h('li', {}, 'O e-mail da sua conta do Claude. A conta precisa ter um plano pago (Pro ou maior).'))),
     h('div', { class: 'botoes' },
       botao(temInstalacao ? 'Continuar a instalação' : 'Começar', () => (temInstalacao ? comecar('instalar') : apresentar(0)), false, { 'data-foco': true }),

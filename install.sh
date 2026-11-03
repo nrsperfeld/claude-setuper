@@ -46,7 +46,15 @@ main() {
       passo "O Mac vai abrir uma janela pedindo pra instalar as \"ferramentas de linha de comando\"."
       echo "  Clica em Instalar, aceita o contrato e espera terminar (3 a 10 minutos). Eu fico aqui."
       xcode-select --install >/dev/null 2>&1 || true
-      until xcode-select -p >/dev/null 2>&1; do sleep 5; done
+      INI=$(date +%s); ULT=-1
+      until xcode-select -p >/dev/null 2>&1; do
+        MIN=$(( ($(date +%s) - INI) / 60 ))
+        if [ "$MIN" != "$ULT" ]; then
+          ULT=$MIN
+          echo "  Esperando a Apple terminar de instalar. Já faz $MIN min, costuma levar de 3 a 10. Não travou."
+        fi
+        sleep 5
+      done
       ok "Ferramentas da Apple instaladas"
     fi
 
@@ -67,7 +75,7 @@ main() {
         exit 1
       fi
       passo "Agora o Homebrew, que instala programas pelo Terminal."
-      echo "  O Mac vai pedir a sua senha (a mesma de ligar o computador). Ela não aparece enquanto você digita."
+      echo "  O Mac vai pedir a sua senha: a que você digita na tela de bloqueio pra desbloquear o computador (não é a do e-mail nem a do iCloud). Ela não aparece enquanto você digita."
       # stdin vem do curl | bash; sem o /dev/tty o Homebrew entra em modo não interativo e não consegue pedir a senha
       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" < /dev/tty
     fi

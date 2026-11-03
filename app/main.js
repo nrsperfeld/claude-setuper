@@ -60,7 +60,7 @@ function criarAskpass() {
 # Pede a senha do Mac numa janela. Criado pelo Claude Setuper (app).
 if [ -f "${teste}" ]; then sed -n 's/.*"senha" *: *"\\([^"]*\\)".*/\\1/p' "${teste}"; exit 0; fi
 exec /usr/bin/osascript \\
-  -e 'display dialog "O Claude Setuper precisa da senha do seu Mac pra instalar as ferramentas de base. É a mesma senha que você usa pra ligar o computador. Ela não fica guardada em lugar nenhum." default answer "" with hidden answer with title "Claude Setuper" with icon note buttons {"Cancelar", "OK"} default button "OK"' \\
+  -e 'display dialog "O Claude Setuper precisa da senha do seu Mac pra instalar as ferramentas de base. É a senha que você digita na tela de bloqueio, pra desbloquear o computador (não é a do e-mail nem a do iCloud). Ela não fica guardada em lugar nenhum." default answer "" with hidden answer with title "Claude Setuper" with icon note buttons {"Cancelar", "OK"} default button "OK"' \\
   -e 'text returned of result'
 `, { mode: 0o700 });
   fs.chmodSync(arquivo, 0o700);
