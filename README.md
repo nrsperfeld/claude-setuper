@@ -113,6 +113,32 @@ gh release create v1.4.0 app/dist/*.zip            # publica (a linha baixa de r
 
 Sem conta de desenvolvedor da Apple a assinatura é ad-hoc: baixado pelo navegador o macOS 15/26 bloqueia, baixado pelo Terminal abre direto. Desenho em `docs/superpowers/specs/2026-10-24-app-mac-design.md`.
 
+## Modo presente (segundo cérebro pronto pra uma pessoa)
+
+Uma pasta `presente/` com `presente.json` e `cofre/` transforma o Setuper num presente: abre com uma carta (o recado e a assinatura de quem deu), não pergunta o que já veio respondido e copia o `cofre/` pro cofre da pessoa antes dos modelos em branco, sem sobrescrever nada que já esteja lá. O `.obsidian` do presente (tema, snippets, grafo) é mesclado por cima do que o módulo escreve. A pasta vem dentro do app (`Contents/Resources/presente`), ou por `--presente <pasta>` / `CLAUDE_SETUPER_PRESENTE` no Terminal. Código em `src/presente.js`, testes em `test/presente.test.cjs`.
+
+```json
+{
+  "pessoa": "bruno",                       // vai no bundle id: com.elos.segundocerebro.bruno
+  "nome": "Bruno", "artigo": "do",          // "Segundo Cérebro do Bruno"
+  "perfil": "empresario",
+  "vault": "Segundo Cérebro",               // pasta em ~/Documents
+  "respostas": { "idade": "45", "tecnologia": "basico", "ia": "chat", "trabalho": "...",
+                 "autonomia": "equilibrado", "pacotes": ["empresa", "escrita"], "mcps": [], "modulos": "tudo" },
+  "recado": { "titulo": "...", "texto": "parágrafos separados por linha em branco", "assinatura": "Nathan" },
+  "paraComecar": ["pedido 1", "pedido 2", "pedido 3"]
+}
+```
+
+O que faltar em `respostas` o wizard pergunta. `signo.png` ao lado do `presente.json` vira o ícone do app e entra na carta.
+
+```bash
+bash app/build-presente.sh <pasta-presente> <saída>          # <saída>/Segundo Cérebro.app (arm64, ad-hoc)
+bash app/dmg-presente.sh "<saída>/Segundo Cérebro.app" <saída> # "Segundo Cérebro do <Nome>.dmg"
+```
+
+Testar as telas sem instalar nada: `"<saída>/Segundo Cérebro.app/Contents/MacOS/Electron" --home <casa-de-teste> --sem-apps`.
+
 ## Testar num Mac zerado (VM)
 
 ```bash

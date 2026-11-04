@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { lerPresente } from './presente.js';
 
 const execFileP = promisify(execFile);
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -229,6 +230,16 @@ export function criarCtx(flags = {}) {
       return false;
     },
   };
+  // Modo presente (src/presente.js): o cofre e as respostas chegam prontos. Com problema no presente.json, segue só
+  // com o que estiver certo e pergunta o resto.
+  const dirPresente = flags.presente ?? process.env.CLAUDE_SETUPER_PRESENTE;
+  try {
+    ctx.presente = lerPresente(dirPresente, { templates: ctx.templates });
+    if (ctx.presente?.problemas.length) ctx.log('aviso', 'presente.json com problema:', ctx.presente.problemas.join(' | '));
+  } catch (e) {
+    ctx.log('aviso', 'presente não abriu', dirPresente, e.message);
+    ctx.presente = null;
+  }
   return ctx;
 }
 

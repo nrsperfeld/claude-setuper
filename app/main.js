@@ -14,20 +14,30 @@ const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const SETUPER = fs.existsSync(path.join(AQUI, 'setuper', 'src')) ? path.join(AQUI, 'setuper') : path.join(AQUI, '..');
 const REPO = process.env.CLAUDE_SETUPER_REPO || 'nrsperfeld/claude-setuper';
 const VERSAO = JSON.parse(fs.readFileSync(path.join(SETUPER, 'package.json'), 'utf8')).version;
-const HOME = os.homedir();
+const argumento = (nome) => { const i = process.argv.indexOf(nome); return i > 0 ? process.argv[i + 1] : ''; };
+// --home só pra testar sem tocar na casa de verdade (como no Terminal): respostas, estado e cofre ficam lá.
+const HOME_TESTE = argumento('--home') ? path.resolve(argumento('--home')) : '';
+const HOME = HOME_TESTE || os.homedir();
 const PASTA = path.join(HOME, 'Claude Setuper');
+// Modo presente: um segundo cérebro pronto dentro do app (Contents/Resources/presente) ou apontado por --presente.
+const PRESENTE = (() => {
+  const dir = argumento('--presente') || process.env.CLAUDE_SETUPER_PRESENTE || path.join(process.resourcesPath || '', 'presente');
+  return fs.existsSync(path.join(dir, 'presente.json')) ? path.resolve(dir) : '';
+})();
+const NOME_APP = PRESENTE ? 'Segundo Cérebro' : 'Claude Setuper';
+const flagsBase = () => ({ app: true, ...(HOME_TESTE ? { home: HOME_TESTE } : {}), ...(PRESENTE ? { presente: PRESENTE } : {}) });
 const TESTE = lerJson(path.join(PASTA, '.teste-auto.json')); // só existe nos testes da VM
 
 // Aberto pelo Finder, o app herda um PATH mínimo; sem isso não acha brew, node, claude, gh.
 process.env.PATH = [...new Set([
-  '/opt/homebrew/bin', '/opt/homebrew/sbin', '/usr/local/bin', path.join(HOME, '.local', 'bin'), path.join(HOME, '.local', 'node', 'bin'),
+  '/opt/homebrew/bin', '/opt/homebrew/sbin', '/usr/local/bin', path.join(os.homedir(), '.local', 'bin'), path.join(os.homedir(), '.local', 'node', 'bin'),
   ...(process.env.PATH || '').split(':').filter(Boolean), '/usr/bin', '/bin', '/usr/sbin', '/sbin',
 ])].join(':');
 process.env.LANG ||= 'pt_BR.UTF-8';
 // Nos testes da VM os logins esperam só uns segundos (não tem pessoa pra fazer o login).
 if (TESTE?.esperaMax) process.env.CLAUDE_SETUPER_ESPERA_MAX = String(TESTE.esperaMax);
 
-const perfil = (() => { const i = process.argv.indexOf('--perfil'); return i > 0 ? process.argv[i + 1] : ''; })();
+const perfil = argumento('--perfil');
 const semApps = process.argv.includes('--sem-apps'); // só pra testar as telas sem instalar nada
 let janela;
 let rodando = false;
@@ -60,7 +70,7 @@ function criarAskpass() {
 # Pede a senha do Mac numa janela. Criado pelo Claude Setuper (app).
 if [ -f "${teste}" ]; then sed -n 's/.*"senha" *: *"\\([^"]*\\)".*/\\1/p' "${teste}"; exit 0; fi
 exec /usr/bin/osascript \\
-  -e 'display dialog "O Claude Setuper precisa da senha do seu Mac pra instalar as ferramentas de base. É a senha que você digita na tela de bloqueio, pra desbloquear o computador (não é a do e-mail nem a do iCloud). Ela não fica guardada em lugar nenhum." default answer "" with hidden answer with title "Claude Setuper" with icon note buttons {"Cancelar", "OK"} default button "OK"' \\
+  -e 'display dialog "O ${NOME_APP} precisa da senha do seu Mac pra instalar as ferramentas de base. É a senha que você digita na tela de bloqueio, pra desbloquear o computador (não é a do e-mail nem a do iCloud). Ela não fica guardada em lugar nenhum." default answer "" with hidden answer with title "${NOME_APP}" with icon note buttons {"Cancelar", "OK"} default button "OK"' \\
   -e 'text returned of result'
 `, { mode: 0o700 });
   fs.chmodSync(arquivo, 0o700);
@@ -76,7 +86,7 @@ let jaTentou = false;
 async function instalarTudo() {
   const { criarCtx } = await importarSetuper('ctx.js');
   const { instalar } = await importarSetuper('cli.js');
-  const ctx = criarCtx({ app: true, askpass: criarAskpass(), perfil, semApps });
+  const ctx = criarCtx({ ...flagsBase(), askpass: criarAskpass(), perfil, semApps });
   // "Tentar de novo" na mesma abertura do app: as respostas acabaram de ser dadas, vai direto ao que falta.
   ctx.repetirDireto = jaTentou;
   jaTentou = true;
@@ -114,23 +124,26 @@ async function instalarComando(ctx) {
   }
 }
 
-// O que a tela final mostra em "Pra começar": onde o Claude está e três pedidos do cardápio do perfil.
+// O que a tela final mostra em "Pra começar": onde o Claude está e três pedidos do cardápio do perfil
+// (no presente, os três pedidos que vieram no presente.json).
 function paraComecar() {
   const r = lerJson(path.join(PASTA, 'estado.json'))?.respostas || {};
   let exemplos = [];
-  try {
+  const doPresente = PRESENTE ? (lerJson(path.join(PRESENTE, 'presente.json'))?.paraComecar || []).filter((x) => typeof x === 'string' && x.trim()).slice(0, 3) : [];
+  if (doPresente.length) exemplos = doPresente;
+  else try {
     const cardapio = fs.readFileSync(path.join(SETUPER, 'templates', 'cardapio', `${r.perfil || 'dia-a-dia'}.md`), 'utf8');
     exemplos = cardapio.split('\n').filter((l) => l.startsWith('- ')).slice(0, 3).map((l) => l.slice(2).trim());
   } catch {}
   const maestri = ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'].some((p) => fs.existsSync(p));
-  return { nome: r.nome || '', exemplos, maestri, notas: (r.modulos || []).includes('obsidian') };
+  return { nome: r.nome || '', exemplos, maestri, notas: (r.modulos || []).includes('obsidian'), presente: doPresente.length > 0 };
 }
 
 // Mesma conferência do "claude-setuper doctor", devolvida em dados pra tela.
 async function conferencia() {
   const { criarCtx } = await importarSetuper('ctx.js');
   const { MODULOS, modulosParaPlataforma } = await importarSetuper('modulos/index.js');
-  const ctx = criarCtx({ app: true });
+  const ctx = criarCtx(flagsBase());
   const ids = Object.keys(ctx.estado.modulos || {});
   const lista = modulosParaPlataforma(ids.length ? ids : MODULOS.filter((m) => m.padrao).map((m) => m.id), ctx.plataforma);
   const grupos = [];
@@ -179,7 +192,7 @@ function abrirClaude() {
 function criarJanela() {
   janela = new BrowserWindow({
     width: 960, height: 680, minWidth: 820, minHeight: 600,
-    title: 'Claude Setuper', titleBarStyle: 'hiddenInset', backgroundColor: '#0f0f10', show: false,
+    title: NOME_APP, titleBarStyle: 'hiddenInset', backgroundColor: '#0f0f10', show: false,
     webPreferences: { preload: path.join(AQUI, 'preload.cjs'), contextIsolation: true, sandbox: true, backgroundThrottling: false },
   });
   janela.loadFile(path.join(AQUI, 'tela', 'index.html'));
@@ -194,7 +207,7 @@ function criarJanela() {
     const escolha = dialog.showMessageBoxSync(janela, {
       type: 'warning', buttons: ['Continuar instalando', 'Fechar mesmo assim'], defaultId: 0, cancelId: 0,
       message: 'A instalação ainda está rodando.',
-      detail: 'Se fechar agora, é só abrir o Claude Setuper de novo depois: eu continuo de onde parei.',
+      detail: `Se fechar agora, é só abrir o ${NOME_APP} de novo depois: eu continuo de onde parei.`,
     });
     if (escolha === 0) e.preventDefault();
   });
@@ -257,10 +270,28 @@ ipcMain.on('pronto', async () => {
     return;
   }
   const estado = lerJson(path.join(PASTA, 'estado.json'));
-  enviar({ tipo: 'inicio', versao: VERSAO, temInstalacao: !!estado?.respostas, nome: estado?.respostas?.nome || '', auto: TESTE || null });
+  enviar({ tipo: 'inicio', versao: VERSAO, temInstalacao: !!estado?.respostas, nome: estado?.respostas?.nome || '', auto: TESTE || null, presente: await dadosDoPresente() });
+  // O app do presente não se troca pelo Claude Setuper comum: a versão nova dos releases não traz o cofre.
+  if (PRESENTE) return;
   const nova = await versaoNova();
   if (nova && app.isPackaged) enviar({ tipo: 'atualizacao', versao: nova });
 });
+
+// O que a tela de boas-vindas do presente mostra: o recado, a assinatura e o signo (como imagem embutida).
+async function dadosDoPresente() {
+  if (!PRESENTE) return null;
+  try {
+    const { lerPresente } = await importarSetuper('presente.js');
+    const p = lerPresente(PRESENTE);
+    if (!p) return null;
+    let signo = '';
+    if (p.signo) signo = `data:${p.signo.endsWith('.svg') ? 'image/svg+xml' : 'image/png'};base64,${fs.readFileSync(p.signo).toString('base64')}`;
+    return { nome: p.nome, rotulo: p.rotulo, artigo: p.artigo, recado: p.recado, signo };
+  } catch (e) {
+    fs.appendFileSync(path.join(PASTA, 'registro.log'), `[presente] ${e.stack || e.message}\n`);
+    return null;
+  }
+}
 
 ipcMain.on('iniciar', async (_e, modo) => {
   if (rodando) return;
@@ -303,7 +334,7 @@ ipcMain.handle('pedir-ajuda', async () => {
   try {
     const { criarCtx } = await importarSetuper('ctx.js');
     const { gerarPedidoDeAjuda } = await importarSetuper('ajuda.js');
-    const arquivo = await gerarPedidoDeAjuda(criarCtx({ app: true }), VERSAO);
+    const arquivo = await gerarPedidoDeAjuda(criarCtx(flagsBase()), VERSAO);
     shell.showItemInFolder(arquivo);
     return { arquivo, nome: path.basename(arquivo), pasta: path.basename(path.dirname(arquivo)) };
   } catch (e) {
@@ -320,11 +351,16 @@ ipcMain.handle('print', async (_e, nome) => {
   fs.writeFileSync(path.join(dir, `${String(fs.readdirSync(dir).length + 1).padStart(2, '0')}-${nome}.png`), img.toPNG());
 });
 
+// Testando com --home, os dados do Electron também ficam na casa de teste.
+if (HOME_TESTE) app.setPath('userData', path.join(HOME_TESTE, 'Library', 'Application Support', NOME_APP));
+if (PRESENTE) app.setName(NOME_APP);
+
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => { if (janela) { if (janela.isMinimized()) janela.restore(); janela.focus(); } });
   app.whenReady().then(async () => {
     if (process.argv.includes('--tema-claro')) nativeTheme.themeSource = 'light'; // só pros prints de conferência
+    else if (PRESENTE) nativeTheme.themeSource = 'dark'; // o presente é escuro, como o cofre e o .dmg
     const { ui } = await importarSetuper('ui.js');
     Object.assign(ui, criarUiApp(enviar, pedir));
     criarJanela();

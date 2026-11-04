@@ -31,6 +31,7 @@ Opções:
   --home <pasta>    usa outra pasta como "casa" (pra testes)
   --sem-apps        não instala aplicativos, só escreve arquivos (pra testes)
   --assistido       grava um relatório pra quem está te ajudando
+  --presente <pasta> instala um segundo cérebro pronto (presente.json + cofre/)
 `;
 
 export async function main(argv) {
@@ -166,6 +167,7 @@ function parse(argv) {
     else if (a === '--plataforma') flags.plataforma = argv[++i];
     else if (a === '--modulos') flags.modulos = argv[++i];
     else if (a === '--perfil') flags.perfil = argv[++i];
+    else if (a === '--presente') flags.presente = argv[++i];
     else if (!a.startsWith('-')) cmd = a;
   }
   return { cmd, flags };

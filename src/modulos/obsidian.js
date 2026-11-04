@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { ui } from '../ui.js';
 import { montarWiki } from './wiki.js';
+import { copiarCofre, mesclarObsidian, presenteTemNotas } from '../presente.js';
 
 export const id = 'obsidian';
 export const nome = 'Segundo cérebro (Obsidian)';
@@ -57,7 +58,9 @@ export async function instalar(ctx) {
 
   await instalarApp(ctx);
 
-  await ui.tarefa('Montando o seu caderno de notas', 'Caderno de notas montado', async () => {
+  await ui.tarefa(ctx.presente ? 'Guardando o seu segundo cérebro' : 'Montando o seu caderno de notas', ctx.presente ? 'Segundo cérebro guardado' : 'Caderno de notas montado', async () => {
+    // Presente primeiro: as páginas prontas ocupam o lugar e os modelos em branco abaixo só entram onde faltar.
+    if (ctx.presente) copiarCofre(ctx, vault);
     const pastas = { feedback: 'feedback', 'decisões': 'decisão', 'padrões': 'padrão', descobertas: 'descoberta', projetos: 'projeto' };
     for (const [pasta, tag] of Object.entries(pastas)) {
       fs.mkdirSync(path.join(vault, 'CLAUDE', pasta), { recursive: true });
@@ -67,7 +70,8 @@ export async function instalar(ctx) {
     ctx.escreverSeFaltar(path.join(vault, 'Comece aqui.md'), ctx.template('vault/Comece aqui.md'));
     ctx.escreverSeFaltar(path.join(vault, 'Painel do Claude.md'), ctx.template('vault/Painel do Claude.md'));
     ctx.escreverSeFaltar(path.join(vault, 'TEMPLATES', 'Nota do Claude.md'), ctx.template('vault/template-nota.md'));
-    ctx.escreverSeFaltar(path.join(vault, 'CLAUDE', 'padrões', 'Como falar comigo.md'), ctx.template('vault/padrao-inicial.md'));
+    // O presente já traz os padrões tirados da fala da própria pessoa: a nota genérica da instalação não entra.
+    if (!presenteTemNotas(ctx, path.join('CLAUDE', 'padrões'))) ctx.escreverSeFaltar(path.join(vault, 'CLAUDE', 'padrões', 'Como falar comigo.md'), ctx.template('vault/padrao-inicial.md'));
 
     const obs = path.join(vault, '.obsidian');
     ctx.escreverSeFaltar(path.join(obs, 'app.json'), { attachmentFolderPath: '_anexos', newFileLocation: 'root', useMarkdownLinks: false, alwaysUpdateLinks: true, showUnsupportedFiles: false });
@@ -77,6 +81,8 @@ export async function instalar(ctx) {
     ctx.escreverSeFaltar(path.join(obs, 'hotkeys.json'), {});
     ctx.mesclarJson(path.join(obs, 'community-plugins.json'), PLUGINS.map((p) => p.id));
     ctx.escreverSeFaltar(path.join(obs, 'plugins', 'templater-obsidian', 'data.json'), { templates_folder: 'TEMPLATES', trigger_on_file_creation: false });
+    // O .obsidian do presente (tema, snippets, cores do grafo) entra por cima dos padrões acima.
+    if (ctx.presente) mesclarObsidian(ctx, vault);
     // Depois das notas iniciais (a página "Como trabalhar comigo" nasce com elas) e por último, pra primeira foto
     // do histórico já pegar o cofre inteiro.
     await montarWiki(ctx, vault);

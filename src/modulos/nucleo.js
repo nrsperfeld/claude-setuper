@@ -5,6 +5,7 @@ import { ui } from '../ui.js';
 import { perfil, NIVEL_TEC, NIVEL_IA, IA_ANTIGA, MENOR_DE_IDADE } from '../perfis.js';
 import { montarWiki, verificarWiki, removerTrava } from './wiki.js';
 import { chaveDaApi } from '../cuidados.js';
+import { copiarCofre } from '../presente.js';
 
 export const id = 'nucleo';
 export const nome = 'Núcleo do Claude';
@@ -120,7 +121,11 @@ export async function instalar(ctx) {
   // Instalação que já tinha o cofre: a wiki, a pasta de entrada e a trava entram aqui, sem reabrir o Obsidian.
   // Na instalação nova quem monta é o passo do Obsidian, que vem depois.
   if (comCofre(ctx)) {
-    await ui.tarefa('Organizando o seu segundo cérebro', 'Segundo cérebro organizado', () => montarWiki(ctx, ctx.estado.respostas.vault));
+    await ui.tarefa('Organizando o seu segundo cérebro', 'Segundo cérebro organizado', () => {
+      // Presente num cofre que já existia: as notas prontas entram antes da wiki, sem apagar nada.
+      if (ctx.presente) copiarCofre(ctx, ctx.estado.respostas.vault);
+      return montarWiki(ctx, ctx.estado.respostas.vault);
+    });
   }
 
   // Uma chave da API no computador faz o Claude do Terminal cobrar pela API em vez da assinatura, e desliga os

@@ -6,7 +6,7 @@ const detalhes = document.getElementById('detalhes');
 const anuncio = document.getElementById('anuncio');
 
 const estado = {
-  fase: 'carregando', // inicio | perguntas | instalando | fim | falha
+  fase: 'carregando', // presente | preparo | inicio | perguntas | instalando | fim | falha
   inicio: null, atualizacao: null, auto: null,
   passos: [], atual: -1, falhos: new Set(), pendentes: new Set(), comecar: null,
   tarefa: '', msgs: [], pausa: null, pedido: null, introPerguntas: '',
@@ -34,8 +34,10 @@ function botao(texto, onclick, secundario = false, extra = {}) {
 // ---------- coluna da esquerda ----------
 function desenharEtapas() {
   const itens = [];
-  const perguntasFeitas = !['inicio', 'apresentacao', 'perguntas', 'carregando'].includes(estado.fase);
-  itens.push(['Algumas perguntas', perguntasFeitas ? 'feito' : estado.fase === 'perguntas' ? 'atual' : '']);
+  const perguntasFeitas = !['presente', 'preparo', 'inicio', 'apresentacao', 'perguntas', 'carregando'].includes(estado.fase);
+  // No presente as respostas já vieram prontas: a primeira etapa é só a abertura.
+  const primeira = estado.inicio?.presente ? 'Boas-vindas' : 'Algumas perguntas';
+  itens.push([primeira, perguntasFeitas ? 'feito' : ['perguntas', 'presente', 'preparo'].includes(estado.fase) ? 'atual' : '']);
   if (estado.passos.length) {
     estado.passos.forEach((nome, i) => {
       let classe = '';
@@ -54,7 +56,10 @@ function desenharEtapas() {
 function desenhar() {
   desenharEtapas();
   let conteudo;
+  document.body.classList.toggle('carta', estado.fase === 'presente' && !estado.pedido);
   if (estado.pedido) conteudo = telaPedido(estado.pedido);
+  else if (estado.fase === 'presente') conteudo = telaPresente();
+  else if (estado.fase === 'preparo') conteudo = telaPreparo();
   else if (estado.fase === 'inicio') conteudo = telaInicio();
   else if (estado.fase === 'apresentacao') conteudo = telaApresentacao();
   else if (estado.fase === 'perguntas') conteudo = [h('p', { class: 'mut' }, 'Um instante...')];
@@ -109,6 +114,47 @@ function telaInicio() {
       botao(temInstalacao ? 'Continuar a instalação' : 'Começar', () => (temInstalacao ? comecar('instalar') : apresentar(0)), false, { 'data-foco': true }),
       temInstalacao && botao('Só conferir', () => comecar('conferir'), true)),
   ];
+}
+
+// ---------- presente: a carta de abertura e o que deixar à mão ----------
+// O recado vem do presente.json (texto de quem deu o presente), com a assinatura embaixo. Um botão só.
+function telaPresente() {
+  const pr = estado.inicio.presente;
+  const rc = pr.recado || {};
+  const paragrafos = String(rc.texto || '').split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean);
+  return [h('article', { class: 'carta-presente' },
+    pr.signo ? h('img', { class: 'signo', src: pr.signo, alt: '' }) : null,
+    h('p', { class: 'etiqueta' }, pr.rotulo),
+    rc.titulo ? h('h1', {}, rc.titulo) : null,
+    h('div', { class: 'carta-texto' }, paragrafos.map((t) => h('p', {}, t))),
+    rc.assinatura ? h('p', { class: 'assinatura' }, rc.assinatura) : null,
+    h('div', { class: 'botoes' }, botao('Começar', () => preparar(), false, { 'data-foco': true })))];
+}
+function preparar() {
+  estado.fase = 'preparo';
+  desenhar();
+}
+function telaPreparo() {
+  return [
+    h('h1', {}, 'Antes de começar'),
+    h('p', { class: 'mut' }, 'Leva de 15 a 30 minutos. As suas notas e as respostas já vieram prontas, então eu instalo quase tudo sozinho. Quando precisar de você, pra senha ou pra entrar numa conta, aparece um cartão amarelo dizendo exatamente o que fazer.'),
+    h('section', { class: 'grupo' }, h('b', {}, 'Deixa à mão'),
+      h('ul', { class: 'lista-simples' },
+        h('li', {}, 'O computador na tomada e com internet.'),
+        h('li', {}, 'A senha do computador, a que você digita na tela de bloqueio pra desbloquear ele.'),
+        h('li', {}, 'O e-mail da sua conta do Claude, pra entrar nela quando eu pedir.'))),
+    h('div', { class: 'botoes' }, botao('Vamos lá', () => comecar('instalar'), false, { 'data-foco': true })),
+  ];
+}
+// A marca do canto vira a do presente: o signo e o nome do cofre no lugar do Claude Setuper.
+function marcaDoPresente(pr) {
+  const marca = document.querySelector('.marca');
+  if (!marca || !pr) return;
+  document.title = 'Segundo Cérebro';
+  const [, , nomeCofre] = pr.rotulo.match(/^(Segundo Cérebro)\s+(.*)$/) || [];
+  marca.replaceChildren(
+    pr.signo ? h('img', { class: 'signo-marca', src: pr.signo, alt: '' }) : null,
+    h('div', {}, h('b', {}, 'Segundo Cérebro'), h('span', {}, nomeCofre || '')));
 }
 
 // ---------- apresentação: por que usar o Claude assim (só na primeira vez) ----------
@@ -333,7 +379,7 @@ function paraComecar(cm) {
   return h('section', { class: 'grupo comecar' }, h('b', {}, 'Pra começar'),
     h('ul', { class: 'lista-simples' }, h('li', {}, ondeEsta), h('li', {}, voltar),
       cm.notas ? h('li', {}, 'Nas suas notas tem o "Cardápio do Claude", com pedidos prontos do seu tipo de trabalho.') : null),
-    cm.exemplos?.length ? [h('p', { class: 'mut pequeno exemplos-titulo' }, 'Alguns pedidos pra copiar e trocar o que está entre colchetes:'),
+    cm.exemplos?.length ? [h('p', { class: 'mut pequeno exemplos-titulo' }, cm.presente ? 'Três pedidos pra começar, é só copiar e colar no Claude:' : 'Alguns pedidos pra copiar e trocar o que está entre colchetes:'),
       h('ul', { class: 'exemplos' }, cm.exemplos.map((e) => h('li', {}, h('span', {}, e), botao('Copiar', (ev) => { S.copiar(e); ev.target.textContent = 'Copiado'; }, true))))] : null);
 }
 
@@ -386,8 +432,9 @@ document.getElementById('ver-detalhes').addEventListener('click', (e) => {
 S.aoEvento((ev) => {
   switch (ev.tipo) {
     case 'inicio':
-      estado.inicio = ev; estado.auto = ev.auto; estado.fase = 'inicio';
+      estado.inicio = ev; estado.auto = ev.auto; estado.fase = ev.presente && !ev.temInstalacao ? 'presente' : 'inicio';
       document.getElementById('versao').textContent = `versão ${ev.versao}`;
+      if (ev.presente) marcaDoPresente(ev.presente);
       break;
     case 'atualizacao': estado.atualizacao = ev.versao; break;
     case 'abertura': if (estado.fase !== 'instalando') estado.fase = 'perguntas'; break;
@@ -437,6 +484,13 @@ function print(nome) {
 }
 function roteiro(ev) {
   const a = estado.auto;
+  if (ev.tipo === 'inicio' && estado.fase === 'presente') {
+    // Presente: a carta, o "deixa à mão" e a instalação, como a pessoa faria.
+    print('presente');
+    setTimeout(() => { preparar(); print('preparo'); }, 3000);
+    setTimeout(() => comecar('instalar'), 6000);
+    return;
+  }
   if (ev.tipo === 'inicio') {
     print('inicio');
     // Passa pela apresentação como a pessoa faria, com um print de cada tela.
