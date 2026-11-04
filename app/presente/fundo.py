@@ -1,6 +1,6 @@
 # Fundo da janela do .dmg (720x480 e @2x): escuro, o signo discreto no alto, a seta em cobre entre o app e
 # Aplicativos, etiquetas claras sob os ícones e embaixo a faixa com as duas etapas da primeira abertura
-# (o aviso do Mac e o Abrir Mesmo Assim em Privacidade e Segurança, que é o caminho no macOS 15 e mais novos).
+# (fechar o aviso do Mac e o Abrir Mesmo Assim em Privacidade e Segurança, que é o caminho no macOS 15 e mais novos).
 # Desenhado em HTML e fotografado pelo Chrome sem janela, com um perfil descartável (não mexe no Chrome aberto).
 #   python fundo.py <signo.png> <rótulo> <pasta-de-saída>      -> fundo.png e fundo@2x.png
 import base64, os, subprocess, sys, tempfile, html
@@ -37,7 +37,7 @@ body {{ background: radial-gradient(560px 300px at 50% -40px, rgba(200,135,60,.2
 .passo p {{ font: 400 13px/1.42 "Iowan Old Style", Palatino, Georgia, serif; color: #e6dfd3; }}
 .passo p b {{ color: #d89a52; font-weight: 600; }}
 .num {{ font: 600 14px/1 "Iowan Old Style", Palatino, Georgia, serif; color: #c8873c; margin-right: 3px; }}
-/* Figura 1: o aviso do Mac na primeira abertura, com o OK marcado. */
+/* Figura 1: o aviso do Mac na primeira abertura, com o botão de fechar marcado (sem nome: muda com a versão). */
 .aviso {{ flex: none; width: 96px; padding: 9px 8px 8px; border-radius: 11px; background: #2a2622; text-align: center;
   box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 6px 16px rgba(0,0,0,.5); }}
 .aviso .ic {{ width: 22px; height: 22px; margin: 0 auto 6px; border-radius: 6px; background: linear-gradient(#2f2924, #14110f); position: relative;
@@ -67,8 +67,8 @@ body {{ background: radial-gradient(560px 300px at 50% -40px, rgba(200,135,60,.2
 <div class="faixa">
   <div class="passo">
     <div class="aviso"><div class="ic"><i></i></div><div class="barra" style="width: 78%"></div><div class="barra" style="width: 56%"></div>
-      <div class="bt cobre">OK</div><div class="bt">Mover para o Lixo</div></div>
-    <p><span class="num">1.</span>Arraste para Aplicativos e abra o app. Se aparecer um aviso, clique em <b>OK</b>.</p>
+      <div class="bt cobre">&nbsp;</div><div class="bt">Mover para o Lixo</div></div>
+    <p><span class="num">1.</span>Arraste para Aplicativos e abra o app. Se aparecer um aviso, <b>feche o aviso</b>.</p>
   </div>
   <div class="passo">
     <div class="painel"><div class="tit">Privacidade e Segurança</div>
