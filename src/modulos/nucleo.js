@@ -2,7 +2,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { ui } from '../ui.js';
-import { perfil, NIVEL_TEC, NIVEL_IA, IA_ANTIGA, MENOR_DE_IDADE } from '../perfis.js';
+import { perfil, NIVEL_TEC, NIVEL_IA, IA_ANTIGA, MENOR_DE_IDADE, ehMenor } from '../perfis.js';
 import { montarWiki, verificarWiki, removerTrava } from './wiki.js';
 import { chaveDaApi } from '../cuidados.js';
 import { copiarCofre } from '../presente.js';
@@ -65,8 +65,8 @@ export async function instalar(ctx) {
   }[ctx.resp.autonomia];
 
   const p = perfil(ctx, ctx.resp.perfil);
-  const menor = ctx.resp.idade && Number(ctx.resp.idade) < 18;
-  ctx.resp.idadeTexto = ctx.resp.idade ? `, tenho ${ctx.resp.idade} anos` : '';
+  const menor = ehMenor(ctx.resp.idade);
+  ctx.resp.idadeTexto = String(ctx.resp.idade ?? '').trim() ? `, tenho ${ctx.resp.idade} anos` : '';
   // Quem já usa IA pra código não precisa do aviso de "sem jargão", mesmo que tenha marcado o básico em tecnologia.
   ctx.resp.nivelTexto = ctx.resp.ia === 'code' ? NIVEL_TEC.avancado : NIVEL_TEC[ctx.resp.tecnologia] || NIVEL_TEC.basico;
   ctx.resp.iaTexto = NIVEL_IA[IA_ANTIGA[ctx.resp.ia] || ctx.resp.ia] || '';

@@ -6,7 +6,7 @@ import { ui, c } from './ui.js';
 import { MODULOS } from './modulos/index.js';
 import { PACOTES } from './modulos/pacotes.js';
 import { catalogo } from './modulos/mcps.js';
-import { perfis, perfil as acharPerfil, IA_ANTIGA } from './perfis.js';
+import { perfis, perfil as acharPerfil, IA_ANTIGA, ehMenor } from './perfis.js';
 import { respostasDoPresente } from './presente.js';
 
 const AUTONOMIAS = [
@@ -75,7 +75,8 @@ export async function wizard(ctx) {
   );
   const p = acharPerfil(ctx, idPerfil);
 
-  const idade = tem('idade') ? pre.idade : await ui.perguntar('Quantos anos você tem?', {
+  // No presente sem idade, a idade não é perguntada: fica em branco e a pessoa é tratada como adulta.
+  const idade = tem('idade') ? pre.idade : ctx.presente ? '' : await ui.perguntar('Quantos anos você tem?', {
     padrao: salvo.idade,
     placeholder: 'Só o número',
     explicacao: 'Uso só pra ajustar o jeito do Claude falar com você. Fica guardado só no seu computador.',
@@ -101,7 +102,7 @@ export async function wizard(ctx) {
   });
 
   // "Nunca pede licença" não aparece pra menor de idade nem pra quem ainda está começando com tecnologia ou IA.
-  const semLivre = Number(idade) < 18 || tecnologia === 'pouco' || ia === 'nunca';
+  const semLivre = ehMenor(idade) || tecnologia === 'pouco' || ia === 'nunca';
   // "Livre" que veio no presente pra quem não pode ter essa opção vira "confiante".
   const autonomia = tem('autonomia') ? (semLivre && pre.autonomia === 'livre' ? 'confiante' : pre.autonomia) : await ui.escolher(
     'Como você prefere que o Claude trabalhe?',

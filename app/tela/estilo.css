@@ -196,7 +196,8 @@ body.carta .palco {
 .carta-presente .assinatura { font: italic 400 24px/1.2 "Iowan Old Style", "Palatino", Georgia, serif; color: var(--acc); margin: 26px 0 0; }
 .carta-presente .assinatura::before { content: ""; display: block; width: 44px; height: 1px; background: rgba(200, 135, 60, .55); margin: 0 auto 18px; }
 .carta-presente .botoes { justify-content: center; margin-top: 34px; }
-.carta-presente .btn { padding: 14px 44px; letter-spacing: .01em; }
+.carta-presente .btn { padding: 14px 44px; letter-spacing: .01em; border: 0; box-shadow: none; outline: none; }
+.carta-presente .btn:focus-visible { outline: 2px solid #f0c48a; outline-offset: 3px; }
 @keyframes surge { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .carta-presente { animation: none; } }
 .marca .signo-marca { width: 26px; height: 34px; object-fit: contain; margin: 0 4px; }

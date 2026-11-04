@@ -128,8 +128,13 @@ function telaPresente() {
     rc.titulo ? h('h1', {}, rc.titulo) : null,
     h('div', { class: 'carta-texto' }, paragrafos.map((t) => h('p', {}, t))),
     rc.assinatura ? h('p', { class: 'assinatura' }, rc.assinatura) : null,
-    h('div', { class: 'botoes' }, botao('Começar', () => preparar(), false, { 'data-foco': true })))];
+    // Sem foco automático: o anel de foco aparecia em volta do botão como uma borda dupla. Com o teclado, Tab mostra
+    // o foco (:focus-visible) e Enter já começa.
+    h('div', { class: 'botoes' }, botao('Começar', () => preparar())))];
 }
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && estado.fase === 'presente' && !estado.pedido && document.activeElement === document.body) preparar();
+});
 function preparar() {
   estado.fase = 'preparo';
   desenhar();

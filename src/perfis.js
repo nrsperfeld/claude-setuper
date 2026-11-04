@@ -26,6 +26,13 @@ export const NIVEL_IA = {
   chat: 'Eu já uso IA no chat (ChatGPT, Claude), mas é a primeira vez que uso uma IA que mexe no meu computador. Quando você criar, mudar ou apagar algum arquivo, ou rodar algum programa, me conta em uma frase o que fez.',
   code: 'Eu já uso IA pra programar e no terminal (Claude Code, Codex, Cursor ou parecido). Pode ser direto e técnico, sem explicar o básico.',
 };
+// Menor de idade só quando a idade foi dita e é menor que 18. Sem idade (o presente que não traz, o --sim) é adulto:
+// Number('') dá 0 e ligava as regras de menor sem ninguém ter dito idade nenhuma.
+export function ehMenor(idade) {
+  const n = String(idade ?? '').trim();
+  return n !== '' && Number(n) < 18;
+}
+
 // Respostas da versão anterior da pergunta (antes da 1.4).
 export const IA_ANTIGA = { vezes: 'chat', diario: 'chat' };
 

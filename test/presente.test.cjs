@@ -239,3 +239,44 @@ test('sem presente nada muda: nem cópia, nem mescla', async () => {
   assert.strictEqual(presenteTemNotas(ctx, 'CLAUDE/padrões'), false);
   assert.ok(!fs.existsSync(vault));
 });
+
+// ---------- presente sem idade
+
+test('presente sem idade: não pergunta a idade, trata como adulto e não põe "tenho X anos" no CLAUDE.md', async () => {
+  const { ehMenor } = await src('perfis.js');
+  assert.strictEqual(ehMenor(''), false);
+  assert.strictEqual(ehMenor(undefined), false);
+  assert.strictEqual(ehMenor('15'), true);
+  assert.strictEqual(ehMenor('45'), false);
+
+  const { idade: _fora, ...semIdade } = PRESENTE.respostas;
+  const ctx = await ctxCom(pastaPresente({ ...PRESENTE, respostas: { ...semIdade, autonomia: 'livre' } }));
+  const { r, perguntas } = await rodarWizard(ctx);
+  assert.deepStrictEqual(perguntas, []);
+  assert.strictEqual(r.idade, '');
+  // Adulto: "livre" continua livre (pra menor de idade viraria "confiante").
+  assert.strictEqual(r.autonomia, 'livre');
+
+  // O núcleo escreve o CLAUDE.md sem a idade e sem o bloco de menor; a wiki sai sem o cuidado de menor.
+  const nucleo = await src('modulos/nucleo.js');
+  const { montarWiki } = await src('modulos/wiki.js');
+  const { ui } = await src('ui.js');
+  const original = { tarefa: ui.tarefa, aviso: ui.aviso, info: ui.info };
+  ui.tarefa = async (_a, _b, fn) => fn(() => {});
+  ui.aviso = () => {}; ui.info = () => {};
+  try {
+    await nucleo.instalar(ctx);
+  } finally {
+    Object.assign(ui, original);
+  }
+  const md = fs.readFileSync(path.join(ctx.home, '.claude', 'CLAUDE.md'), 'utf8');
+  assert.match(md, /Me chamo Ana\. Tenho uma loja/);
+  assert.doesNotMatch(md, /anos|menor de 18/);
+  await montarWiki(ctx, r.vault);
+  assert.doesNotMatch(fs.readFileSync(path.join(r.vault, 'CLAUDE', 'wiki', 'SCHEMA.md'), 'utf8'), /menos de 18/);
+});
+
+test('fora do presente a idade continua sendo perguntada', async () => {
+  const ctx = await ctxCom(undefined);
+  await assert.rejects(rodarWizard(ctx, { 'Como você quer': 'Ana', 'Pra que você': 'empresario' }), /não devia perguntar: Quantos anos/);
+});

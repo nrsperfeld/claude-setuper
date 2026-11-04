@@ -5,7 +5,7 @@
 // Nunca sobrescreve nada: só cria o que falta.
 import path from 'node:path';
 import fs from 'node:fs';
-import { perfil } from '../perfis.js';
+import { perfil, ehMenor } from '../perfis.js';
 import { GITIGNORE } from './rotinas.js';
 
 const PAGINAS = ['SCHEMA.md', 'index.md', 'log.md', 'overview.md'];
@@ -32,7 +32,7 @@ export async function montarWiki(ctx, vault) {
   const w = path.join(claude, 'wiki');
   const p = perfil(ctx, ctx.resp.perfil || ctx.estado.respostas?.perfil);
   const nome = ctx.resp.nome || ctx.estado.respostas?.nome || 'a pessoa';
-  const menor = Number(ctx.resp.idade || ctx.estado.respostas?.idade) < 18;
+  const menor = ehMenor(ctx.resp.idade || ctx.estado.respostas?.idade);
   const hoje = new Date();
   const dataIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
   const trabalho = String(ctx.resp.trabalho || ctx.estado.respostas?.trabalho || '').trim();

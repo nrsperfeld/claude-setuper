@@ -28,11 +28,11 @@ sidebar_width = 0
 include_icon_view_settings = True
 arrange_by = None
 icon_size = 104
-# O Finder escreve o nome dos ícones em preto, mesmo no modo escuro: em cima do fundo quase preto ele some, e o
-# fundo.py escreve o nome certo, claro, logo abaixo.
-text_size = 10
+# O Finder escreve o nome dos ícones em preto, mesmo no modo escuro: o fundo.py desenha uma etiqueta clara
+# exatamente embaixo dele (mesmo tamanho de letra que aqui).
+text_size = 12
 label_pos = 'bottom'
 show_icon_preview = False
 # Os mesmos centros que o fundo.py usa pra desenhar a seta.
 # Os arquivos ocultos ficam fora da janela pra quem deixa o Finder mostrar tudo.
-icon_locations = {nome_app: (190, 196), 'Aplicativos': (530, 196), '.background.tiff': (1100, 120), '.VolumeIcon.icns': (1100, 300)}
+icon_locations = {nome_app: (190, 180), 'Aplicativos': (530, 180), '.background.tiff': (1100, 120), '.VolumeIcon.icns': (1100, 300)}
