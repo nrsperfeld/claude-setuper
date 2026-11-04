@@ -128,13 +128,8 @@ function telaPresente() {
     rc.titulo ? h('h1', {}, rc.titulo) : null,
     h('div', { class: 'carta-texto' }, paragrafos.map((t) => h('p', {}, t))),
     rc.assinatura ? h('p', { class: 'assinatura' }, rc.assinatura) : null,
-    // Sem foco automático: o anel de foco aparecia em volta do botão como uma borda dupla. Com o teclado, Tab mostra
-    // o foco (:focus-visible) e Enter já começa.
-    h('div', { class: 'botoes' }, botao('Começar', () => preparar())))];
+    h('div', { class: 'botoes' }, botao('Começar', () => preparar(), false, { 'data-foco': true })))];
 }
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && estado.fase === 'presente' && !estado.pedido && document.activeElement === document.body) preparar();
-});
 function preparar() {
   estado.fase = 'preparo';
   desenhar();
@@ -142,7 +137,7 @@ function preparar() {
 function telaPreparo() {
   return [
     h('h1', {}, 'Antes de começar'),
-    h('p', { class: 'mut' }, 'Leva de 15 a 30 minutos. As suas notas e as respostas já vieram prontas, então eu instalo quase tudo sozinho. Quando precisar de você, pra senha ou pra entrar numa conta, aparece um cartão amarelo dizendo exatamente o que fazer.'),
+    h('p', { class: 'mut' }, 'Leva de 15 a 30 minutos. As suas notas e as respostas já vieram prontas, então eu instalo quase tudo sozinho. Quando precisar de você, pra senha ou pra entrar numa conta, aparece um cartão em destaque dizendo exatamente o que fazer.'),
     h('section', { class: 'grupo' }, h('b', {}, 'Deixa à mão'),
       h('ul', { class: 'lista-simples' },
         h('li', {}, 'O computador na tomada e com internet.'),
@@ -418,6 +413,10 @@ const FIGURAS = {
       h('div', { class: 'loja-topo' }, h('span', { class: 'icone-loja', 'aria-hidden': 'true' }), h('b', {}, 'Claude'), alvo('Usar no Chrome', 'bchrome'))),
     h('figcaption', {}, 'É só um desenho do botão: o clique é na janela do Chrome. Se lá estiver escrito "Adicionar ao Chrome", é o mesmo. Se ele pedir a conta Google, pode pular.')),
 };
+
+// Anel de foco só pra quem navega pelo teclado (estilo.css, body.teclado).
+document.addEventListener('keydown', (e) => { if (['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) document.body.classList.add('teclado'); }, true);
+document.addEventListener('pointerdown', () => document.body.classList.remove('teclado'), true);
 
 // ---------- detalhes ----------
 function anotar(texto) {
