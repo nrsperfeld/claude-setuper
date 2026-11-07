@@ -25,6 +25,24 @@ test('apaga tokens, senhas e códigos de login', async () => {
   }
 });
 
+test('a mensagem do WhatsApp cabe no limite e leva o que falhou e o fim do registro', async () => {
+  const { limpar, mensagemWhatsApp, linkWhatsApp } = await carregar();
+  const conteudo = limpar([
+    'Pedido de ajuda do Claude Setuper', 'Gerado em hoje', '', 'Versão do Setuper: 1.8.0', 'Sistema: darwin 25 (arm64)', 'Pessoa: Ana', '',
+    'Conferência:', '  Base', '    ✓ Node', '    ✗ Login no Claude  (rode: claude auth login)', '',
+    'Fim do registro da instalação:', ...Array.from({ length: 2000 }, (_, i) => `linha ${i} token: gho_abcdefghijklmnopqrstuvwxyz123`), 'o erro que importa', '',
+    'Fim do registro da atualização semanal:', '(não existe)',
+  ].join('\n'));
+  const m = mensagemWhatsApp(conteudo);
+  assert.ok(m.length <= 3000, `grande demais: ${m.length}`);
+  assert.ok(m.includes('Versão do Setuper: 1.8.0'));
+  assert.ok(m.includes('✗ Login no Claude'));
+  assert.ok(m.includes('o erro que importa'));
+  assert.ok(!m.includes('gho_abc'));
+  assert.ok(linkWhatsApp('oi tudo', true).startsWith('whatsapp://send?phone=5548991168047&text=oi%20tudo'));
+  assert.ok(linkWhatsApp('oi', false).startsWith('https://api.whatsapp.com/send?phone=5548991168047'));
+});
+
 test('não estraga o texto normal', async () => {
   const { limpar } = await carregar();
   const normal = 'O Mac vai pedir a sua senha agora. Instalado em 2026-10-25. Node v24.11.0.';

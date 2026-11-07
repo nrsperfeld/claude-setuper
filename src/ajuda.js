@@ -7,6 +7,30 @@ import { MODULOS, modulosParaPlataforma } from './modulos/index.js';
 import { cuidados } from './cuidados.js';
 
 const NOME = 'Claude Setuper - pedido de ajuda.txt';
+// Para onde o botão Pedir ajuda manda o registro, pelo WhatsApp da própria pessoa.
+export const WHATSAPP_SUPORTE = '5548991168047';
+// O link do WhatsApp não aguenta o registro inteiro: vai o que cabe, e o arquivo completo fica guardado.
+const LIMITE_WHATSAPP = 3000;
+
+// A mensagem pronta: quem é, o que falhou na conferência e o fim do registro, que é onde o erro costuma estar.
+export function mensagemWhatsApp(conteudo, limite = LIMITE_WHATSAPP) {
+  const linhas = String(conteudo).split('\n');
+  const inicioRegistro = linhas.findIndex((l) => l.startsWith('Fim do registro da instalação'));
+  const fimRegistro = linhas.findIndex((l) => l.startsWith('Fim do registro da atualização'));
+  const cabeca = linhas.slice(0, 6).filter(Boolean);
+  const antes = inicioRegistro > 0 ? linhas.slice(6, inicioRegistro) : linhas.slice(6);
+  const falhas = antes.filter((l) => l.includes('✗'));
+  const topo = [...cabeca, '', falhas.length ? 'O que falhou:' : 'A conferência não acusou nada.', ...falhas, '', 'Fim do registro:', ''].join('\n');
+  const registro = inicioRegistro >= 0 ? linhas.slice(inicioRegistro + 1, fimRegistro > 0 ? fimRegistro : undefined).join('\n').trim() : '';
+  const sobra = Math.max(0, limite - topo.length);
+  return (topo.slice(0, limite) + registro.slice(-sobra)).trim();
+}
+
+// Abre o WhatsApp com a mensagem escrita. Quem aperta enviar é a pessoa: sem isso, nada sai do computador dela.
+export function linkWhatsApp(texto, temApp) {
+  const q = `phone=${WHATSAPP_SUPORTE}&text=${encodeURIComponent(texto)}`;
+  return temApp ? `whatsapp://send?${q}` : `https://api.whatsapp.com/send?${q}`;
+}
 
 // Tira do texto o que não pode sair do computador: tokens, chaves, senhas e códigos de login.
 export function limpar(texto) {

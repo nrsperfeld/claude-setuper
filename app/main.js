@@ -521,13 +521,14 @@ ipcMain.on('guia-passo', (_e, i) => { passoAtual = i; apontarPasso(); });
 ipcMain.on('guia-acao', async (_e, acao) => { if (acao === 'tentar') (await importarSetuper('ui.js')).ui.marcarTentar?.(); });
 ipcMain.on('aula', (_e, acao) => aula?.acao(acao));
 ipcMain.on('ligar-opcional', (_e, id) => ligarOpcional(id));
-// Pedir ajuda: o mesmo arquivo do `claude-setuper pedir-ajuda`, na Mesa, e mostra ele no Finder.
+// Pedir ajuda: gera o arquivo do `claude-setuper pedir-ajuda`, na Mesa, e abre o WhatsApp com o registro já escrito.
 ipcMain.handle('pedir-ajuda', async () => {
   try {
     const { criarCtx } = await importarSetuper('ctx.js');
-    const { gerarPedidoDeAjuda } = await importarSetuper('ajuda.js');
+    const { gerarPedidoDeAjuda, mensagemWhatsApp, linkWhatsApp } = await importarSetuper('ajuda.js');
     const arquivo = await gerarPedidoDeAjuda(criarCtx(flagsBase()), VERSAO);
-    shell.showItemInFolder(arquivo);
+    const temApp = fs.existsSync('/Applications/WhatsApp.app');
+    await shell.openExternal(linkWhatsApp(mensagemWhatsApp(fs.readFileSync(arquivo, 'utf8')), temApp));
     return { arquivo, nome: path.basename(arquivo), pasta: path.basename(path.dirname(arquivo)) };
   } catch (e) {
     fs.appendFileSync(path.join(PASTA, 'registro.log'), `[ajuda] ${e.stack || e.message}\n`);

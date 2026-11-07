@@ -245,7 +245,7 @@ function telaInstalando() {
     pz?.status ? h('p', { class: 't3 peq', css: { 'margin-top': '6px' } }, pz.status) : null,
     parado ? h('div', { class: 'bloco', id: 'parado', css: { width: '560px', 'max-width': '100%', 'margin-top': '22px' } },
       h('h3', {}, t('Faz {tempo} que esta parte não muda na tela', { tempo: tempo(Date.now() - estado.mexeu) })),
-      h('p', { class: 't2 peq', css: { 'margin-top': '4px' } }, t('Em computador mais antigo ou internet mais lenta isso acontece, e eu continuo trabalhando nos bastidores. Se der algum problema, aviso aqui. Se passar de 15 minutos assim, manda um pedido de ajuda pra quem está te ajudando com a instalação.')),
+      h('p', { class: 't2 peq', css: { 'margin-top': '4px' } }, t('Em computador mais antigo ou internet mais lenta isso acontece, e eu continuo trabalhando nos bastidores. Se der algum problema, aviso aqui. Se passar de 15 minutos assim, clica em Pedir ajuda.')),
       h('div', { class: 'g-acoes' }, botao(t('Pedir ajuda'), pedirAjuda, 'btn2 p')))
       : exemplo ? h('div', { class: 'bloco', css: { width: '560px', 'max-width': '100%', 'margin-top': '24px' } },
         h('p', { class: 't3 peq', css: { 'margin-bottom': '4px' } }, t('Um exemplo do que você vai poder pedir:')), h('p', {}, exemplo)) : null,
@@ -336,18 +336,18 @@ function desenharFolha() {
   if (!f) return folha.replaceChildren();
   const fechar = botao(t('Fechar'), () => { estado.folha = null; desenharFolha(); }, 'btn2 p');
   let corpo;
-  if (f === 'gerando') corpo = [h('p', { class: 't2' }, t('Conferindo a instalação e montando o arquivo pra quem te ajuda. Leva menos de um minuto...'))];
+  if (f === 'gerando') corpo = [h('p', { class: 't2' }, t('Conferindo a instalação e preparando a mensagem pro suporte. Leva menos de um minuto...'))];
   else if (f === 'detalhes') {
     corpo = [h('div', { css: { display: 'grid', 'grid-template-columns': '230px minmax(0,1fr)', gap: '20px' } },
       h('div', {}, h('h3', { css: { 'margin-bottom': '8px' } }, t('O que já foi feito')), estado.passos.map((n, i) => h('p', { class: i <= estado.atual ? 'peq' : 'peq t3', css: { 'line-height': '24px' } }, `${i < estado.atual ? '✓' : i === estado.atual ? '→' : '·'} ${n}`))),
       h('div', {}, h('h3', {}, t('Registro técnico')), h('p', { class: 't3 peq' }, t('Em inglês, pra quem for te ajudar. Você não precisa ler nem fazer nada do que está aqui.')), h('pre', { class: 'log' }, estado.detalhes.slice(-6000)))),
       h('div', { class: 'g-acoes', css: { 'justify-content': 'flex-end' } }, fechar)];
-  } else if (f.erro) corpo = [h('p', {}, t('Não consegui montar o arquivo. Tira um print desta tela e manda pra quem te passou o Claude Setuper.')), h('div', { class: 'g-acoes', css: { 'justify-content': 'flex-end' } }, fechar)];
+  } else if (f.erro) corpo = [h('p', {}, t('Não consegui preparar a mensagem. Tira um print desta tela e manda pra quem te passou o Claude Setuper.')), h('div', { class: 'g-acoes', css: { 'justify-content': 'flex-end' } }, fechar)];
   else {
     const onde = f.pasta === 'Desktop' ? t('na sua Mesa') : t('na pasta {pasta}', { pasta: f.pasta });
-    corpo = [h('h2', { css: { 'font-size': '22px', 'line-height': '28px' } }, t('Arquivo pronto pra mandar')),
-      h('p', { class: 't2' }, t('Criei o arquivo "{nome}" {onde} e abri a pasta pra você. Manda ele pra quem te passou o Claude Setuper, pelo WhatsApp ou por e-mail.', { nome: f.nome, onde })),
-      h('p', { class: 't3 peq', css: { 'margin-top': '10px' } }, t('Ele tem o que essa pessoa precisa pra te ajudar, sem nenhuma senha nem código de login.')),
+    corpo = [h('h2', { css: { 'font-size': '22px', 'line-height': '28px' } }, t('Falta só você apertar enviar')),
+      h('p', { class: 't2' }, t('Abri o WhatsApp com o registro da instalação já escrito, pro suporte te ajudar. Vai lá e aperta enviar.')),
+      h('p', { class: 't3 peq', css: { 'margin-top': '10px' } }, t('A mensagem não leva nenhuma senha nem código de login. Se o WhatsApp não abriu, ou se o suporte pedir o registro completo, ele está no arquivo "{nome}" {onde}.', { nome: f.nome, onde })),
       h('div', { class: 'g-acoes', css: { 'justify-content': 'flex-end', 'margin-top': '18px' } }, fechar)];
   }
   folha.replaceChildren(h('div', { class: 'veu' }, h('div', { class: 'folha', role: 'dialog', css: f === 'detalhes' ? { width: '760px', 'max-width': '92vw' } : {} }, corpo)));
