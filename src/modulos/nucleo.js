@@ -8,9 +8,9 @@ import { chaveDaApi } from '../cuidados.js';
 import { copiarCofre } from '../presente.js';
 
 export const id = 'nucleo';
-export const nome = 'Núcleo do Claude';
-export const nomeCurto = 'Configurar o Claude';
-export const descricao = 'Quem você é, como o Claude trabalha e as regras do segundo cérebro';
+export const nome = 'Núcleo da IA';
+export const nomeCurto = 'Configurar a IA';
+export const descricao = 'Quem você é, como a IA trabalha e as regras do segundo cérebro';
 export const padrao = true;
 export const obrigatorio = true;
 
@@ -46,7 +46,7 @@ export async function verificar(ctx) {
 // O cofre já foi montado numa instalação anterior (a wiki entra nele pelo núcleo, sem reabrir o Obsidian).
 function comCofre(ctx) {
   const r = ctx.estado.respostas || {};
-  return (r.modulos || []).includes('obsidian') && !!r.vault && ctx.existe(path.join(r.vault, 'CLAUDE', 'projetos'));
+  return (r.modulos || []).includes('obsidian') && !!r.vault && ctx.existe(path.join(r.vault, 'CLAUDE', ctx.pasta('projetos')));
 }
 
 export async function instalar(ctx) {
@@ -80,11 +80,11 @@ export async function instalar(ctx) {
     prints ? `# Prints de tela\n\nMeus prints de tela ficam em \`${prints}\`. Quando eu falar "olha o print" ou "vê a tela", leia o arquivo mais recente dessa pasta. Se eu arrastar um print e o caminho começar com \`/var/folders/\`, você não vai conseguir ler: pegue o mais recente da pasta de prints.\n` : '',
   ].filter(Boolean).join('\n');
 
-  await ui.tarefa('Ensinando o Claude quem você é', 'O Claude já sabe quem você é', async () => {
+  await ui.tarefa('Ensinando a IA quem você é', 'A IA já sabe quem você é', async () => {
     escreverClaudeMd(ctx, path.join(d, 'CLAUDE.md'), ctx.template('CLAUDE.md.tpl'));
   });
 
-  await ui.tarefa('Configurando como o Claude trabalha', 'Permissões configuradas', async () => {
+  await ui.tarefa('Configurando como a IA trabalha', 'Permissões configuradas', async () => {
     const nivel = NIVEIS[ctx.resp.autonomia] || NIVEIS.equilibrado;
     tirarAvisoAntigo(ctx, path.join(d, 'settings.json'));
     ctx.mesclarJson(path.join(d, 'settings.json'), {
@@ -104,7 +104,7 @@ export async function instalar(ctx) {
       },
       env: { CLAUDE_SETUPER_VAULT: vault },
       // Modo voz ligado: segura a barra de espaço pra falar. O ditado segue o idioma.
-      language: 'Português', voiceEnabled: true, voice: { enabled: true, mode: 'hold' },
+      language: ctx.idioma === 'en' ? 'English' : 'Português', voiceEnabled: true, voice: { enabled: true, mode: 'hold' },
       ...(nivel.extra || {}),
     });
     if (ctx.plataforma === 'darwin') {
@@ -115,9 +115,9 @@ export async function instalar(ctx) {
     }
   });
 
-  await ui.tarefa('Montando a memória e os lembretes do Claude', 'Memória e lembretes prontos', async () => {
+  await ui.tarefa('Montando a memória e os lembretes da IA', 'Memória e lembretes prontos', async () => {
     for (const h of HOOKS) ctx.copiarTemplate(`hooks/${h}`, path.join(d, 'hooks', h));
-    for (const s of SKILLS) ctx.copiarTemplate(`skills/${s}.md`, path.join(d, 'skills', s, 'SKILL.md'));
+    for (const s of SKILLS) ctx.copiarTemplate(`skills/${s}.md`, path.join(d, 'skills', ctx.skill(s), 'SKILL.md'));
     ctx.escreverSeFaltar(path.join(d, 'memoria', 'MEMORIA.md'), ctx.template('memoria/MEMORIA.md'));
   });
 
@@ -136,7 +136,7 @@ export async function instalar(ctx) {
   const chave = chaveDaApi(ctx);
   if (chave) ui.aviso(`Achei uma chave da API da Anthropic ${chave}. Com ela, o Claude cobra pelo uso avulso em vez de usar a sua assinatura, e o Gmail e a Agenda não conectam. Se não foi de propósito, peça pra quem te ajuda tirar.`);
 
-  await ui.tarefa('Preparando a sua primeira semana com o Claude', 'Primeira semana preparada', async () => {
+  await ui.tarefa('Preparando a sua primeira semana com a IA', 'Primeira semana preparada', async () => {
     // Cardápio de pedidos do perfil: a pessoa pode editar à vontade, então só cria se faltar.
     ctx.escreverSeFaltar(cardapio, ctx.template(`cardapio/${p.id}.md`));
     // Missões dos próximos dias e o resumo semanal (hook ativacao.cjs). Rodar de novo não reinicia a semana.
@@ -184,7 +184,7 @@ export function escreverClaudeMd(ctx, arquivo, bloco) {
 // Com o segundo cérebro, o cardápio fica na raiz do cofre (a pessoa vê no Obsidian); sem ele, na pasta do Setuper.
 function caminhoCardapio(ctx, vault) {
   const pasta = (ctx.resp.modulos || []).includes('obsidian') ? vault : ctx.pastaSetuper;
-  return path.join(pasta, 'Cardápio do Claude.md');
+  return path.join(pasta, ctx.arq('Cardápio do Claude.md'));
 }
 
 const VARIOS_AGENTES = `# Vários Claudes ao mesmo tempo (Maestri)
@@ -208,7 +208,7 @@ async function pastaDePrints(ctx) {
   fs.mkdirSync(pasta, { recursive: true });
   await ctx.run('defaults', ['write', 'com.apple.screencapture', 'location', pasta], { ignorarErro: true });
   await ctx.run('killall', ['SystemUIServer'], { ignorarErro: true });
-  ui.ok('Seus prints de tela agora vão pra Imagens > Prints, onde o Claude consegue ler.');
+  ui.ok('Seus prints de tela agora vão pra Imagens > Prints, onde a IA consegue ler.');
   return pasta;
 }
 

@@ -7,7 +7,7 @@ import { ui } from '../ui.js';
 export const id = 'effortless';
 export const nome = 'Esforço automático (Effortless)';
 export const nomeCurto = 'Ajuste automático';
-export const descricao = 'O Claude escolhe sozinho quanto pensar em cada pedido';
+export const descricao = 'A IA escolhe sozinha quanto pensar em cada pedido';
 export const padrao = true;
 
 const MARKETPLACE = 'HeyCubit/effortless';
@@ -43,7 +43,7 @@ export async function instalar(ctx) {
     }
   });
   marcarSetupFeito(ctx);
-  ui.info('Se um dia o esforço parar de mudar sozinho (acontece quando você escolhe um esforço na mão), digite /effortless auto dentro do Claude.');
+  ui.info('Se um dia o esforço parar de mudar sozinho (acontece quando você escolhe um esforço na mão), digite /effortless auto na janela da IA.');
 }
 
 // O plugin abre um guia de configuração em toda conversa nova até alguém escolher o juiz (hooks/register.tsx, setupDone).

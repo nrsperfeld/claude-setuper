@@ -6,7 +6,7 @@ import { macIntel, instalarSemBrew, colocarNoPath } from './semBrew.js';
 export const id = 'base';
 export const nome = 'Base da máquina';
 export const nomeCurto = 'Preparar o computador';
-export const descricao = 'Ferramentas de sistema, Node e o próprio Claude Code';
+export const descricao = 'Ferramentas de sistema, Node e a IA';
 export const padrao = true;
 export const obrigatorio = true;
 
@@ -292,7 +292,7 @@ async function claudeCode(ctx) {
   const adiantado = ctx.temAdiantado('claude');
   if (!adiantado && await ctx.existeComando('claude')) return ui.ok('O Claude já está instalado');
   if (ctx.semApps) return;
-  await ui.tarefa('Instalando o Claude', 'O Claude foi instalado', async () => {
+  await ui.tarefa('Instalando a IA', 'A IA foi instalada', async () => {
     // No Mac ele já veio instalando junto com o Homebrew; só confere e, se não deu, instala agora.
     if (adiantado && (await ctx.adiantado('claude')) && (await ctx.existeComando('claude'))) return;
     if (ctx.win) {
@@ -312,10 +312,10 @@ async function loginClaude(ctx) {
   if (ctx.semApps || ctx.dryRun) return;
   if (await logado(ctx)) return ui.ok('Você já está logado no Claude');
   ui.pausa(ctx.app ? 'Entra na sua conta do Claude' : 'Vou abrir o navegador pra você entrar na sua conta do Claude', ctx.app ? [
-    'Abri a página no navegador. Se ainda não tem conta, dá pra criar ali mesmo. A conta precisa ter plano pago (Pro ou maior), e se a sua for gratuita, a própria página mostra como assinar. Quando disser que deu certo, eu sigo sozinho.',
+    'Claude é o nome da IA que estou instalando. Abri a página no navegador: se ainda não tem conta, dá pra criar ali mesmo. Ela precisa de plano pago (Pro ou maior), e a própria página mostra como assinar. Quando disser que deu certo, eu sigo sozinho.',
   ] : [
     'Entra com o mesmo e-mail que você usa no Claude.',
-    'Pra usar o Claude no computador, a conta precisa ter um plano pago (Pro ou maior).',
+    'Pra usar a IA no computador, a conta precisa ter um plano pago (Pro ou maior).',
     'Se ainda não tem conta, cria ali mesmo. Depois volta pra cá, eu continuo sozinho. Eu espero até 15 minutos.',
   ], { pular: 'Entrar depois', figura: 'claude-login', rotulo: 'Conta do Claude' });
   // "Fazer o login depois" encerra o login que está esperando no navegador; o resto da instalação segue.
@@ -331,7 +331,7 @@ async function loginClaude(ctx) {
   if (!(await logado(ctx))) {
     // Sem login o resto ainda instala; o módulo fica marcado como pendente pra próxima rodada.
     const e = new Error(ctx.app
-      ? 'o login no Claude ficou pra depois. No fim eu te mostro como terminar'
+      ? 'o login na IA ficou pra depois. No fim eu te mostro como terminar'
       : 'o login no Claude não terminou. Quando terminar, rode claude-setuper de novo, eu continuo de onde parei');
     e.continuar = true;
     throw e;

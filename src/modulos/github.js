@@ -23,7 +23,7 @@ export async function verificar(ctx) {
 }
 
 const LINK_LOGIN = /^https:\/\/github\.com\/login\/device/;
-const PRA_QUE = 'O GitHub guarda uma cópia de tudo que você e o Claude criarem, com o histórico de cada mudança. Se algo der errado ou o computador quebrar, nada se perde, e dá pra voltar a qualquer versão. É opcional, mas é o que deixa o seu trabalho seguro.';
+const PRA_QUE = 'O GitHub guarda uma cópia de tudo que você e a IA criarem, com o histórico de cada mudança. Se algo der errado ou o computador quebrar, nada se perde, e dá pra voltar a qualquer versão. É opcional, mas é o que deixa o seu trabalho seguro.';
 
 export async function instalar(ctx) {
   // Pergunta antes de instalar qualquer coisa: quem pula não precisa nem da ferramenta.
@@ -104,7 +104,7 @@ async function login(ctx, qual) {
     const vigia = setInterval(() => {
       if (ui.pulou()) parar.abort();
       if (ui.pediuTentar()) { tentar = true; parar.abort(); }
-      if (!avisou && Date.now() - inicio > 180000) { avisou = true; ui.info('Faz 3 minutos que estou esperando o GitHub. Se não estiver dando certo, pode deixar pra depois: o Claude já está funcionando, e nada do que você fez se perde.'); }
+      if (!avisou && Date.now() - inicio > 180000) { avisou = true; ui.info('Faz 3 minutos que estou esperando o GitHub. Se não estiver dando certo, pode deixar pra depois: a IA já está funcionando, e nada do que você fez se perde.'); }
     }, 1000);
     try {
       await ctx.runVisivel('gh', ['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web', '--skip-ssh-key'], { ignorarErro: true, sinal: parar.signal, link: LINK_LOGIN });
@@ -150,5 +150,5 @@ async function segundaConta(ctx, login) {
   const principal = contas.find((c) => c !== login);
   if (principal) await ctx.run('gh', ['auth', 'switch', '--user', principal], { ignorarErro: true });
   ui.ok(`Segunda conta pronta: tudo que ficar em ${pasta} usa a conta ${login}`);
-  ui.info('Dica: pra fazer o Claude usar a segunda conta num projeto, basta criar o projeto dentro dessa pasta.');
+  ui.info('Dica: pra fazer a IA usar a segunda conta num projeto, basta criar o projeto dentro dessa pasta.');
 }

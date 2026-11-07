@@ -6,6 +6,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { lerPresente } from './presente.js';
+import { definirIdioma } from './i18n.js';
+import { nomesDe } from './idiomas/nomes.js';
 
 const execFileP = promisify(execFile);
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -17,6 +19,9 @@ export function criarCtx(flags = {}) {
   const logPath = path.join(pastaSetuper, 'registro.log');
   const estadoPath = path.join(pastaSetuper, 'estado.json');
   const adiantados = new Map();
+  const estadoLido = lerJson(estadoPath, { modulos: {}, versao: null });
+  const idioma = definirIdioma(flags.idioma || estadoLido.idioma || 'pt');
+  estadoLido.idioma = idioma;
 
   const ctx = {
     raiz: RAIZ,
@@ -37,7 +42,15 @@ export function criarCtx(flags = {}) {
     estadoPath,
     claudeDir: path.join(home, '.claude'),
     resp: {}, // respostas do wizard
-    estado: lerJson(estadoPath, { modulos: {}, versao: null }),
+    estado: estadoLido,
+    idioma,
+    ...nomesDe(idioma), // pasta(), tag(), arq(), skill(): o nome certo pro idioma da pessoa
+
+    // Pasta de modelos no idioma da pessoa; em português, a de sempre.
+    dirTemplates(sub) {
+      const traduzida = path.join(RAIZ, 'templates', 'en', sub);
+      return idioma === 'en' && fs.existsSync(traduzida) ? traduzida : path.join(RAIZ, 'templates', sub);
+    },
 
     log(...partes) {
       const linha = `[${new Date().toISOString()}] ${partes.map(String).join(' ')}\n`;
@@ -185,7 +198,8 @@ export function criarCtx(flags = {}) {
     },
 
     template(nomeRel, vars = {}) {
-      let txt = fs.readFileSync(path.join(ctx.templates, nomeRel), 'utf8');
+      const traduzido = path.join(ctx.templates, 'en', nomeRel);
+      let txt = fs.readFileSync(idioma === 'en' && fs.existsSync(traduzido) ? traduzido : path.join(ctx.templates, nomeRel), 'utf8');
       const todas = { ...ctx.resp, ...vars };
       return txt.replace(/\{\{(\w+)\}\}/g, (_, k) => (todas[k] ?? ''));
     },

@@ -2,9 +2,10 @@
 // Mudam as perguntas seguintes, os pacotes marcados, os passos que entram e o que vai pro CLAUDE.md.
 import fs from 'node:fs';
 import path from 'node:path';
+import { t } from './i18n.js';
 
 export function perfis(ctx) {
-  const dir = path.join(ctx.templates, 'perfis');
+  const dir = ctx.dirTemplates('perfis');
   return fs.readdirSync(dir).filter((f) => f.endsWith('.json'))
     .map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
     .sort((a, b) => a.ordem - b.ordem);
@@ -52,12 +53,12 @@ export function apresentacao(ctx) {
   const trabalho = ctx.seguro(r.trabalho);
   const leigo = r.tecnologia === 'pouco' || r.ia === 'nunca';
   return [
-    `Oi, eu sou ${nome}${trabalho ? ` (${trabalho})` : ''}. Acabei de instalar você com o Claude Setuper.`,
-    'Se apresenta em no máximo duas linhas, em português simples.',
-    ctx.seguro(p.primeiraVitoria || 'Depois me propõe uma tarefa pequena e útil pra gente fazer agora, e faz comigo.'),
-    'Uma pergunta por vez, e espera eu responder.',
-    leigo ? 'Eu quase nunca usei IA: fala bem simples, sem termo técnico, e me diz exatamente o que fazer (onde clicar, o que arrastar pra janela).' : '',
-    r.ia === 'code' ? 'Eu já uso IA pra código: pode ir direto ao ponto.' : '',
-    'Quando terminar, me mostra onde ficou guardado e me conta em uma frase que amanhã você me sugere outra coisa, e que o Cardápio do Claude tem mais ideias do que pedir.',
+    trabalho ? t('Oi, eu sou {nome} ({trabalho}). Acabei de instalar você com o Claude Setuper.', { nome, trabalho }) : t('Oi, eu sou {nome}. Acabei de instalar você com o Claude Setuper.', { nome }),
+    t('Se apresenta em no máximo duas linhas, em português simples, dizendo que você é a minha IA e que o seu nome é Claude.'),
+    ctx.seguro(p.primeiraVitoria || t('Depois me propõe uma tarefa pequena e útil pra gente fazer agora, e faz comigo.')),
+    t('Uma pergunta por vez, e espera eu responder.'),
+    leigo ? t('Eu quase nunca usei IA: fala bem simples, sem termo técnico, e me diz exatamente o que fazer (onde clicar, o que arrastar pra janela).') : '',
+    r.ia === 'code' ? t('Eu já uso IA pra código: pode ir direto ao ponto.') : '',
+    t('Quando terminar, me mostra onde ficou guardado e me conta em uma frase que amanhã você me sugere outra coisa, e que o {cardapio} tem mais ideias do que pedir.', { cardapio: ctx.arq('Cardápio do Claude.md').replace(/\.md$/, '') }),
   ].filter(Boolean).join(' ');
 }

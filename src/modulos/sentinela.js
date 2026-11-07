@@ -8,7 +8,7 @@ import { ui } from '../ui.js';
 export const id = 'sentinela';
 export const nome = 'Manter tudo atualizado';
 export const nomeCurto = 'Manter atualizado';
-export const descricao = 'Uma vez por semana atualiza as ferramentas do Claude e confere se continuam funcionando';
+export const descricao = 'Uma vez por semana atualiza as ferramentas da IA e confere se continuam funcionando';
 export const padrao = true;
 export const obrigatorio = true;
 export const plataformas = ['darwin', 'win32'];

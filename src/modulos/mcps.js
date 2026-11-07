@@ -6,11 +6,11 @@ import { ui } from '../ui.js';
 export const id = 'mcps';
 export const nome = 'Ferramentas conectadas (Gmail, Drive, Notion...)';
 export const nomeCurto = 'Apps conectados';
-export const descricao = 'Liga o Claude às ferramentas que você já usa';
+export const descricao = 'Liga a IA às ferramentas que você já usa';
 export const padrao = true;
 
 export function catalogo(ctx) {
-  return JSON.parse(fs.readFileSync(path.join(ctx.templates, 'mcps', 'catalogo.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(ctx.dirTemplates('mcps'), 'catalogo.json'), 'utf8'));
 }
 
 async function instalados(ctx) {
@@ -40,7 +40,7 @@ export async function instalar(ctx) {
   const ja = await instalados(ctx);
   const comLogin = [];
   const semToken = [];
-  await ui.tarefa('Ligando o Claude às suas ferramentas', 'Ferramentas ligadas', async (msg) => {
+  await ui.tarefa('Ligando a IA às suas ferramentas', 'Ferramentas ligadas', async (msg) => {
     for (const mid of escolhidos) {
       const m = cat.find((x) => x.id === mid);
       if (!m || m.conector || (ja.includes(mid) && !m.token)) continue;
@@ -70,14 +70,14 @@ async function ligarConectores(ctx, conectores) {
   const nomes = conectores.map((m) => m.nome).join(', ').replace(/, ([^,]*)$/, ' e $1');
   if (ctx.app) {
     await ctx.abrirUrl('https://claude.ai/settings/connectors');
-    await ui.confirmarFora({ rotulo: 'Gmail e Agenda', passos: [{ titulo: 'Clica em Conectar em cada um', linhas: [`Faz isso em ${nomes}. Escolhe a sua conta do Google e, quando ele perguntar se o Claude pode acessar, clica em Permitir. Faltou algum? Você volta nessa mesma página.`], figura: 'conectores' }], concluir: 'Terminei', nao: 'Deixar pra depois' });
+    await ui.confirmarFora({ rotulo: 'Gmail e Agenda', passos: [{ titulo: 'Clica em Conectar em cada um', linhas: [`Faz isso em ${nomes}. Escolhe a sua conta do Google e, quando ele perguntar se o Claude, a sua IA, pode acessar, clica em Permitir. Faltou algum? Você volta nessa mesma página.`], figura: 'conectores' }], concluir: 'Terminei', nao: 'Deixar pra depois' });
     return;
   }
   ui.pausa(`Vou abrir a página de conectores do Claude pra ligar ${nomes}`, [
     'Entra com a mesma conta do Claude que você usou aqui.',
     `Pra cada um (${nomes}): clica nele, depois em Conectar, e escolhe a sua conta do Google.`,
     'O Google pergunta se o Claude pode acessar. Clica em Permitir.',
-    'Depois volta pra cá. Da próxima vez que abrir o Claude, eles já estão lá.',
+    'Depois volta pra cá. Da próxima vez que abrir a IA, eles já estão lá.',
   ]);
   await ctx.abrirUrl('https://claude.ai/settings/connectors');
   if (!ctx.sim) await ui.confirmar(`Terminou de ligar ${nomes}?`, true);

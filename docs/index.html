@@ -4,96 +4,82 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Claude Setuper</title>
-<meta name="description" content="Instala e configura o Claude no seu Mac em 10 minutos, com segundo cérebro, GitHub, Chrome, Vercel e Maestri. Feito pra quem não é de tecnologia.">
+<meta name="description" content="O modelo mais avançado de IA pra te acompanhar, com tudo instalado em menos de 20 minutos.">
 <style>
-  :root { --bg:#0f0f10; --fg:#f2f0ea; --mut:#9a978f; --acc:#c8873c; --card:#19191b; --line:#2a2a2e; }
-  @media (prefers-color-scheme: light) { :root { --bg:#faf8f3; --fg:#161616; --mut:#6a675f; --card:#ffffff; --line:#e6e2d8; } }
+  /* A mesma identidade do app: escuro, a luz do anel e o âmbar só no que pede ação. */
+  :root { --fundo:#08080D; --sup:#14141C; --linha:rgba(255,255,255,.13); --texto:#F5F2EC; --texto2:#B4B2BC; --texto3:#8F8D99; --ambar:#F2A65A; color-scheme:dark; }
   * { box-sizing:border-box }
-  body { margin:0; background:var(--bg); color:var(--fg); font:17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
-  main { max-width:720px; margin:0 auto; padding:64px 20px 96px }
-  h1 { font-size:44px; line-height:1.1; margin:0 0 12px; letter-spacing:-.02em }
-  .sub { font-size:20px; color:var(--mut); margin:0 0 36px }
-  .btn { display:inline-block; background:var(--acc); color:#111; font-weight:700; padding:16px 26px; border-radius:12px; text-decoration:none; font-size:18px }
-  .btn:hover { filter:brightness(1.08) }
-  .btn2 { background:var(--card); color:var(--fg); border:1px solid var(--line) }
-  button.btn { font:inherit; font-weight:700; cursor:pointer; margin-top:4px }
-  .botoes { display:flex; gap:12px; flex-wrap:wrap }
-  .alt { color:var(--mut); font-size:15px; margin-top:12px }
-  code { background:var(--card); border:1px solid var(--line); padding:2px 7px; border-radius:6px; font-size:15px }
-  pre { background:var(--card); border:1px solid var(--line); padding:14px 16px; border-radius:10px; overflow:auto; font-size:14px }
-  h2 { font-size:22px; margin:52px 0 12px }
-  ol, ul { padding-left:22px } li { margin:8px 0 }
-  .passos li { margin:14px 0 }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin:14px 0 }
-  .card b { display:block; margin-bottom:4px }
-  .mut { color:var(--mut) }
-  footer { margin-top:64px; color:var(--mut); font-size:14px }
+  body { margin:0; background:var(--fundo); color:var(--texto); font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; -webkit-font-smoothing:antialiased; }
+  main { max-width:980px; margin:0 auto; padding:64px 16px 72px; text-align:center; }
+  .brilho { position:fixed; left:50%; top:-300px; width:1000px; height:680px; transform:translateX(-50%); background:radial-gradient(closest-side,rgba(242,166,90,.13),rgba(74,58,140,.08) 55%,transparent); pointer-events:none; }
+  img.icone { width:112px; height:112px; position:relative; }
+  h1 { font-size:clamp(30px,5vw,44px); line-height:1.14; font-weight:600; letter-spacing:-.022em; margin:24px auto 12px; max-width:780px; text-wrap:balance; position:relative; }
+  .lead { color:var(--texto2); font-size:18px; margin:0 auto; max-width:600px; }
+  .botoes { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:26px; }
+  .btn { display:inline-flex; align-items:center; min-height:46px; padding:0 26px; border-radius:23px; font-weight:600; text-decoration:none; background:rgba(255,255,255,.1); color:var(--texto); }
+  .btn.principal { background:var(--ambar); color:#160E04; }
+  .btn:focus-visible { outline:2px solid var(--ambar); outline-offset:2px; }
+  .peq { color:var(--texto3); font-size:13px; margin-top:12px; }
+  .peq a { color:var(--texto2); }
+  .grade { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:44px; text-align:left; }
+  .bloco { background:var(--sup); border:1px solid var(--linha); border-radius:16px; padding:14px 18px; }
+  .bloco h2 { font-size:15px; margin:0 0 2px; font-weight:600; }
+  .bloco p { margin:0; color:var(--texto2); font-size:14px; }
+  h3 { font-size:20px; font-weight:600; margin:44px 0 6px; }
+  .idioma { position:absolute; right:20px; top:14px; color:var(--texto2); font-size:13px; }
+  .idioma button { background:none; border:0; color:inherit; font:inherit; cursor:pointer; padding:4px; }
+  .idioma button[aria-pressed=true] { color:var(--texto); font-weight:600; }
 </style>
 </head>
 <body>
+<div class="brilho" aria-hidden="true"></div>
+<div class="idioma"><button type="button" data-l="pt" aria-pressed="true">Português</button>·<button type="button" data-l="en" aria-pressed="false">English</button></div>
 <main>
-  <h1>Claude Setuper</h1>
-  <p class="sub">Instala e configura o Claude no seu computador em uns 10 minutos. Com um segundo cérebro que lembra de você, e sem precisar entender de tecnologia.</p>
-
+  <img class="icone" src="icone.png" alt="">
+  <h1 data-t="titulo"></h1>
+  <p class="lead" data-t="lead"></p>
   <div class="botoes">
-    <a class="btn" href="Claude%20Setuper.bat" download>Baixar para Windows</a>
-    <a class="btn btn2" href="#mac">Instalar no Mac</a>
+    <a class="btn principal" id="mac" href="#"></a>
+    <a class="btn" id="win" href="Claude%20Setuper.bat" download></a>
   </div>
-  <p class="alt"><b>Windows:</b> dois cliques no arquivo <code>Claude Setuper.bat</code>. Se aparecer "O Windows protegeu o computador", clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>.<br>
-  </p>
-
-  <h2 id="mac">No Mac</h2>
-  <ol class="passos">
-    <li>Aperte <b>⌘ + espaço</b>, digite <b>Terminal</b> e aperte Enter. Vai abrir uma janela de texto.</li>
-    <li>Clique em <b>Copiar</b> aqui embaixo, clique dentro da janela do Terminal, aperte <b>⌘ + V</b> e depois Enter.</li>
-  </ol>
-  <pre id="linha-mac">curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash</pre>
-  <button class="btn btn2" id="copiar-mac" type="button">Copiar</button>
-  <p class="mut">É assim, pelo Terminal, porque o Mac bloqueia programas baixados pelo navegador que não pagaram o registro na Apple. Pelo Terminal não aparece aviso nenhum. A linha baixa o app do Claude Setuper (uns 130 MB) e abre ele.</p>
-
-  <h2>O que vai acontecer</h2>
-  <ol class="passos">
-    <li><b>No Mac, abre o app do Claude Setuper.</b> A janela do Terminal pode ser fechada; daí em diante é tudo em telas, com botões. No Windows a instalação acontece numa janela de texto, que não pode ser fechada.</li>
-    <li><b>Ele faz algumas perguntas:</b> como você quer ser chamado, pra que vai usar o Claude, a sua idade, o quanto você se dá com tecnologia e com IA, e se prefere que o Claude pergunte antes de fazer as coisas ou faça e avise. É isso que define o quanto ele explica pra você.</li>
-    <li><b>Ele instala tudo sozinho</b> e só te chama quando precisar de um clique seu: a senha do Mac, entrar na sua conta do Claude, confirmar um botão. Ele espera o tempo que for.</li>
-    <li><b>No fim, o Claude abre</b> já conversando com você. No Mac isso acontece dentro do Maestri, um painel com notas explicativas do lado. No Windows abre numa janela própria, com um atalho "Claude" na Área de Trabalho pra próxima vez.</li>
-  </ol>
-
-  <h2>O que fica instalado</h2>
-  <div class="card"><b>Claude Code</b> O Claude no seu computador, já sabendo quem você é e como você gosta de trabalhar.</div>
-  <div class="card"><b>Segundo cérebro (Obsidian)</b> Uma pasta de notas que o Claude lê antes de trabalhar e alimenta quando termina: decisões, correções, padrões e onde cada projeto parou. Com o tempo ele para de repetir erro e lembra do que você já decidiu.</div>
-  <div class="card"><b>Maestri (só no Mac)</b> O painel onde você conversa com o Claude. Parece um quadro com post-its, não uma tela preta. No Windows, o Claude abre pelo atalho da Área de Trabalho.</div>
-  <div class="card"><b>GitHub, Chrome e Vercel</b> Pra guardar o trabalho com histórico, deixar o Claude usar o seu navegador e colocar páginas na internet com um pedido.</div>
-  <div class="card"><b>Comandos prontos</b> Pacotes pro seu tipo de trabalho: escrita, negócios, pesquisa, conteúdo ou programação. E as ferramentas que você já usa: Gmail, Google Drive, Google Agenda, Notion, Figma e Canva.</div>
-  <div class="card"><b>Rotinas</b> Revisão semanal do cérebro e backup diário das suas notas, sem você lembrar de nada.</div>
-
-  <h2>Windows pelo PowerShell</h2>
-  <p class="mut">No Windows, abra o PowerShell normal (menu Iniciar, digite PowerShell; não precisa ser como administrador) e cole a linha inteira:</p>
-  <pre>irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.ps1 -OutFile "$env:USERPROFILE\claude-setuper-install.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper-install.ps1"</pre>
-  <p class="mut">Ele lembra onde parou: se algo travar, rode a mesma linha de novo. Pra só conferir o que está instalado: acrescente <code>-Doctor</code> no fim.</p>
-
-  <h2>Depois de instalado</h2>
-  <ul>
-    <li><code>claude-setuper doctor</code> confere se está tudo certo e diz o que fazer se faltar algo.</li>
-    <li><code>claude-setuper atualizar</code> puxa a versão nova sem perder o que você editou.</li>
-    <li><code>claude-setuper remover</code> desfaz a instalação. Suas notas nunca são apagadas.</li>
-  </ul>
-
-  <h2>Precisa ter</h2>
-  <ul>
-    <li>Windows 10 ou 11 atualizado (com a Microsoft Store), ou um Mac com macOS 15 ou mais novo. No Linux funciona sem Maestri.</li>
-    <li>Uma conta do Claude paga (Pro ou Max). O instalador abre a página pra criar se você não tiver.</li>
-    <li>Uns 10 minutos e a senha do seu Mac.</li>
-  </ul>
-
-  <footer>Código aberto, licença MIT. <a href="https://github.com/nrsperfeld/claude-setuper" style="color:var(--acc)">Repositório no GitHub</a>.</footer>
+  <p class="peq"><span data-t="intel"></span> <a id="intel" href="#"></a></p>
+  <div class="grade">
+    <div class="bloco"><h2 data-t="p1"></h2><p data-t="p1t"></p></div>
+    <div class="bloco"><h2 data-t="p2"></h2><p data-t="p2t"></p></div>
+    <div class="bloco"><h2 data-t="p3"></h2><p data-t="p3t"></p></div>
+  </div>
+  <h3 data-t="aviso"></h3>
+  <p class="lead" data-t="avisot"></p>
+  <div class="grade">
+    <div class="bloco"><h2 data-t="mact"></h2><p data-t="macp"></p></div>
+    <div class="bloco"><h2 data-t="wint"></h2><p data-t="winp"></p></div>
+  </div>
 </main>
 <script>
-  document.getElementById('copiar-mac').addEventListener('click', async (e) => {
-    const linha = document.getElementById('linha-mac').textContent;
-    try { await navigator.clipboard.writeText(linha); e.target.textContent = 'Copiado. Agora cole no Terminal.'; }
-    catch { getSelection().selectAllChildren(document.getElementById('linha-mac')); e.target.textContent = 'Selecionei a linha: aperte ⌘ + C'; }
-  });
+  const REL = 'https://github.com/nrsperfeld/claude-setuper/releases/latest/download/';
+  const TX = {
+    pt: { titulo: 'O modelo mais avançado de IA pra te acompanhar, com tudo instalado em menos de 20 minutos.', lead: 'Você baixa, abre e segue o passo a passo. Não precisa entender de tecnologia.', mac: 'Baixar pra Mac', win: 'Baixar pra Windows', intel: 'Tem um Mac mais antigo, com processador Intel?', intelL: 'Baixar a versão pra Intel', p1: '1. Baixa', p1t: 'Um arquivo só, com tudo que precisa pra começar.', p2: '2. Abre', p2t: 'No Mac, arrasta pra pasta Aplicativos. No Windows, dois cliques.', p3: '3. Deixa à mão', p3t: 'Uma conta no Claude, que é a IA que vai ser instalada, com plano pago (Pro ou maior). Dá pra criar durante a instalação.', aviso: 'Na primeira vez, o computador vai mostrar um aviso', avisot: 'O programa ainda é novo, então o sistema pede uma confirmação sua. São poucos cliques, e isso acontece uma vez só.', mact: 'No Mac', macp: 'Abre o app e fecha o aviso. Depois abre Ajustes do Sistema, Privacidade e Segurança, desce até o fim e clica em Abrir Mesmo Assim.', wint: 'No Windows', winp: 'Na tela azul, clica em Mais informações e depois em Executar assim mesmo.' },
+    en: { titulo: 'The most advanced AI by your side, with everything installed in under 20 minutes.', lead: 'Download it, open it and follow the steps. You don’t need to know anything about technology.', mac: 'Download for Mac', win: 'Download for Windows', intel: 'Have an older Mac with an Intel processor?', intelL: 'Download the Intel version', p1: '1. Download', p1t: 'One file with everything you need to get started.', p2: '2. Open', p2t: 'On a Mac, drag it to Applications. On Windows, double-click it.', p3: '3. Have this handy', p3t: 'A Claude account, the AI you’re installing, on a paid plan (Pro or higher). You can create it during setup.', aviso: 'The first time, your computer will show a warning', avisot: 'The app is still new, so your system asks you to confirm. It takes a few clicks and only happens once.', mact: 'On a Mac', macp: 'Open the app and close the warning. Then open System Settings, Privacy & Security, scroll to the bottom and click Open Anyway.', wint: 'On Windows', winp: 'On the blue screen, click More info and then Run anyway.' },
+  };
+  const silicon = () => {
+    try { const g = document.createElement('canvas').getContext('webgl'); const d = g.getExtension('WEBGL_debug_renderer_info'); return !/intel/i.test(g.getParameter(d.UNMASKED_RENDERER_WEBGL)); } catch { return true; }
+  };
+  function aplicar(l) {
+    const t = TX[l];
+    document.documentElement.lang = l === 'en' ? 'en' : 'pt-BR';
+    document.querySelectorAll('[data-t]').forEach((e) => { e.textContent = t[e.dataset.t]; });
+    document.querySelectorAll('[data-l]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.l === l)));
+    const mac = document.getElementById('mac'), win = document.getElementById('win'), intel = document.getElementById('intel');
+    mac.textContent = t.mac; win.textContent = t.win; intel.textContent = t.intelL;
+    mac.href = `${REL}Claude-Setuper-mac-${silicon() ? 'arm64' : 'x64'}-${l}.dmg`;
+    intel.href = `${REL}Claude-Setuper-mac-x64-${l}.dmg`;
+    // Destaca o botão do sistema de quem está visitando.
+    const windows = /windows/i.test(navigator.userAgent);
+    mac.classList.toggle('principal', !windows); win.classList.toggle('principal', windows);
+    if (windows) win.parentNode.prepend(win);
+  }
+  document.querySelectorAll('[data-l]').forEach((b) => b.addEventListener('click', () => aplicar(b.dataset.l)));
+  aplicar((navigator.language || 'pt').toLowerCase().startsWith('pt') ? 'pt' : 'en');
 </script>
 </body>
 </html>

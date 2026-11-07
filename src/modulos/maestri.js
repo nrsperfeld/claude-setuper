@@ -5,11 +5,14 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { ui } from '../ui.js';
 import { apresentacao } from '../perfis.js';
+import { t } from '../i18n.js';
+
+const NOMES_PAINEL = ['Minha IA', 'My AI', 'Meu Claude'];
 
 export const id = 'maestri';
-export const nome = 'Maestri (o seu painel com o Claude)';
-export const nomeCurto = 'Janela do Claude';
-export const descricao = 'Instala o Maestri e deixa o Claude aberto com notas e lembretes do lado';
+export const nome = 'Maestri (o seu painel com a IA)';
+export const nomeCurto = 'Janela da IA';
+export const descricao = 'Instala o Maestri e deixa a IA aberta com notas e lembretes do lado';
 export const padrao = true;
 export const plataformas = ['darwin'];
 
@@ -25,7 +28,7 @@ export async function verificar(ctx) {
   const m = ctx.lerJson(path.join(ctx.home, '.maestri', 'manifest.json'), null);
   return [
     { item: 'Maestri instalado', ok: ctx.existe('/Applications/Maestri.app') || ctx.existe('/Applications/Setapp/Maestri.app') },
-    { item: 'Workspace "Meu Claude" montado', ok: !!m?.workspaces?.some((w) => w.name === 'Meu Claude') },
+    { item: 'Painel da IA montado', ok: !!m?.workspaces?.some((w) => NOMES_PAINEL.includes(w.name)) },
   ];
 }
 
@@ -33,10 +36,10 @@ export async function instalar(ctx) {
   const instalado = ctx.existe('/Applications/Maestri.app') || ctx.existe('/Applications/Setapp/Maestri.app');
   if (instalado) ui.ok('Maestri já está instalado');
   else if (!ctx.semApps) {
-    await ui.tarefa('Instalando o Maestri, o seu painel com o Claude', 'Maestri instalado', async () => { await (await import('./base.js')).brewInstalar(ctx, 'maestri', ['--cask', 'maestri']); }, { demora: 'uns 2 minutos, é normal' });
+    await ui.tarefa('Instalando o Maestri, o seu painel com a IA', 'Maestri instalado', async () => { await (await import('./base.js')).brewInstalar(ctx, 'maestri', ['--cask', 'maestri']); }, { demora: 'uns 2 minutos, é normal' });
   }
 
-  await ui.tarefa('Preparando o painel com o Claude e as suas notas', 'Painel pronto', async () => {
+  await ui.tarefa('Preparando o painel com a IA e as suas notas', 'Painel pronto', async () => {
     montarWorkspace(ctx);
   });
 
@@ -54,8 +57,8 @@ export async function instalar(ctx) {
     await ctx.run('open', [app], { ignorarErro: true });
     abriu = await ctx.esperar(async () => !!(await ctx.run('pgrep', ['-x', 'Maestri'], { ignorarErro: true, sempre: true })), { intervalo: 1, limite: 15 });
   }
-  if (abriu) ui.ok('O Maestri está abrindo. O Claude vai se apresentar sozinho na janela da esquerda.');
-  else ui.aviso('O Maestri não abriu sozinho. Abre ele pela pasta Aplicativos, o painel com o Claude já está montado lá dentro.');
+  if (abriu) ui.ok('O Maestri está abrindo. A IA vai se apresentar sozinha na janela da esquerda.');
+  else ui.aviso('O Maestri não abriu sozinho. Abre ele pela pasta Aplicativos, o painel com a IA já está montado lá dentro.');
 }
 
 export function montarWorkspace(ctx) {
@@ -66,9 +69,10 @@ export function montarWorkspace(ctx) {
     workspaces: [],
   });
   manifest.workspaces = manifest.workspaces || [];
-  let ws = manifest.workspaces.find((w) => w.name === 'Meu Claude');
+  // Quem instalou antes tem o painel com o nome antigo: continua usando o mesmo.
+  let ws = manifest.workspaces.find((w) => NOMES_PAINEL.includes(w.name));
   const wid = ws?.id || crypto.randomUUID().toUpperCase();
-  if (!ws) manifest.workspaces.push({ id: wid, name: 'Meu Claude', path: `workspaces/${wid}/workspace.json` });
+  if (!ws) manifest.workspaces.push({ id: wid, name: t('Minha IA'), path: `workspaces/${wid}/workspace.json` });
 
   const dir = path.join(raiz, 'workspaces', wid);
   for (const sub of ['files', 'notes', 'snapshots', 'terminals']) fs.mkdirSync(path.join(dir, sub), { recursive: true });
@@ -86,7 +90,7 @@ export function montarWorkspace(ctx) {
       content: { terminal: { _0: {
         activeChatThread: 0, agentType: 'claude_code', autoScrollLocked: false, chatThreads: [termId],
         codexDaemonMigration: 'untouched', color: '#007AFF', command: `/bin/bash "${abrir}"`, icon: 'seal', id: termId,
-        isManager: true, isUnloaded: false, lastActiveAt: agora, monitorWithOmbro: true, name: 'Claude',
+        isManager: true, isUnloaded: false, lastActiveAt: agora, monitorWithOmbro: true, name: t('Sua IA (Claude)'),
         prefersChatMode: false, scrollbackFile: `${termId}.scrollback`, scrollbackLineCount: 0, shellPath: '/bin/zsh',
         shortcutMode: { kind: 'automatic' }, showsShellWindowDuringTurns: true, startInChatMode: false, status: 'stopped',
         workingDirectory: ctx.resp.pastaTrabalho || ctx.home,
@@ -128,7 +132,7 @@ export function montarWorkspace(ctx) {
       payload: {
         cableTies: [], canvasOrigin: [X - 120, Y - 120], canvasZoom: 0.62, color: '#C8873C', connections: [], createdAt: agora,
         crossFloorConnections: [], crossWorkspaceConnections: [], dockEdge: 'trailing', drawings: [], floors: [], groups: [],
-        icon: 'brain', id: wid, isPinned: true, lastOpenedAt: agora, locationType: 'local', name: 'Meu Claude', nodes,
+        icon: 'brain', id: wid, isPinned: true, lastOpenedAt: agora, locationType: 'local', name: t('Minha IA'), nodes,
         noteConnections: [], noteToNoteConnections: [], portalConnections: [], portalToPortalConnections: [], syncConfigFiles: false,
         workingDirectory: ctx.resp.pastaTrabalho || ctx.home,
       },
@@ -149,5 +153,5 @@ function oQuePedir(ctx) {
   try { cardapio = fs.readFileSync(config.cardapio, 'utf8'); } catch { return ctx.template('maestri/o-que-pedir.md'); }
   const pedidos = cardapio.split('\n').filter((l) => l.startsWith('- ')).slice(0, 6);
   const onde = config.vault ? 'no seu segundo cérebro (Obsidian)' : 'na pasta Claude Setuper';
-  return ['O que você pode pedir pro Claude', '', ...pedidos, '', `Tem mais no "Cardápio do Claude", ${onde}. Ou pergunta pra ele: "o que mais eu posso te pedir?"`, ''].join('\n');
+  return [t('O que você pode pedir pra IA'), '', ...pedidos, '', `Tem mais no "Cardápio do Claude", ${onde}. Ou pergunta pra ela: "o que mais eu posso te pedir?"`, ''].join('\n');
 }

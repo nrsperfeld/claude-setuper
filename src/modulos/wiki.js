@@ -51,11 +51,11 @@ export async function montarWiki(ctx, vault) {
   for (const f of PAGINAS) ctx.escreverSeFaltar(path.join(w, f), ctx.template(`vault/wiki/${f}`, vars));
   // Na instalação que já tinha notas, a página de regras nasce com uma linha por correção e por padrão, cada uma com
   // o link da nota de origem. A revisão semanal depois junta as repetidas. Sem notas, fica só o aviso.
-  ctx.escreverSeFaltar(path.join(w, REGRAS), ctx.template(`vault/wiki/${REGRAS}`, { ...vars, regras: regrasIniciais(claude) }));
+  ctx.escreverSeFaltar(path.join(w, ctx.arq(REGRAS)), ctx.template(`vault/wiki/${REGRAS}`, { ...vars, regras: regrasIniciais(claude, ctx) }));
 
   ctx.escreverSeFaltar(path.join(claude, 'inbox', 'README.md'), ctx.template('vault/inbox-README.md', vars));
   if (!ctx.dryRun) fs.mkdirSync(path.join(claude, 'inbox', 'processados'), { recursive: true });
-  ctx.escreverSeFaltar(path.join(claude, 'fontes', 'README.md'), ctx.template('vault/README-pasta.md', { pasta: 'fontes', tag: 'fonte' }));
+  ctx.escreverSeFaltar(path.join(claude, ctx.pasta('fontes'), 'README.md'), ctx.template('vault/README-pasta.md', { pasta: ctx.pasta('fontes'), tag: ctx.tag('fonte') }));
 
   // Mescla: se a pessoa já tinha regras próprias no cofre, ficam todas.
   ctx.mesclarJson(path.join(vault, '.claude', 'settings.json'), { permissions: { deny: TRAVAS } });
@@ -63,9 +63,9 @@ export async function montarWiki(ctx, vault) {
   await historicoLocal(ctx, vault);
 }
 
-function regrasIniciais(claude) {
+function regrasIniciais(claude, ctx) {
   const linhas = [];
-  for (const sub of ['feedback', 'padrões']) {
+  for (const sub of ['feedback', ctx.pasta('padrões')]) {
     const dir = path.join(claude, sub);
     if (!fs.existsSync(dir)) continue;
     const notas = fs.readdirSync(dir).filter((f) => f.endsWith('.md') && f !== 'README.md')

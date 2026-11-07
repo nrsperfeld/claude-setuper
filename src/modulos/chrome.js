@@ -4,9 +4,9 @@ import fs from 'node:fs';
 import { ui } from '../ui.js';
 
 export const id = 'chrome';
-export const nome = 'Claude no Chrome (navegar na internet)';
-export const nomeCurto = 'Claude no Chrome';
-export const descricao = 'Extensão que deixa o Claude usar o seu navegador';
+export const nome = 'IA no Chrome (navegar na internet)';
+export const nomeCurto = 'Google Chrome';
+export const descricao = 'Extensão que deixa a IA usar o seu navegador';
 export const padrao = true;
 
 const EXT_ID = 'fcoeoabgfenejglbffodgkkbkcdhcgfn';
@@ -46,7 +46,7 @@ export async function instalar(ctx) {
     if (ctx.semApps) return;
     const quer = ctx.sim ? true : await ui.confirmar('Posso instalar o Google Chrome?', true, {
       sim: 'Sim, pode instalar', nao: 'Agora não',
-      explicacao: 'O Chrome é o navegador que o Claude sabe usar sozinho: ele abre sites, preenche formulários e pesquisa por você. Você continua usando o seu navegador de sempre no dia a dia.',
+      explicacao: 'O Chrome é o navegador que a IA sabe usar sozinha: ela abre sites, preenche formulários e pesquisa por você. Você continua usando o seu navegador de sempre no dia a dia.',
     });
     if (!quer) return ui.info(ctx.app ? 'Tudo bem, deixei o Chrome pra depois.' : 'Tudo bem, pulei o Chrome. Dá pra instalar depois com: claude-setuper --modulos chrome');
     await ui.tarefa('Instalando o Google Chrome', 'Chrome instalado', async () => {
@@ -62,7 +62,7 @@ export async function instalar(ctx) {
   if (ctx.app && !ctx.opcional) return;
 
   ui.pausa(ctx.app ? 'Clica em Usar no Chrome' : 'Agora é no Chrome: adicionar a extensão do Claude', ctx.app ? [
-    'Depois clica em Adicionar extensão. Se ele pedir a conta Google, pode pular. Com isso o Claude consegue usar o seu navegador.',
+    'Depois clica em Adicionar extensão. Se ele pedir a conta Google, pode pular. Com isso a IA consegue usar o seu navegador.',
   ] : [
     'Vou abrir o Chrome na página da extensão do Claude.',
     'Lá no Chrome, clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e depois em "Adicionar extensão".',
@@ -73,7 +73,7 @@ export async function instalar(ctx) {
   const lembrete = setTimeout(() => ui.info('Ainda não vi a extensão chegar. Se travou, clica em "Abrir a página da extensão" ou em "Pedir ajuda".'), 90_000);
   const ok = await ctx.esperar(async () => extensaoInstalada(ctx) || ui.pulou(), { intervalo: 3, limite: 600 }).finally(() => clearTimeout(lembrete));
   if (ok && !extensaoInstalada(ctx)) return ui.info('Tudo bem, a extensão fica pra depois. No fim eu te mostro como fazer.');
-  if (ok) ui.ok('Extensão instalada. O Claude já pode usar o seu Chrome.');
+  if (ok) ui.ok('Extensão instalada. A IA já pode usar o seu Chrome.');
   else ui.aviso('Não vi a extensão chegar. Tudo bem, no fim eu te mostro como terminar.');
 }
 

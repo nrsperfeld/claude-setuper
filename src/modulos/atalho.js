@@ -6,9 +6,9 @@ import { ui } from '../ui.js';
 import { apresentacao } from '../perfis.js';
 
 export const id = 'atalho';
-export const nome = 'Atalho do Claude na Área de Trabalho';
+export const nome = 'Atalho da IA na Área de Trabalho';
 export const nomeCurto = 'Atalho na Área de Trabalho';
-export const descricao = 'Um ícone pra abrir o Claude sem precisar do terminal';
+export const descricao = 'Um ícone pra abrir a IA sem precisar do terminal';
 export const padrao = true;
 export const plataformas = ['win32', 'linux'];
 
@@ -23,7 +23,7 @@ export async function verificar(ctx) {
 export async function instalar(ctx) {
   const atalho = caminhoAtalho(ctx);
   const vault = ctx.resp.vault || ctx.estado.respostas?.vault || '';
-  await ui.tarefa('Criando o atalho do Claude na Área de Trabalho', 'Atalho criado', async () => {
+  await ui.tarefa('Criando o atalho da IA na Área de Trabalho', 'Atalho criado', async () => {
     fs.mkdirSync(ctx.desktop(), { recursive: true });
     const vars = { marcador: path.join(ctx.claudeDir, '.setuper-saudou'), apresentacao: apresentacao(ctx), vault, vaultUrl: `obsidian://open?path=${encodeURIComponent(vault)}` };
     ctx.escrever(atalho, ctx.template(ctx.win ? 'atalho/Claude.cmd' : 'atalho/Claude.sh', vars));
@@ -37,7 +37,7 @@ export async function instalar(ctx) {
   } else {
     await ctx.run('x-terminal-emulator', ['-e', atalho], { ignorarErro: true });
   }
-  ui.ok('O Claude está abrindo numa janela nova. Da próxima vez, é só dar dois cliques no "Claude" da Área de Trabalho.');
+  ui.ok('A IA está abrindo numa janela nova. Da próxima vez, é só dar dois cliques no "Claude" da Área de Trabalho.');
 }
 
 export async function remover(ctx) {

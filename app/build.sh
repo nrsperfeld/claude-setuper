@@ -2,7 +2,8 @@
 # Monta o "Claude Setuper.app" (Apple Silicon e Intel) a partir do Electron oficial e gera os zips em app/dist.
 #   bash app/build.sh            # os dois
 #   bash app/build.sh arm64      # só um
-# Sem conta de desenvolvedor da Apple: assinatura ad-hoc (codesign -s -). Baixado pelo Terminal, abre sem aviso.
+# Sem conta de desenvolvedor da Apple: assinatura ad-hoc (codesign -s -). Baixado pelo navegador, o Mac mostra um aviso
+# na primeira abertura, e o desenho na janela do .dmg ensina o caminho por Ajustes do Sistema.
 set -euo pipefail
 cd "$(dirname "$0")"
 ELECTRON=$(node -p "require('./package.json').devDependencies.electron")
@@ -23,7 +24,7 @@ for ARQ in "${@:-arm64 x64}"; do
 
     # O app (telas) e, dentro dele, o Setuper inteiro: os mesmos módulos do instalador de Terminal.
     mkdir -p "$R/app/setuper"
-    cp main.js preload.cjs ui-app.js terminal.js pty.sh package.json "$R/app/"
+    cp main.js preload.cjs ui-app.js terminal.js aula.js pty.sh package.json "$R/app/"
     cp -R tela "$R/app/"
     cp -R ../src ../templates ../bin ../package.json "$R/app/setuper/"
     (cd "$R/app/setuper" && npm install --omit=dev --no-audit --no-fund --silent --registry="$REGISTRO")
@@ -42,5 +43,9 @@ for ARQ in "${@:-arm64 x64}"; do
     rm -f "dist/Claude-Setuper-mac-$A.zip"
     (cd "$T" && ditto -c -k --keepParent "Claude Setuper.app" "$OLDPWD/dist/Claude-Setuper-mac-$A.zip")
     echo "pronto: app/dist/Claude-Setuper-mac-$A.zip ($(du -h "dist/Claude-Setuper-mac-$A.zip" | cut -f1))"
+    # O .dmg é o que a pessoa baixa; o zip fica pra atualização de dentro do app.
+    for IDIOMA in pt en; do bash dmg.sh "$APP" "$A" "$IDIOMA" dist; done
+    [ -n "${MANTER_APP:-}" ] && { rm -rf "$MANTER_APP"; ditto "$APP" "$MANTER_APP"; }
+    rm -rf "$T" 2>/dev/null || true
   done
 done

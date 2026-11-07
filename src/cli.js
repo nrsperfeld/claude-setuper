@@ -36,6 +36,7 @@ Opções:
   --sem-apps        não instala aplicativos, só escreve arquivos (pra testes)
   --assistido       grava um relatório pra quem está te ajudando
   --presente <pasta> instala um segundo cérebro pronto (presente.json + cofre/)
+  --idioma pt|en    idioma de tudo que é instalado
 `;
 
 export async function main(argv) {
@@ -112,7 +113,7 @@ export async function instalar(ctx, flags) {
   }
   if (ctx.assistido) gravarRelatorio(ctx, falhas);
 
-  ui.info('Se você já tinha algum Claude aberto (no Terminal ou no Maestri), feche e abra de novo pra ele pegar as configurações novas.');
+  ui.info('Se você já tinha alguma janela da IA aberta (no Terminal ou no Maestri), feche e abra de novo pra ela pegar as configurações novas.');
   ui.info('Gmail, Google Agenda, Drive, Planilhas, QuickBooks e outros apps se conectam pelo site: claude.ai > Configurações > Conectores > escolhe o app > Conectar. Depois é só abrir o Claude de novo.');
   ui.linha();
 
@@ -123,10 +124,10 @@ export async function instalar(ctx, flags) {
   ui.encerramento(
     okMaestri
       ? lista.some((m) => m.id === 'maestri')
-        ? `Pronto, ${ctx.resp.nome}. O Maestri está abrindo com o Claude e as suas notas do lado.`
-        : `Pronto, ${ctx.resp.nome}. O Claude está no Maestri, com as suas notas do lado.`
+        ? `Pronto, ${ctx.resp.nome}. O Maestri está abrindo com a IA e as suas notas do lado.`
+        : `Pronto, ${ctx.resp.nome}. A IA está no Maestri, com as suas notas do lado.`
       : okAtalho
-        ? `Pronto, ${ctx.resp.nome}. O Claude está abrindo numa janela nova, e deixei um atalho "Claude" na sua Área de Trabalho pra próxima vez.`
+        ? `Pronto, ${ctx.resp.nome}. A IA está abrindo numa janela nova, e deixei um atalho "Claude" na sua Área de Trabalho pra próxima vez.`
         : `Pronto, ${ctx.resp.nome}. Abra o Terminal e digite ${c.bold('claude')} pra começar.`,
   );
 }
@@ -136,7 +137,7 @@ async function pedirAjuda(ctx) {
   const arquivo = await ui.tarefa('Conferindo a instalação e montando o arquivo', 'Arquivo pronto', () => gerarPedidoDeAjuda(ctx, VERSAO));
   if (ctx.win) await ctx.run('explorer.exe', [`/select,${arquivo}`], { ignorarErro: true });
   else if (ctx.plataforma === 'darwin') await ctx.run('open', ['-R', arquivo], { ignorarErro: true });
-  ui.encerramento(`Criei o arquivo "${path.basename(arquivo)}" em ${path.dirname(arquivo)}. Manda ele pra quem instalou o Claude pra você (pelo WhatsApp ou por e-mail). Ele não tem senha nem código de login.`);
+  ui.encerramento(`Criei o arquivo "${path.basename(arquivo)}" em ${path.dirname(arquivo)}. Manda ele pra quem te ajudou com a instalação (pelo WhatsApp ou por e-mail). Ele não tem senha nem código de login.`);
 }
 
 function gravarRelatorio(ctx, falhas) {
@@ -174,6 +175,7 @@ function parse(argv) {
     else if (a === '--modulos') flags.modulos = argv[++i];
     else if (a === '--perfil') flags.perfil = argv[++i];
     else if (a === '--presente') flags.presente = argv[++i];
+    else if (a === '--idioma') flags.idioma = argv[++i];
     else if (!a.startsWith('-')) cmd = a;
   }
   return { cmd, flags };

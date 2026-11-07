@@ -10,7 +10,7 @@ import { copiarCofre, mesclarObsidian, presenteTemNotas } from '../presente.js';
 export const id = 'obsidian';
 export const nome = 'Segundo cérebro (Obsidian)';
 export const nomeCurto = 'Segundo cérebro';
-export const descricao = 'Instala o Obsidian e monta o cofre de notas que o Claude vai alimentar';
+export const descricao = 'Instala o Obsidian e monta o caderno de notas que a IA vai alimentar';
 export const padrao = true;
 
 const PLUGINS = [
@@ -41,7 +41,7 @@ export async function verificar(ctx) {
   const registrado = Object.values(reg.vaults || {}).some((v) => nfc(v.path) === nfc(vault));
   const itens = [
     { item: 'Obsidian instalado', ok: temApp },
-    { item: 'Notas com a pasta CLAUDE/', ok: ctx.existe(path.join(vault, 'CLAUDE', 'projetos')) },
+    { item: 'Notas com a pasta CLAUDE/', ok: ctx.existe(path.join(vault, 'CLAUDE', ctx.pasta('projetos'))) },
     { item: 'Notas ligadas ao Obsidian', ok: registrado },
     { item: 'Complementos Dataview e Templater', ok: PLUGINS.every((p) => ctx.existe(path.join(vault, '.obsidian', 'plugins', p.id, 'main.js'))) },
   ];
@@ -62,16 +62,18 @@ export async function instalar(ctx) {
     // Presente primeiro: as páginas prontas ocupam o lugar e os modelos em branco abaixo só entram onde faltar.
     if (ctx.presente) copiarCofre(ctx, vault);
     const pastas = { feedback: 'feedback', 'decisões': 'decisão', 'padrões': 'padrão', descobertas: 'descoberta', projetos: 'projeto' };
-    for (const [pasta, tag] of Object.entries(pastas)) {
+    for (const [chave, chaveTag] of Object.entries(pastas)) {
+      const pasta = ctx.pasta(chave);
+      const tag = ctx.tag(chaveTag);
       fs.mkdirSync(path.join(vault, 'CLAUDE', pasta), { recursive: true });
       ctx.escreverSeFaltar(path.join(vault, 'CLAUDE', pasta, 'README.md'), ctx.template('vault/README-pasta.md', { pasta, tag }));
     }
-    for (const p of ['1. PROJETOS', '2. ÁREAS', '3. RECURSOS', '4. ARQUIVO', 'TEMPLATES', '_anexos']) fs.mkdirSync(path.join(vault, p), { recursive: true });
-    ctx.escreverSeFaltar(path.join(vault, 'Comece aqui.md'), ctx.template('vault/Comece aqui.md'));
-    ctx.escreverSeFaltar(path.join(vault, 'Painel do Claude.md'), ctx.template('vault/Painel do Claude.md'));
-    ctx.escreverSeFaltar(path.join(vault, 'TEMPLATES', 'Nota do Claude.md'), ctx.template('vault/template-nota.md'));
+    for (const p of ['1. PROJETOS', '2. ÁREAS', '3. RECURSOS', '4. ARQUIVO', 'TEMPLATES', '_anexos']) fs.mkdirSync(path.join(vault, ctx.pasta(p)), { recursive: true });
+    ctx.escreverSeFaltar(path.join(vault, ctx.arq('Comece aqui.md')), ctx.template('vault/Comece aqui.md'));
+    ctx.escreverSeFaltar(path.join(vault, ctx.arq('Painel do Claude.md')), ctx.template('vault/Painel do Claude.md'));
+    ctx.escreverSeFaltar(path.join(vault, 'TEMPLATES', ctx.arq('Nota do Claude.md')), ctx.template('vault/template-nota.md'));
     // O presente já traz os padrões tirados da fala da própria pessoa: a nota genérica da instalação não entra.
-    if (!presenteTemNotas(ctx, path.join('CLAUDE', 'padrões'))) ctx.escreverSeFaltar(path.join(vault, 'CLAUDE', 'padrões', 'Como falar comigo.md'), ctx.template('vault/padrao-inicial.md'));
+    if (!presenteTemNotas(ctx, path.join('CLAUDE', ctx.pasta('padrões')))) ctx.escreverSeFaltar(path.join(vault, 'CLAUDE', ctx.pasta('padrões'), ctx.arq('Como falar comigo.md')), ctx.template('vault/padrao-inicial.md'));
 
     const obs = path.join(vault, '.obsidian');
     ctx.escreverSeFaltar(path.join(obs, 'app.json'), { attachmentFolderPath: '_anexos', newFileLocation: 'root', useMarkdownLinks: false, alwaysUpdateLinks: true, showUnsupportedFiles: false });

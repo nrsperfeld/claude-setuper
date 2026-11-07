@@ -119,18 +119,18 @@ function telaInicio() {
   }
   const primeira = estado.inicio?.primeiraAbertura !== false;
   return [faixaNova, portal(faixaNova ? '130px' : '230px', primeira ? 'nasce' : ''), h('div', { css: { height: faixaNova ? '36px' : '50px' } }),
-    h('h1', { class: primeira ? 'sobe d1' : '' }, t('Vamos preparar o Claude pra trabalhar com você.')),
-    h('p', { class: `lead ${primeira ? 'sobe d2' : ''}` }, t('Ele vai trabalhar dentro do seu computador e lembrar do que vocês já fizeram juntos. Leva de 15 a 30 minutos, e eu faço quase tudo sozinho.')),
+    h('h1', { class: primeira ? 'sobe d1' : '' }, t('Vamos preparar a IA pra trabalhar com você.')),
+    h('p', { class: `lead ${primeira ? 'sobe d2' : ''}` }, t('Daqui 20 minutos você vai ter o setup mais avançado do mercado rodando ao seu favor, com uma IA que lembra de tudo que você decidiu, e trabalha sem fronteiras pra te ajudar. O esforço é quase todo meu, só clica em começar e vem!')),
     h('div', { class: `botoes ${primeira ? 'sobe d3' : ''}` }, botao(t('Começar'), () => irPara('demo'), 'btn', { 'data-foco': true }))];
 }
 function telaDemo() {
   const coluna = (rotulo, conteudo, atraso) => h('div', { class: 'bloco sobe', css: { 'animation-delay': `${atraso}s` } }, h('p', { class: 't3 peq', css: { 'margin-bottom': '6px' } }, rotulo), conteudo);
-  return [h('h2', {}, t('O Claude sai do chat e vem pro seu computador.')),
-    h('p', { class: 'lead' }, t('Você pede, ele abre os seus arquivos e leva o trabalho até o fim. No que for importante, ele pede licença antes.')),
+  return [h('h2', {}, t('A IA sai do chat e vem pro seu computador.')),
+    h('p', { class: 'lead' }, t('Você pede, ela abre os seus arquivos e leva o trabalho até o fim. No que for importante, ela pede permissão antes de sair fazendo.')),
     h('div', { css: { display: 'grid', 'grid-template-columns': 'repeat(3,minmax(0,1fr))', gap: '12px', width: '768px', 'max-width': '100%', 'margin-top': '28px', 'text-align': 'left' } },
       coluna(t('Você pede'), h('p', {}, t('Organiza a minha pasta Downloads em pastas por tipo, sem apagar nada.')), 0),
-      coluna(t('Ele faz'), [t('Pasta Documentos'), t('Pasta Imagens'), t('Pasta Planilhas')].map((x) => h('div', { class: 'linha', css: { padding: '2px 0' } }, icCerto(), h('span', {}, x))), 0.9),
-      coluna(t('E lembra'), h('p', {}, t('Anota no caderno de notas, aqui no seu computador, que você prefere as coisas separadas por tipo. Da próxima vez ele já sabe.')), 1.8)),
+      coluna(t('Ela faz'), [t('Pasta Documentos'), t('Pasta Imagens'), t('Pasta Planilhas')].map((x) => h('div', { class: 'linha', css: { padding: '2px 0' } }, icCerto(), h('span', {}, x))), 0.9),
+      coluna(t('E lembra'), h('p', {}, t('Anota no caderno de notas, aqui no seu computador, que você prefere as coisas separadas por tipo. Da próxima vez ela já sabe.')), 1.8)),
     h('div', { class: 'botoes' }, botao(t('Continuar'), () => irPara('confirma'), 'btn', { 'data-foco': true }))];
 }
 function telaConfirma() {
@@ -140,16 +140,16 @@ function telaConfirma() {
     h('p', { class: 't2' }, t('Nada do que você já tem no computador é apagado.')),
     h('div', { css: { display: 'grid', 'grid-template-columns': 'repeat(2,minmax(0,1fr))', gap: '12px', width: '768px', 'max-width': '100%', 'margin-top': '22px' } },
       h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('O que eu vou instalar')),
-        item('Claude', t('O assistente, trabalhando no seu computador')),
-        item('Obsidian', t('O caderno das suas notas e da memória do Claude')),
-        mac ? item('Maestri', t('A janela onde você conversa com ele')) : item(t('Atalho do Claude'), t('Fica na sua Área de Trabalho')),
+        item(t('A IA'), t('Ela se chama Claude e vai trabalhar com você, direto no seu computador')),
+        item('Obsidian', t('O caderno das suas notas e da memória da IA')),
+        mac ? item('Maestri', t('A janela onde você conversa com ela')) : item(t('Atalho da IA'), t('Fica na sua Área de Trabalho')),
         item('Google Chrome', t('Só se você ainda não tiver'))),
       h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('O que você precisa deixar à mão')),
-        item(t('Tomada e internet'), t('Leva de 15 a 30 minutos')),
+        item(t('Tomada e internet'), t('Leva uns 20 minutos')),
         item(t('A senha do computador'), t('Aquela que você digita na tela de bloqueio')),
-        item(t('A sua conta do Claude'), t('Com plano pago, Pro ou maior. Se ainda não tem, dá pra assinar quando eu pedir o login')))),
+        item(t('Uma conta no Claude'), t('É o site da IA. Precisa de plano pago, Pro ou maior. Se ainda não tem, dá pra criar e assinar quando eu pedir')))),
     h('p', { class: 't3 peq', css: { 'margin-top': '14px', 'max-width': '700px' } }, mac
-      ? t('Também deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pro Claude conseguir ler. Enquanto eu baixo o que precisa, te faço umas perguntas.')
+      ? t('Também deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pra IA conseguir ler. Enquanto eu baixo o que precisa, te faço umas perguntas.')
       : t('Também deixo agendados um backup das notas e uma atualização por semana. Enquanto eu baixo o que precisa, te faço umas perguntas.')),
     h('div', { class: 'botoes', css: { 'margin-top': '18px' } }, botao(t('Instalar'), () => comecar('instalar'), 'btn', { 'data-foco': true }))];
 }
@@ -168,9 +168,9 @@ function telaPresente() {
 }
 function telaPreparo() {
   return [h('h2', {}, t('Antes de começar')),
-    h('p', { class: 'lead' }, t('Leva de 15 a 30 minutos. As suas notas e as respostas já vieram prontas, então eu instalo quase tudo sozinho. Quando precisar de você, pra senha ou pra entrar numa conta, aparece uma janelinha na frente de tudo dizendo o que fazer.')),
+    h('p', { class: 'lead' }, t('Leva uns 20 minutos. As suas notas e as respostas já vieram prontas, então eu instalo quase tudo sozinho. Quando precisar de você, pra senha ou pra entrar numa conta, aparece uma janelinha na frente de tudo dizendo o que fazer.')),
     h('div', { class: 'bloco', css: { width: '520px', 'max-width': '100%', 'margin-top': '20px' } }, h('h3', {}, t('Deixa à mão')),
-      h('ul', { class: 'lista-pontos t2' }, h('li', {}, t('O computador na tomada e com internet.')), h('li', {}, t('A senha do computador, a que você digita na tela de bloqueio.')), h('li', {}, t('O e-mail da sua conta do Claude, pra entrar nela quando eu pedir.')))),
+      h('ul', { class: 'lista-pontos t2' }, h('li', {}, t('O computador na tomada e com internet.')), h('li', {}, t('A senha do computador, a que você digita na tela de bloqueio.')), h('li', {}, t('O e-mail da sua conta no Claude, a sua IA, pra entrar nela quando eu pedir.')))),
     h('div', { class: 'botoes' }, botao(t('Vamos lá'), () => comecar('instalar'), 'btn', { 'data-foco': true }))];
 }
 
@@ -245,11 +245,11 @@ function telaInstalando() {
     pz?.status ? h('p', { class: 't3 peq', css: { 'margin-top': '6px' } }, pz.status) : null,
     parado ? h('div', { class: 'bloco', id: 'parado', css: { width: '560px', 'max-width': '100%', 'margin-top': '22px' } },
       h('h3', {}, t('Faz {tempo} que esta parte não muda na tela', { tempo: tempo(Date.now() - estado.mexeu) })),
-      h('p', { class: 't2 peq', css: { 'margin-top': '4px' } }, t('Em computador mais antigo ou internet mais lenta isso acontece, e eu continuo trabalhando por trás. Se der algum problema, aviso aqui. Se passar de 15 minutos assim, manda um pedido de ajuda pra quem está te ajudando com a instalação.')),
+      h('p', { class: 't2 peq', css: { 'margin-top': '4px' } }, t('Em computador mais antigo ou internet mais lenta isso acontece, e eu continuo trabalhando nos bastidores. Se der algum problema, aviso aqui. Se passar de 15 minutos assim, manda um pedido de ajuda pra quem está te ajudando com a instalação.')),
       h('div', { class: 'g-acoes' }, botao(t('Pedir ajuda'), pedirAjuda, 'btn2 p')))
       : exemplo ? h('div', { class: 'bloco', css: { width: '560px', 'max-width': '100%', 'margin-top': '24px' } },
         h('p', { class: 't3 peq', css: { 'margin-bottom': '4px' } }, t('Um exemplo do que você vai poder pedir:')), h('p', {}, exemplo)) : null,
-    parado ? null : h('p', { class: 't3 peq', css: { 'margin-top': '16px' } }, t('Pode fazer outra coisa enquanto isso. Quando eu precisar de você, esta janela volta pra frente e toca um som.')),
+    parado ? null : h('p', { class: 't3 peq', css: { 'margin-top': '16px' } }, t('Pode fazer outra coisa enquanto isso. Quando eu precisar de você, esta janela se destaca na frente das outras e toca um som.')),
     estado.msgs.filter((m) => m.nivel === 'aviso' || m.nivel === 'erro').slice(-2).map((m) => h('p', { class: m.nivel === 'erro' ? 'status-erro peq' : 't2 peq', css: { 'margin-top': '8px' } }, m.texto))];
 }
 
@@ -285,11 +285,11 @@ function telaVideo() {
 }
 const RESOLVER = () => t('O botão "Resolver o que falta" abre isso de novo pra você.');
 const DICAS_APP = () => [
-  [/^Login no Claude/, t('Falta entrar na sua conta do Claude. Sem isso ele ainda não consegue conversar com você.')],
+  [/^Login no Claude/, t('Falta entrar na sua conta do Claude, a sua IA. Sem isso ela ainda não consegue conversar com você.')],
   [/^Conta conectada|^Contas conectadas/, t('Falta entrar na sua conta do GitHub. É opcional.')],
   [/^git sabe/, t('Se resolve sozinho quando a conta do GitHub estiver conectada.')],
   [/^Login na Vercel/, t('Falta entrar na sua conta da Vercel. É opcional.')],
-  [/^Extensão Claude no Chrome/, t('Falta adicionar a extensão do Claude no Chrome. É opcional.')],
+  [/^Extensão Claude no Chrome/, t('Falta adicionar a extensão da IA no Chrome. É opcional.')],
   [/^Complementos do Obsidian ligados/, t('Falta clicar em "Trust author and enable plugins" no Obsidian. {resolver}', { resolver: RESOLVER() })],
 ];
 const TECNICO = /^rode:|claude-setuper|https?:\/\//;
@@ -305,7 +305,7 @@ function telaFim() {
   const resolver = () => comecar('instalar');
   if (!estado.soConferiu && semLogin()) {
     return [anel('170px', 92, 'vez'), h('h1', { css: { 'margin-top': '30px' } }, nome ? t('Quase pronto, {nome}.', { nome }) : t('Quase pronto.')),
-      h('p', { class: 'lead' }, t('Falta só entrar na sua conta do Claude. Sem isso ele ainda não consegue conversar com você, e o resto já ficou instalado.')),
+      h('p', { class: 'lead' }, t('Falta só entrar na sua conta do Claude, a IA que acabei de instalar. Sem isso ela ainda não consegue conversar com você, e o resto já ficou instalado.')),
       h('div', { class: 'botoes' }, botao(t('Entrar na minha conta do Claude'), resolver, 'btn', { 'data-foco': true }), botao(t('Fazer depois'), () => S.fechar(), 'btn2')),
       h('p', { class: 't3 peq', css: { 'margin-top': '18px' } }, t('Se fechar agora, é só abrir o Claude Setuper de novo que eu volto neste ponto.'))];
   }
@@ -314,7 +314,7 @@ function telaFim() {
     h('div', { css: { display: 'grid', 'grid-template-columns': f.length ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)', gap: '12px', width: f.length ? '768px' : '420px', 'max-width': '100%', 'margin-top': '22px', 'max-height': 'calc(100vh - 290px)', 'overflow-y': 'auto' } },
       f.length ? h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('Falta')), f.map((i) => h('div', { class: 'linha' }, icFalta(), h('div', {}, h('b', {}, i.item), h('p', { class: 't2 peq' }, dicaApp(i)))))) : null,
       prontos.length ? h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('Pronto pra usar')), prontos.map((n) => h('div', { class: 'linha', css: { padding: '3px 0' } }, icCerto(), h('span', {}, n)))) : null),
-    h('div', { class: 'botoes' }, f.length ? botao(t('Resolver o que falta'), resolver, 'btn', { 'data-foco': true }) : null, botao(estado.plataforma === 'darwin' ? t('Abrir o Maestri') : t('Abrir o Claude'), () => S.abrirClaude(), f.length ? 'btn2' : 'btn', f.length ? {} : { 'data-foco': true }))];
+    h('div', { class: 'botoes' }, f.length ? botao(t('Resolver o que falta'), resolver, 'btn', { 'data-foco': true }) : null, botao(estado.plataforma === 'darwin' ? t('Abrir o Maestri') : t('Abrir a IA'), () => S.abrirClaude(), f.length ? 'btn2' : 'btn', f.length ? {} : { 'data-foco': true }))];
 }
 function telaFalha() {
   return [anel('150px', porcentagem(), 'erro'), h('div', { css: { height: '28px' } }),

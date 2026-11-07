@@ -3,6 +3,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { ui, c } from './ui.js';
+import { t } from './i18n.js';
 import { MODULOS } from './modulos/index.js';
 import { PACOTES } from './modulos/pacotes.js';
 import { catalogo } from './modulos/mcps.js';
@@ -56,12 +57,12 @@ export async function wizard(ctx) {
 
   // No app, a tela de boas-vindas já disse isso.
   if (!ctx.app) {
-    ui.info('Vou preparar o seu Claude. Leva uns 15 minutos.\nEu aviso toda vez que precisar de você, e espero o tempo que for.');
-    ui.info('O que muda em relação ao chat: o Claude vai trabalhar direto no seu computador, lembrar de você pelo segundo cérebro\n(o que você decidiu, como gosta das coisas, onde cada projeto parou) e já vir com comandos e rotinas prontos.\nÉ assim que trabalha o 1% que mais tira proveito do Claude.');
+    ui.info('Vou preparar a sua IA. Leva uns 20 minutos.\nEu aviso toda vez que precisar de você, e espero o tempo que for.');
+    ui.info('O que muda em relação ao chat: a IA vai trabalhar direto no seu computador, lembrar de você pelo segundo cérebro\n(o que você decidiu, como gosta das coisas, onde cada projeto parou) e já vir com comandos e rotinas prontos.\nÉ assim que trabalha o 1% que mais tira proveito do Claude.');
     ui.linha();
   }
 
-  const nome = tem('nome') ? pre.nome : await ui.perguntar('Como você quer que o Claude te chame?', {
+  const nome = tem('nome') ? pre.nome : await ui.perguntar('Como você quer que a IA te chame?', {
     padrao: salvo.nome,
     placeholder: 'Seu primeiro nome ou apelido',
     validar: (v) => (!v && !salvo.nome ? 'Só o nome, pode ser o apelido.' : undefined),
@@ -69,10 +70,10 @@ export async function wizard(ctx) {
 
   // --perfil no comando já responde essa (útil pra mandar o link pra uma turma inteira).
   const idPerfil = ctx.perfil || pre.perfil || await ui.escolher(
-    `Pra que você vai usar o Claude, ${nome}?`,
+    t('Pra que você vai usar a IA, {nome}?', { nome }),
     // O perfil da equipe da ELOS só entra pelo link direto (--perfil elos); quem já está nele continua vendo.
     perfis(ctx).filter((p) => p.id !== 'elos' || salvo.perfil === 'elos').map((p) => ({ value: p.id, label: p.nome, hint: p.hint })),
-    { padrao: salvo.perfil || 'dia-a-dia' },
+    { padrao: salvo.perfil || 'dia-a-dia', explicacao: 'Com isso eu já deixo pronto o que faz sentido pra você. Dá pra mudar depois.' },
   );
   const p = acharPerfil(ctx, idPerfil);
 
@@ -81,7 +82,7 @@ export async function wizard(ctx) {
   const idade = tem('idade') ? pre.idade : (ctx.presente || p.id !== 'estudante') ? (salvo.idade || '') : await ui.perguntar('Quantos anos você tem?', {
     padrao: salvo.idade,
     placeholder: 'Só o número',
-    explicacao: 'Uso só pra ajustar o jeito do Claude falar com você. Fica guardado só no seu computador.',
+    explicacao: 'Uso só pra ajustar o jeito da IA falar com você. Fica guardado só no seu computador.',
     validar: (v) => (!v && salvo.idade) || /^\d{1,3}$/.test(String(v || '').trim()) && +v >= 6 && +v <= 110 ? undefined : 'Só o número, por exemplo 34.',
   });
 
@@ -92,39 +93,39 @@ export async function wizard(ctx) {
   ], { padrao: salvo.tecnologia || 'basico' });
 
   const ia = tem('ia') ? pre.ia : await ui.escolher('E como você usa IA hoje?', [
-    { value: 'nunca', label: 'Nunca usei, ou quase nunca' },
+    { value: 'nunca', label: 'Nunca usei, ou quase nunca', hint: 'é a primeira vez, e tudo bem' },
     { value: 'chat', label: 'Uso o chat', hint: 'ChatGPT, Claude, Gemini: pergunto e copio a resposta' },
     { value: 'code', label: 'Já uso IA pra programar', hint: 'Claude Code, Codex, Cursor, no terminal ou no editor' },
-  ], { padrao: IA_ANTIGA[salvo.ia] || salvo.ia || 'chat' });
+  ], { padrao: IA_ANTIGA[salvo.ia] || salvo.ia || 'chat', explicacao: 'Assim a IA sabe o quanto explicar antes de fazer. Qualquer resposta serve.' });
 
   const trabalho = tem('trabalho') ? pre.trabalho : await ui.perguntar(p.trabalho.pergunta, {
     padrao: salvo.perfil === p.id ? salvo.trabalho : undefined,
     placeholder: p.trabalho.placeholder,
-    explicacao: 'Ajuda o Claude a entender o seu dia a dia. Se preferir, pode deixar em branco.',
+    explicacao: 'Ajuda a IA a entender o seu dia a dia. Se preferir, pode deixar em branco.',
   });
 
   // "Nunca pede licença" não aparece pra menor de idade nem pra quem ainda está começando com tecnologia ou IA.
   const semLivre = ehMenor(idade) || tecnologia === 'pouco' || ia === 'nunca';
   // "Livre" que veio no presente pra quem não pode ter essa opção vira "confiante".
   const autonomia = tem('autonomia') ? (semLivre && pre.autonomia === 'livre' ? 'confiante' : pre.autonomia) : await ui.escolher(
-    'Como você prefere que o Claude trabalhe?',
+    'Como você prefere que a IA trabalhe?',
     AUTONOMIAS.filter((a) => !(semLivre && a.value === 'livre')),
     // Quem já usa IA pra código costuma preferir menos interrupção; o resto começa no equilibrado.
     { padrao: salvo.autonomia && !(semLivre && salvo.autonomia === 'livre') ? salvo.autonomia : ia === 'code' && !semLivre ? 'confiante' : 'equilibrado',
-      explicacao: 'Dá pra mudar depois. Em qualquer opção, o Claude nunca apaga pastas inteiras nem mexe nas suas senhas.' },
+      explicacao: 'Dá pra mudar depois. Em qualquer opção, a IA nunca apaga pastas inteiras nem mexe nas suas senhas.' },
   );
 
   const pacotes = tem('pacotes') ? pre.pacotes.filter((id) => PACOTES[id] && (!PACOTES[id].soPerfil || PACOTES[id].soPerfil === p.id)) : await ui.escolherVarios(
-    ctx.app ? 'Com o que você mais vai usar o Claude?' : 'Com o que você mais vai usar o Claude? (marca com espaço, confirma com Enter)',
+    ctx.app ? 'Com o que você mais vai usar a IA?' : 'Com o que você mais vai usar a IA? (marca com espaço, confirma com Enter)',
     Object.entries(PACOTES).filter(([, x]) => !x.soPerfil || x.soPerfil === p.id).map(([value, x]) => ({ value, label: x.nome, hint: x.hint })),
-    { padrao: salvo.perfil === p.id && salvo.pacotes ? salvo.pacotes : p.pacotes, explicacao: 'Cada pacote ensina o Claude a fazer um tipo de trabalho do seu jeito. Pode marcar vários; já deixei marcados os que combinam com você.' },
+    { padrao: salvo.perfil === p.id && salvo.pacotes ? salvo.pacotes : p.pacotes, explicacao: 'Cada pacote ensina a IA a fazer um tipo de trabalho do seu jeito. Pode marcar vários; já deixei marcados os que combinam com você.' },
   );
 
   const cat = catalogo(ctx);
   const mcps = tem('mcps') ? pre.mcps.filter((id) => cat.some((m) => m.id === id)) : await ui.escolherVarios(
     'Quais dessas ferramentas você já usa?',
     cat.filter((m) => !m.pacotes || m.pacotes.some((x) => pacotes.includes(x))).map((m) => ({ value: m.id, label: m.nome, hint: m.hint })),
-    { padrao: salvo.mcps || [], explicacao: 'O Claude passa a conseguir ler e mexer nelas pra você. Marca só as que você usa; se não usar nenhuma, é só continuar.' },
+    { padrao: salvo.mcps || [], explicacao: 'A IA passa a conseguir ler e mexer nelas pra você. Marca só as que você usa; se não usar nenhuma, é só continuar.' },
   );
 
   let modulos = tem('modulos') ? modulosDoPresente(p) : modulosDoPerfil(p);
@@ -132,8 +133,8 @@ export async function wizard(ctx) {
   const tudo = tem('modulos') || await ui.confirmar('Posso instalar tudo o que faz sentido pro seu perfil?', true, {
     sim: 'Sim, pode instalar tudo (recomendado)', nao: 'Quero escolher o que vai ser instalado',
     explicacao: ctx.app ? 'É a lista que eu te mostrei antes de começar. Se preferir, escolhe item por item.' : ctx.plataforma === 'darwin'
-      ? 'Vou instalar o Claude, o Obsidian (onde ficam as suas notas), o Maestri (a janela onde você conversa com o Claude) e o Google Chrome, se ainda não tiver. Também deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pro Claude conseguir ler. Nada que você já tem é apagado.'
-      : 'Vou instalar o Claude, o Obsidian (onde ficam as suas notas) e o Google Chrome, se ainda não tiver, e deixo um atalho do Claude na Área de Trabalho. Também deixo agendados um backup das notas e uma atualização por semana. Nada que você já tem é apagado.',
+      ? 'Vou instalar a IA (ela se chama Claude), o Obsidian (onde ficam as suas notas), o Maestri (a janela onde você conversa com ela) e o Google Chrome, se ainda não tiver. Também deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pro Claude conseguir ler. Nada que você já tem é apagado.'
+      : 'Vou instalar a IA (ela se chama Claude), o Obsidian (onde ficam as suas notas) e o Google Chrome, se ainda não tiver, e deixo um atalho dela na Área de Trabalho. Também deixo agendados um backup das notas e uma atualização por semana. Nada que você já tem é apagado.',
   });
   const avancado = !tudo;
   if (avancado) {

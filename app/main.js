@@ -27,7 +27,7 @@ const PRESENTE = (() => {
   return fs.existsSync(path.join(dir, 'presente.json')) ? path.resolve(dir) : '';
 })();
 const NOME_APP = PRESENTE ? 'Segundo Cérebro' : 'Claude Setuper';
-const flagsBase = () => ({ app: true, ...(HOME_TESTE ? { home: HOME_TESTE } : {}), ...(PRESENTE ? { presente: PRESENTE } : {}) });
+const flagsBase = () => ({ app: true, idioma: i18n.idiomaAtual(), ...(HOME_TESTE ? { home: HOME_TESTE } : {}), ...(PRESENTE ? { presente: PRESENTE } : {}) });
 const TESTE = lerJson(path.join(PASTA, '.teste-auto.json')); // só existe nos testes da VM
 const SO_AULA = process.argv.includes('--aula'); // aberto pelo Maestri pra continuar a aula
 
@@ -492,7 +492,7 @@ async function demoTelas() {
     fs.writeFileSync(path.join(dir, `${nome}.png`), (await alvo.webContents.capturePage()).toPNG());
   };
   const js = (c) => janela.webContents.executeJavaScript(c);
-  const passos = ['Preparar o computador', 'Configurar o Claude', 'Ajuste automático', 'Segundo cérebro', 'Google Chrome', 'Comandos prontos', 'Apps conectados', 'Rotinas', 'Manter atualizado', 'Janela do Claude'];
+  const passos = ['Preparar o computador', 'Configurar a IA', 'Ajuste automático', 'Segundo cérebro', 'Google Chrome', 'Comandos prontos', 'Apps conectados', 'Rotinas', 'Manter atualizado', 'Janela da IA'];
   const pesos = [45, 2, 2, 10, 10, 2, 2, 2, 2, 10];
   enviar({ tipo: 'inicio', versao: VERSAO, temInstalacao: false, nome: '', auto: null, idioma: i18n.idiomaAtual(), catalogo: i18n.catalogoAtual(), plataforma: process.platform, primeiraAbertura: true });
   await new Promise((r) => setTimeout(r, 2800));
@@ -503,23 +503,23 @@ async function demoTelas() {
   await js("[...document.querySelectorAll('.btn')].at(-1).click()");
   await print('03-confirma');
   const { ui } = await importarSetuper('ui.js');
-  enviar({ tipo: 'tarefa', id: 1, estado: 'fazendo', texto: i18n.t('Instalando o Claude') });
+  enviar({ tipo: 'tarefa', id: 1, estado: 'fazendo', texto: i18n.t('Instalando a IA') });
   const fora = ui.confirmarFora({ rotulo: 'Ferramentas da Apple', passos: [{ titulo: 'Clica em Instalar, na janela da Apple', linhas: ['Ela é do próprio Mac, pode confiar.'], figura: 'apple-ferramentas' }, { titulo: 'Clica em Concordo', linhas: ['Depois é só esperar: a Apple leva de 3 a 10 minutos, e enquanto isso eu te faço umas perguntas.'], figura: 'apple-contrato' }], concluir: 'Já cliquei', nao: 'Não apareceu' });
   await print('04-apple-principal');
   await print('04-apple-guia', guia);
   for (const [id] of pendentes) responderPedido(id, true);
   await fora;
-  const p1 = ui.perguntar('Como você quer que o Claude te chame?', { placeholder: 'Seu primeiro nome ou apelido' });
+  const p1 = ui.perguntar('Como você quer que a IA te chame?', { placeholder: 'Seu primeiro nome ou apelido' });
   await print('05-pergunta-nome');
   for (const [id] of pendentes) responderPedido(id, 'Marina');
   await p1;
-  const p2 = ui.escolher('Pra que você vai usar o Claude, Marina?', [{ value: 'a', label: 'Pro meu trabalho no dia a dia', hint: 'e-mails, textos, planilhas, pesquisa' }, { value: 'b', label: 'Pra minha empresa', hint: 'decisões, números, propostas, equipe' }, { value: 'c', label: 'Pro marketing', hint: 'copy, posts, campanhas, roteiros' }, { value: 'd', label: 'Pra edição de vídeo', hint: 'cortes, roteiros, títulos, legendas' }, { value: 'e', label: 'Pros estudos', hint: 'escola, faculdade, cursinho, vestibular' }], { padrao: 'a' });
+  const p2 = ui.escolher('Pra que você vai usar a IA, Marina?', [{ value: 'a', label: 'Pro meu trabalho no dia a dia', hint: 'e-mails, textos, planilhas, pesquisa' }, { value: 'b', label: 'Pra minha empresa', hint: 'decisões, números, propostas, equipe' }, { value: 'c', label: 'Pro marketing', hint: 'copy, posts, campanhas, roteiros' }, { value: 'd', label: 'Pra edição de vídeo', hint: 'cortes, roteiros, títulos, legendas' }, { value: 'e', label: 'Pros estudos', hint: 'escola, faculdade, cursinho, vestibular' }], { padrao: 'a' });
   await print('06-pergunta-perfil');
   for (const [id] of pendentes) responderPedido(id, 'a');
   await p2;
   enviar({ tipo: 'plano', passos: passos.map(i18n.t), pesos, exemplos: exemplosDoPerfil({ perfil: 'dia-a-dia' }) });
   enviar({ tipo: 'passo', n: 2, total: passos.length, titulo: passos[1] });
-  enviar({ tipo: 'tarefa', id: 2, estado: 'fazendo', texto: i18n.t('Instalando o Claude'), demora: 'de 2 a 5 minutos' });
+  enviar({ tipo: 'tarefa', id: 2, estado: 'fazendo', texto: i18n.t('Instalando a IA'), demora: 'de 2 a 5 minutos' });
   await print('07-instalando');
   enviar({ tipo: 'passo', n: 4, total: passos.length, titulo: passos[3] });
   ui.pausa('Clica no primeiro botão do Obsidian', ['A janela vem em inglês. Ela só pergunta se pode ligar dois complementos das suas notas, e pode confiar.'], { rotulo: 'Suas notas', figura: 'obsidian-confiar', acoes: [{ rotulo: 'Abrir o Obsidian', url: 'obsidian://open', app: 'obsidian' }], pular: 'Fazer isso depois' });
@@ -539,7 +539,7 @@ async function demoTelas() {
   await print('12-falha-folha');
   enviar({ tipo: 'fim', soConferiu: false, comecar: { nome: 'Marina' }, grupos: [{ nome: 'Base', itens: [{ item: 'Login no Claude', ok: false, dica: '' }] }] });
   await print('13-sem-login');
-  enviar({ tipo: 'fim', soConferiu: true, comecar: { nome: 'Marina' }, grupos: [{ nome: 'Segundo cérebro', itens: [{ item: 'Complementos do Obsidian ligados (clique de confiança)', ok: false, dica: '' }] }, ...['Preparar o computador', 'Configurar o Claude', 'Comandos prontos', 'Rotinas', 'Janela do Claude'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] }))] });
+  enviar({ tipo: 'fim', soConferiu: true, comecar: { nome: 'Marina' }, grupos: [{ nome: 'Segundo cérebro', itens: [{ item: 'Complementos do Obsidian ligados (clique de confiança)', ok: false, dica: '' }] }, ...['Preparar o computador', 'Configurar a IA', 'Comandos prontos', 'Rotinas', 'Janela da IA'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] }))] });
   await print('14-conferencia');
   enviar({ tipo: 'fim', soConferiu: false, comecar: { nome: 'Marina' }, grupos: [{ nome: 'Base', itens: [{ item: 'Claude Code', ok: true }] }] });
   await new Promise((r) => setTimeout(r, 1500));
