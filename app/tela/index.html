@@ -2,27 +2,24 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; media-src 'self'">
 <title>Claude Setuper</title>
 <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
   <div class="arrasto" aria-hidden="true"></div>
-  <aside class="lado">
-    <div class="marca">
-      <svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true"><rect width="40" height="40" rx="10" fill="var(--acc)"/><path d="M26.5 13.5a9 9 0 1 0 0 13" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round"/><circle cx="28" cy="20" r="2.6" fill="#141414"/></svg>
-      <div><b>Claude Setuper</b><span id="versao"></span></div>
+  <div id="janela" class="win brilho">
+    <div id="idioma" class="idioma" hidden></div>
+    <main id="palco" class="palco"></main>
+    <div id="faixa" class="faixa-preparo" hidden></div>
+    <div id="rodape" class="rodape" hidden>
+      <button id="pedir-ajuda" class="link" type="button"></button>
+      <button id="ver-feito" class="link" type="button"></button>
     </div>
-    <ol id="etapas" class="etapas"></ol>
-  </aside>
-  <main id="palco" class="palco"></main>
+    <div id="clarao" class="clarao" hidden></div>
+    <div id="folha"></div>
+  </div>
   <div id="anuncio" class="so-leitor" aria-live="polite"></div>
-  <footer class="rodape">
-    <button id="ver-detalhes" class="link" type="button" aria-expanded="false">Ver detalhes técnicos</button>
-    <button id="pedir-ajuda" class="link" type="button">Pedir ajuda</button>
-    <p id="aviso-detalhes" class="aviso-detalhes" hidden>Registro técnico, em inglês, pra quem for te ajudar. Você não precisa ler nem fazer nada do que está aqui.</p>
-    <pre id="detalhes" class="detalhes" hidden></pre>
-  </footer>
   <script src="app.js"></script>
 </body>
 </html>

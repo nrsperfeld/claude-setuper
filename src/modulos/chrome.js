@@ -58,17 +58,17 @@ export async function instalar(ctx) {
 
   if (extensaoInstalada(ctx)) return ui.ok('Extensão do Claude já está no Chrome');
   if (ctx.semApps || ctx.dryRun) return;
+  // No app a extensão fica pro fim da aula, como opcional: o navegador instala aqui e o resto segue.
+  if (ctx.app && !ctx.opcional) return;
 
-  ui.pausa('Agora é no Chrome: adicionar a extensão do Claude', ctx.app ? [
-    'Abri o Chrome na página da extensão do Claude.',
-    'Lá no Chrome, clica em "Usar no Chrome" e depois em "Adicionar extensão". Quando ela entrar, eu sigo sozinho.',
-    'O Chrome não abriu nessa página? Clica em "Abrir a página da extensão", aqui embaixo.',
+  ui.pausa(ctx.app ? 'Clica em Usar no Chrome' : 'Agora é no Chrome: adicionar a extensão do Claude', ctx.app ? [
+    'Depois clica em Adicionar extensão. Se ele pedir a conta Google, pode pular. Com isso o Claude consegue usar o seu navegador.',
   ] : [
     'Vou abrir o Chrome na página da extensão do Claude.',
     'Lá no Chrome, clica no botão azul "Usar no Chrome" (ou "Adicionar ao Chrome") e depois em "Adicionar extensão".',
     `Se o Chrome não abrir nessa página, abre este link nele: ${LOJA}`,
     'Quando a extensão entrar, eu sigo sozinho.',
-  ], { figura: 'chrome-extensao', acoes: [{ rotulo: 'Abrir a página da extensão', url: LOJA, app: 'chrome' }], pular: 'Seguir sem a extensão' });
+  ], { rotulo: 'Extensão do Chrome', figura: 'chrome-extensao', acoes: [{ rotulo: 'Abrir a página', url: LOJA, app: 'chrome' }], pular: ctx.app ? 'Deixar pra depois' : 'Seguir sem a extensão', opcional: true });
   await abrirLoja(ctx);
   const lembrete = setTimeout(() => ui.info('Ainda não vi a extensão chegar. Se travou, clica em "Abrir a página da extensão" ou em "Pedir ajuda".'), 90_000);
   const ok = await ctx.esperar(async () => extensaoInstalada(ctx) || ui.pulou(), { intervalo: 3, limite: 600 }).finally(() => clearTimeout(lembrete));

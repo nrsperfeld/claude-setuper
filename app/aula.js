@@ -1,0 +1,97 @@
+// A aula por cima do Maestri: o guia flutuante ensina o básico enquanto a pessoa faz de verdade.
+// O avanço vem dos hooks do Claude (templates/hooks/aula.cjs). Toda lição tem saída, pra ninguém ficar preso.
+import fs from 'node:fs';
+import path from 'node:path';
+
+const OPCOES = (t, feitos) => [
+  { id: 'github', titulo: t('Guardar cópia do trabalho'), sub: 'GitHub' },
+  { id: 'chrome', titulo: t('Usar o seu navegador'), sub: t('Extensão do Chrome') },
+  { id: 'vercel', titulo: t('Publicar sites'), sub: 'Vercel' },
+  { id: 'conectores', titulo: t('Gmail e Agenda'), sub: t('Conectores do Claude') },
+].map((o) => ({ ...o, feito: feitos.includes(o.id) }));
+
+function licoes(t, { nome, autonomia, mac, feitos }) {
+  const semPedidoDeLicenca = ['confiante', 'livre'].includes(autonomia);
+  const atalhoNovo = mac ? '⌘' : 'Ctrl';
+  return [
+    { titulo: t('Isso aqui é um terminal'), linhas: [t('É uma janela de conversa por texto com o computador. Parece coisa de programador, mas aqui dentro quem responde é o Claude, então você só precisa escrever como escreve no WhatsApp.')], tela: t('Janela grande à esquerda'), botao: t('Entendi') },
+    { titulo: t('Manda a sua primeira mensagem'), linhas: [t('Clica na janela do Claude, escreve o que quiser e aperta Enter. Se não souber o que escrever, usa a frase aí de cima.')], tela: t('❯ oi, me explica o que você consegue fazer aqui'), teclas: ['Enter'], espera: ['mensagem'], status: t('Quando você mandar, eu sigo sozinho.') },
+    semPedidoDeLicenca
+      ? { titulo: t('Usa as setinhas pra escolher'), linhas: [t('Escreve /resume e aperta Enter. Aparece a lista das suas conversas: sobe e desce com as setas do teclado e aperta Enter na que quiser. Toda escolha no Claude funciona assim.')], tela: '/resume', teclas: ['↑', '↓', 'Enter'], espera: ['sessao-resume'], status: t('Quando você escolher, eu sigo sozinho.') }
+      : { titulo: t('Usa as setinhas pra responder'), linhas: [t('Quando o Claude pede licença, ele mostra opções numeradas. Sobe e desce com as setas do teclado e aperta Enter, ou aperta direto o número da opção. Se ainda não pediu, pede pra ele criar um arquivo de teste.')], tela: t('❯ 1. Sim\n  2. Sim, e não pergunta de novo\n  3. Não'), teclas: ['↑', '↓', 'Enter'], espera: ['permissao'], status: t('Quando ele pedir licença, você responde e eu sigo sozinho.') },
+    { titulo: t('Se preferir, fala em vez de digitar'), linhas: [t('Clica na janela do Claude, segura a barra de espaço, fala e solta. O que você falou aparece escrito, e aí é só conferir e apertar Enter. Na primeira vez o computador pergunta se pode usar o microfone: clica em Permitir.')], tela: t('Segura, fala e solta'), teclas: [t('barra de espaço')], botao: t('Entendi') },
+    { titulo: t('Pra parar o Claude, aperta Esc'), linhas: [t('Uma vez faz ele parar o que está fazendo. Duas vezes volta pra sua mensagem anterior, pra você corrigir e mandar de novo.')], tela: t('Uma vez para, duas vezes volta'), teclas: ['Esc'], botao: t('Entendi') },
+    { titulo: t('Abre um segundo Claude'), linhas: [mac ? t('Aperta Command e T. Se ele perguntar qual agente, escolhe Claude Code. Se abrir só uma tela preta, escreve claude e aperta Enter. Cada janela é um Claude separado, cada um no seu trabalho.') : t('Clica de novo no atalho do Claude na sua Área de Trabalho. Cada janela é um Claude separado, cada um no seu trabalho.')], tela: t('Uma janela nova do Claude'), teclas: mac ? [atalhoNovo, 'T'] : [], espera: ['sessao-startup'], status: t('Quando a janela nova abrir, eu sigo sozinho.') },
+    { titulo: t('Começar do zero ou voltar numa conversa'), linhas: [t('O /clear começa uma conversa limpa, e o que ele anotou nas suas notas continua guardado. O /resume mostra as conversas anteriores, e nessa lista você escolhe com as setinhas.')], tela: t('/clear    conversa nova\n/resume   conversas antigas'), espera: ['sessao-clear', 'sessao-resume'], status: t('Quando você usar um dos dois, eu sigo sozinho.') },
+    { titulo: t('A barra em cima da sua mensagem'), linhas: [t('Ela mostra quanto o Claude vai pensar nesse pedido, e ele escolhe isso sozinho, pouco pra coisa simples e muito pra coisa difícil. Também mostra quanto da conversa já foi usado. Se um dia parar de mudar, escreve /effortless auto.')], tela: 'effortless · Medium', botao: t('Entendi') },
+    { fim: true, titulo: nome ? t('O básico é isso, {nome}', { nome }) : t('O básico é isso'), linhas: [t('O resto você vai pegando com o uso, e pode perguntar pro próprio Claude. Estas quatro coisas são opcionais, ele já funciona sem elas. Dá pra ligar depois, abrindo o Claude Setuper de novo.')], opcoes: OPCOES(t, feitos), botao: t('Fechar a aula') },
+  ];
+}
+
+export function criarAula({ claudeDir, pasta, t, mostrar, esconder, aoTerminar, respostas, mac }) {
+  const ativa = path.join(claudeDir, 'setuper-aula-ativa');
+  const eventos = path.join(claudeDir, 'setuper-aula-eventos.jsonl');
+  const arqEstado = path.join(pasta, 'aula.json');
+  const lerEstado = () => { try { return JSON.parse(fs.readFileSync(arqEstado, 'utf8')); } catch { return { i: 0, feitos: [] }; } };
+  let e = lerEstado();
+  let lidos = 0;
+  let vigia = null;
+  const salvar = () => { try { fs.writeFileSync(arqEstado, JSON.stringify(e)); } catch {} };
+  const lista = () => licoes(t, { nome: respostas().nome || '', autonomia: respostas().autonomia, mac, feitos: e.feitos });
+
+  function desenhar() {
+    const l = lista();
+    const atual = l[Math.min(e.i, l.length - 1)];
+    const total = l.length - 1;
+    mostrar({
+      rotulo: t('Aula'), contagem: atual.fim ? t('Fim') : t('{i} de {n}', { i: e.i + 1, n: total }), aula: true, volta: e.i > 0 && !atual.fim,
+      // Lição que avança pelo hook também tem saída, caso o hook não dispare.
+      passos: [{ ...atual, botao: atual.botao || t('Já fiz') }],
+    });
+  }
+  function ir(n) {
+    e.i = Math.max(0, n);
+    salvar();
+    desenhar();
+  }
+  function verEventos() {
+    let txt;
+    try { txt = fs.readFileSync(eventos, 'utf8'); } catch { return; }
+    const linhas = txt.split('\n').filter(Boolean);
+    const novos = linhas.slice(lidos);
+    lidos = linhas.length;
+    const atual = lista()[e.i];
+    if (!atual?.espera) return;
+    for (const linha of novos) {
+      let ev;
+      try { ev = JSON.parse(linha); } catch { continue; }
+      if (atual.espera.includes(ev.evento)) return ir(e.i + 1);
+    }
+  }
+  function terminar() {
+    clearInterval(vigia);
+    try { fs.rmSync(ativa, { force: true }); fs.rmSync(eventos, { force: true }); } catch {}
+    esconder();
+    aoTerminar();
+  }
+  return {
+    iniciar() {
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(ativa, String(Date.now()));
+      try { lidos = fs.readFileSync(eventos, 'utf8').split('\n').filter(Boolean).length; } catch { lidos = 0; }
+      desenhar();
+      clearInterval(vigia);
+      vigia = setInterval(verEventos, 1000);
+    },
+    redesenhar: desenhar,
+    acao(a) {
+      const l = lista();
+      if (a === 'avancar') { if (l[e.i]?.fim) return terminar(); return ir(e.i + 1); }
+      if (a === 'voltar') return ir(e.i - 1);
+      if (a === 'pular') return ir(l.length - 1);
+      return undefined;
+    },
+    marcarFeito(id) { if (!e.feitos.includes(id)) e.feitos.push(id); salvar(); },
+    ativa: () => fs.existsSync(ativa),
+  };
+}

@@ -1,6 +1,7 @@
 // Effortless: plugin que escolhe sozinho o esforço do Claude a cada pedido (pouco pra coisa simples, muito pra coisa difícil).
 import path from 'node:path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { ui } from '../ui.js';
 
 export const id = 'effortless';
@@ -20,12 +21,18 @@ async function instalado(ctx) {
 
 export async function verificar(ctx) {
   if (!(await ctx.existeComando('claude'))) return [{ item: 'Effortless', ok: false, dica: 'instale o Claude Code primeiro' }];
-  return [{ item: 'Effortless (esforço automático)', ok: await instalado(ctx), dica: 'rode: claude-setuper --modulos effortless' }];
+  return [
+    { item: 'Effortless (esforço automático)', ok: await instalado(ctx), dica: 'rode: claude-setuper --modulos effortless' },
+    { item: 'Effortless sem pedir configuração', ok: setupFeito(ctx), dica: 'rode: claude-setuper --modulos effortless' },
+  ];
 }
 
 export async function instalar(ctx) {
   if (ctx.semApps || ctx.dryRun) return;
-  if (await instalado(ctx)) return ui.ok('O esforço automático já está ligado');
+  if (await instalado(ctx)) {
+    marcarSetupFeito(ctx);
+    return ui.ok('O esforço automático já está ligado');
+  }
   await ui.tarefa('Ligando o esforço automático (Effortless)', 'Esforço automático ligado', async () => {
     const config = Object.entries(ESCOLHAS).flatMap(([k, v]) => ['--config', `${k}=${v}`]);
     await ctx.run('claude', ['plugin', 'install', 'effortless', '--marketplace', MARKETPLACE, '--scope', 'user', '-y', ...config], { timeout: 5 * 60 * 1000 });
@@ -35,7 +42,26 @@ export async function instalar(ctx) {
       await ctx.run('claude', ['plugin', 'configure', 'effortless@effortless', '--values-stdin'], { ignorarErro: true, input: JSON.stringify({ ...padroes, ...ESCOLHAS }) });
     }
   });
+  marcarSetupFeito(ctx);
   ui.info('Se um dia o esforço parar de mudar sozinho (acontece quando você escolhe um esforço na mão), digite /effortless auto dentro do Claude.');
+}
+
+// O plugin abre um guia de configuração em toda conversa nova até alguém escolher o juiz (hooks/register.tsx, setupDone).
+// A gente já escolheu: grava isso no arquivo de estado dele, cujo nome é igual em qualquer computador.
+function arquivoEstado(ctx) {
+  const hash = crypto.createHash('sha256').update('effortless@effortless').digest('hex').slice(0, 12);
+  return path.join(ctx.claudeDir, 'plugins', 'store', `effortless_effortless-${hash}.json`);
+}
+
+function setupFeito(ctx) {
+  return ctx.lerJson(arquivoEstado(ctx), {}).setupDone === true;
+}
+
+export function marcarSetupFeito(ctx) {
+  if (ctx.dryRun) return;
+  const arquivo = arquivoEstado(ctx);
+  fs.mkdirSync(path.dirname(arquivo), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(arquivo, JSON.stringify({ ...ctx.lerJson(arquivo, {}), setupDone: true }, null, 2) + '\n', { mode: 0o600 });
 }
 
 function padroesDoPlugin(ctx) {

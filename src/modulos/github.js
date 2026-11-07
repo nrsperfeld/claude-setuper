@@ -22,6 +22,7 @@ export async function verificar(ctx) {
   ];
 }
 
+const LINK_LOGIN = /^https:\/\/github\.com\/login\/device/;
 const PRA_QUE = 'O GitHub guarda uma cópia de tudo que você e o Claude criarem, com o histórico de cada mudança. Se algo der errado ou o computador quebrar, nada se perde, e dá pra voltar a qualquer versão. É opcional, mas é o que deixa o seu trabalho seguro.';
 
 export async function instalar(ctx) {
@@ -53,23 +54,26 @@ export async function instalar(ctx) {
   if (!contas.length) {
     if (!ctx.sim) {
       if (escolha === 'criar') {
-        ui.pausa('Vou abrir a página pra criar sua conta no GitHub', [
-          'É de graça. Usa o seu e-mail principal e escolhe um nome de usuário.',
-          ctx.app ? 'Quando terminar de criar, volta pra cá.' : 'Quando terminar de criar, volta aqui e aperta Enter.',
-        ]);
         await ctx.abrirUrl('https://github.com/signup');
-        if (ctx.app) await ui.confirmar('Já criou a conta no GitHub?', true);
-        else await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
+        if (ctx.app) {
+          const criou = await ui.confirmarFora({ rotulo: 'Criar conta no GitHub', passos: [{ titulo: 'Cria a sua conta, é de graça', linhas: ['Usa o seu e-mail principal e escolhe um nome de usuário. Leva uns 2 minutos.'], figura: 'github-criar' }], concluir: 'Já criei', nao: 'Deixar pra depois' });
+          if (!criou) { ctx.estado.pulados = { ...ctx.estado.pulados, github: true }; return ui.info('Tudo bem, deixei o GitHub pra depois.'); }
+        } else {
+          ui.pausa('Vou abrir a página pra criar sua conta no GitHub', ['É de graça. Usa o seu e-mail principal e escolhe um nome de usuário.', 'Quando terminar de criar, volta aqui e aperta Enter.']);
+          await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
+        }
       }
     }
     await login(ctx, 'a sua conta');
     contas = await listarContas(ctx);
+    if (ctx.app && !contas.length) { ctx.estado.pulados = { ...ctx.estado.pulados, github: true }; return ui.info('Tudo bem, deixei o GitHub pra depois. Quando quiser, é só abrir o Claude Setuper de novo.'); }
   } else ui.ok(`Conta do GitHub já conectada: ${contas.join(', ')}`);
 
   await configurarGit(ctx, contas[0]);
   fs.mkdirSync(path.join(ctx.home, 'Projetos'), { recursive: true });
 
-  if (!ctx.sim && contas.length < 2) {
+  // No app a segunda conta sai do caminho: quem precisa dela usa o comando claude-setuper.
+  if (!ctx.sim && !ctx.app && contas.length < 2) {
     const segunda = await ui.confirmar('Quer conectar uma segunda conta do GitHub (por exemplo, a da empresa)?', false);
     if (segunda) {
       await login(ctx, 'a segunda conta');
@@ -80,17 +84,35 @@ export async function instalar(ctx) {
 }
 
 async function login(ctx, qual) {
-  ui.pausa(`Vou abrir o navegador pra conectar ${qual} do GitHub`, ctx.app ? [
-    'Vai aparecer aqui um código de 8 letras, com um botão pra copiar.',
-    'O navegador abre sozinho. Lá, cola o código, clica em Continuar e depois em Autorizar.',
-    'Depois volta pra cá, eu continuo.',
-  ] : [
-    'Vão aparecer duas perguntas em inglês aqui. Nas duas, só aperta Enter.',
-    'Depois aparece um código de 8 letras. Copia ele.',
-    'No navegador, cola o código, clica em Continuar e depois em Autorizar.',
-    'Depois volta pra cá, eu continuo.',
-  ]);
-  await ctx.runVisivel('gh', ['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web', '--skip-ssh-key'], { ignorarErro: true, link: /^https:\/\/github\.com\/login\/device/ });
+  if (!ctx.app) {
+    ui.pausa(`Vou abrir o navegador pra conectar ${qual} do GitHub`, [
+      'Vão aparecer duas perguntas em inglês aqui. Nas duas, só aperta Enter.',
+      'Depois aparece um código de 8 letras. Copia ele.',
+      'No navegador, cola o código, clica em Continuar e depois em Autorizar.',
+      'Depois volta pra cá, eu continuo.',
+    ]);
+    await ctx.runVisivel('gh', ['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web', '--skip-ssh-key'], { ignorarErro: true, link: LINK_LOGIN });
+    return;
+  }
+  // No app a pessoa sempre pode sair: "Deixar pra depois" encerra o login que está esperando, e nada se perde.
+  for (;;) {
+    ui.pausa('Cola este código no GitHub', ['Depois clica em Continue e em Authorize.'], { rotulo: 'Conectar o GitHub', figura: 'github-codigo', pular: 'Deixar pra depois', acoes: [{ rotulo: 'Tentar de novo', reabrir: 'tentar' }], opcional: true });
+    const parar = new AbortController();
+    let tentar = false;
+    const inicio = Date.now();
+    let avisou = false;
+    const vigia = setInterval(() => {
+      if (ui.pulou()) parar.abort();
+      if (ui.pediuTentar()) { tentar = true; parar.abort(); }
+      if (!avisou && Date.now() - inicio > 180000) { avisou = true; ui.info('Faz 3 minutos que estou esperando o GitHub. Se não estiver dando certo, pode deixar pra depois: o Claude já está funcionando, e nada do que você fez se perde.'); }
+    }, 1000);
+    try {
+      await ctx.runVisivel('gh', ['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web', '--skip-ssh-key'], { ignorarErro: true, sinal: parar.signal, link: LINK_LOGIN });
+    } finally {
+      clearInterval(vigia);
+    }
+    if (!tentar) return;
+  }
 }
 
 async function logadoNoGh(ctx) {

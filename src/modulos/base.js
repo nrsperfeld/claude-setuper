@@ -28,6 +28,8 @@ export async function verificar(ctx) {
 }
 
 export async function instalar(ctx) {
+  // O que correu durante as perguntas: termina antes de seguir. Se falhou, os passos abaixo refazem do jeito normal.
+  if (ctx.temAdiantado('preparo')) await ctx.adiantado('preparo');
   if (ctx.plataforma === 'darwin') {
     await xcodeCLT(ctx);
     // O instalador do Claude Code só precisa da internet: roda junto com o Homebrew e o Node.
@@ -45,22 +47,41 @@ export async function instalar(ctx) {
   await loginClaude(ctx);
 }
 
-// Só no app: pede as ferramentas da Apple antes das perguntas, e a pessoa responde enquanto o Mac instala.
-export async function adiantarFerramentasApple(ctx) {
+// Só no app: pede as ferramentas da Apple e deixa o preparo correndo atrás enquanto a pessoa responde as perguntas.
+// Depois de clicar em Instalar, ela responde e o Mac instala, baixa o Claude e o Homebrew, tudo ao mesmo tempo.
+export async function adiantarPreparo(ctx) {
   if (ctx.plataforma !== 'darwin' || ctx.semApps || ctx.dryRun) return;
-  if (await cltPronto(ctx)) return;
-  ctx.cltPedido = true;
-  // A janela da Apple costuma abrir atrás desta. Quem não viu, pede de novo e eu abro outra vez.
-  for (let vez = 0; vez < 3; vez++) {
-    await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
-    const viu = await ui.confirmar('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', true, {
-      sim: 'Já cliquei em Instalar', nao: vez < 2 ? 'Não apareceu nenhuma janela' : '', figura: 'apple-ferramentas',
-      explicacao: vez === 0
-        ? 'Clica em Instalar e depois em Concordo. O Mac leva de 3 a 10 minutos pra instalar, e enquanto isso eu te faço umas perguntas.'
-        : 'Pedi a janela de novo. Ela pode estar atrás desta: dá uma olhada nas outras janelas abertas. Clica em Instalar e depois em Concordo.',
-    });
-    if (viu || await cltPronto(ctx)) return;
+  if (!(await cltPronto(ctx))) {
+    ctx.cltPedido = true;
+    for (let vez = 0; vez < 3; vez++) {
+      await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
+      trazerJanelaApple(ctx);
+      const viu = await ui.confirmarFora({
+        rotulo: 'Ferramentas da Apple',
+        passos: [
+          { titulo: 'Clica em Instalar, na janela da Apple', linhas: [vez === 0 ? 'Ela é do próprio Mac, pode confiar.' : 'Pedi a janela de novo. Ela pode estar atrás das outras janelas abertas.'], figura: 'apple-ferramentas' },
+          { titulo: 'Clica em Concordo', linhas: ['Depois é só esperar: a Apple leva de 3 a 10 minutos, e enquanto isso eu te faço umas perguntas.'], figura: 'apple-contrato' },
+        ],
+        concluir: 'Já cliquei', nao: vez < 2 ? 'Não apareceu' : '',
+      });
+      if (viu || await cltPronto(ctx)) break;
+    }
   }
+  ctx.adiantar('preparo', async () => {
+    await xcodeCLT(ctx);
+    pathLocalNoPerfil(ctx);
+    ctx.adiantar('claude', () => instalarClaudeScript(ctx));
+    nodeLocalNoPerfil(ctx);
+    if (!(await macIntel(ctx))) {
+      await homebrew(ctx);
+      adiantarDownloads(ctx);
+    }
+  });
+}
+
+// A janela da Apple costuma abrir atrás das outras. Tenta trazer pra frente; se não der, o guia explica onde procurar.
+function trazerJanelaApple(ctx) {
+  setTimeout(() => ctx.run('osascript', ['-e', 'tell application id "com.apple.dt.CommandLineTools.installondemand" to activate'], { ignorarErro: true, timeout: 5000 }), 1500);
 }
 
 async function cltPronto(ctx) {
@@ -78,12 +99,12 @@ async function xcodeCLT(ctx) {
       'Se a janela da Apple sumiu antes de terminar, eu abro ela de novo sozinho.',
     ], { espera: true });
   } else {
-    ui.pausa('O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', [
-      'Clica em Instalar.',
+    ui.pausa('Clica em Instalar, na janela da Apple', [
       'Depois aparece o contrato: clica em Concordo.',
       'Demora entre 3 e 10 minutos. Eu fico esperando aqui.',
-    ], { figura: 'apple-ferramentas' });
+    ], { figura: 'apple-ferramentas', rotulo: 'Ferramentas da Apple' });
     await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
+    trazerJanelaApple(ctx);
   }
   // Se a pessoa fechar a janela da Apple sem instalar, ela volta a aparecer, em vez de eu esperar meia hora por nada.
   // Enquanto isso, o cartão diz o que está acontecendo e há quanto tempo, pra ninguém achar que travou.
@@ -130,7 +151,8 @@ const DOWNLOADS_MAC = [
 ];
 
 function adiantarDownloads(ctx) {
-  const modulos = ctx.resp.modulos || [];
+  // Durante as perguntas ainda não dá pra saber o perfil: baixa o que a maioria usa, e só baixa, sem instalar nada.
+  const modulos = ctx.resp.modulos || ['obsidian', 'chrome', 'maestri'];
   let anterior = Promise.resolve(true);
   for (const d of DOWNLOADS_MAC) {
     if (!modulos.includes(d.modulo) || d.apps.some((a) => ctx.existe(a))) continue;
@@ -165,14 +187,12 @@ async function homebrew(ctx) {
   if (!(await ctx.run('id', ['-Gn'], { ignorarErro: true, sempre: true })).split(/\s+/).includes('admin')) {
     throw new Error('esse usuário do Mac não é administrador, e o Homebrew precisa de um. Peça acesso de administrador (Ajustes > Usuários e Grupos) e rode de novo');
   }
-  ui.pausa('O Mac vai pedir a sua senha', ctx.app ? [
-    'Vai aparecer uma janela do Claude Setuper pedindo a senha do Mac. É a senha que você digita na tela de bloqueio, pra desbloquear o computador. Não é a senha do e-mail, do iCloud nem do Claude. Ela não fica guardada em lugar nenhum.',
-    'Digita e clica em OK. Se a janela aparecer de novo, é normal: o Mac pede mais de uma vez.',
-    'Depois disso leva uns 5 minutos, é só esperar.',
+  ui.pausa(ctx.app ? 'Digita a senha do computador' : 'O Mac vai pedir a sua senha', ctx.app ? [
+    'É a mesma da tela de bloqueio, não a do e-mail nem a do iCloud. Ela não fica guardada em lugar nenhum. A janela pode aparecer mais de uma vez, é normal.',
   ] : [
     'É a senha que você digita na tela de bloqueio, pra desbloquear o computador. Não é a senha do e-mail, do iCloud nem do Claude.',
     'Ela não aparece enquanto você digita, é normal. Digita e aperta Enter.',
-  ]);
+  ], { figura: 'senha', rotulo: 'Senha do computador' });
   const script = await (await fetch('https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh')).text();
   // No app não tem Terminal: o instalador do Homebrew pede a senha pelo SUDO_ASKPASS, numa janela do Mac.
   const env = ctx.app && ctx.askpass ? { NONINTERACTIVE: '1', SUDO_ASKPASS: ctx.askpass } : { NONINTERACTIVE: '' };
@@ -291,16 +311,13 @@ async function claudeCode(ctx) {
 async function loginClaude(ctx) {
   if (ctx.semApps || ctx.dryRun) return;
   if (await logado(ctx)) return ui.ok('Você já está logado no Claude');
-  ui.pausa(ctx.app ? 'Agora é no navegador: entrar na sua conta do Claude' : 'Vou abrir o navegador pra você entrar na sua conta do Claude', ctx.app ? [
-    'Abri uma página do Claude no navegador. Se ela não apareceu, clica em Abrir no navegador, aqui embaixo.',
-    'Entra com o seu e-mail. Se ainda não tem conta, dá pra criar ali mesmo.',
-    'Pra usar o Claude no computador, a conta precisa ter um plano pago (Pro ou maior). Se a sua for gratuita, a própria página mostra como assinar.',
-    'Quando a página disser que deu certo, volta pra esta janela do Claude Setuper. Eu sigo sozinho.',
+  ui.pausa(ctx.app ? 'Entra na sua conta do Claude' : 'Vou abrir o navegador pra você entrar na sua conta do Claude', ctx.app ? [
+    'Abri a página no navegador. Se ainda não tem conta, dá pra criar ali mesmo. A conta precisa ter plano pago (Pro ou maior), e se a sua for gratuita, a própria página mostra como assinar. Quando disser que deu certo, eu sigo sozinho.',
   ] : [
     'Entra com o mesmo e-mail que você usa no Claude.',
     'Pra usar o Claude no computador, a conta precisa ter um plano pago (Pro ou maior).',
     'Se ainda não tem conta, cria ali mesmo. Depois volta pra cá, eu continuo sozinho. Eu espero até 15 minutos.',
-  ], { pular: 'Fazer o login depois' });
+  ], { pular: 'Entrar depois', figura: 'claude-login', rotulo: 'Conta do Claude' });
   // "Fazer o login depois" encerra o login que está esperando no navegador; o resto da instalação segue.
   const parar = new AbortController();
   const vigia = setInterval(() => ui.pulou() && parar.abort(), 1000);

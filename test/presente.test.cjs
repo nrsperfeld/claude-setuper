@@ -278,5 +278,5 @@ test('presente sem idade: não pergunta a idade, trata como adulto e não põe "
 
 test('fora do presente a idade continua sendo perguntada', async () => {
   const ctx = await ctxCom(undefined);
-  await assert.rejects(rodarWizard(ctx, { 'Como você quer': 'Ana', 'Pra que você': 'empresario' }), /não devia perguntar: Quantos anos/);
+  await assert.rejects(rodarWizard(ctx, { 'Como você quer': 'Ana', 'Pra que você': 'estudante' }), /não devia perguntar: Quantos anos/);
 });

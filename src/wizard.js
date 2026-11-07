@@ -70,13 +70,15 @@ export async function wizard(ctx) {
   // --perfil no comando já responde essa (útil pra mandar o link pra uma turma inteira).
   const idPerfil = ctx.perfil || pre.perfil || await ui.escolher(
     `Pra que você vai usar o Claude, ${nome}?`,
-    perfis(ctx).map((p) => ({ value: p.id, label: p.nome, hint: p.hint })),
+    // O perfil da equipe da ELOS só entra pelo link direto (--perfil elos); quem já está nele continua vendo.
+    perfis(ctx).filter((p) => p.id !== 'elos' || salvo.perfil === 'elos').map((p) => ({ value: p.id, label: p.nome, hint: p.hint })),
     { padrao: salvo.perfil || 'dia-a-dia' },
   );
   const p = acharPerfil(ctx, idPerfil);
 
-  // No presente sem idade, a idade não é perguntada: fica em branco e a pessoa é tratada como adulta.
-  const idade = tem('idade') ? pre.idade : ctx.presente ? '' : await ui.perguntar('Quantos anos você tem?', {
+  // A idade serve pra proteger menor de idade, então só é perguntada a quem vai usar pra estudar.
+  // No presente sem idade, ela também não é perguntada: fica em branco e a pessoa é tratada como adulta.
+  const idade = tem('idade') ? pre.idade : (ctx.presente || p.id !== 'estudante') ? (salvo.idade || '') : await ui.perguntar('Quantos anos você tem?', {
     padrao: salvo.idade,
     placeholder: 'Só o número',
     explicacao: 'Uso só pra ajustar o jeito do Claude falar com você. Fica guardado só no seu computador.',
@@ -129,7 +131,7 @@ export async function wizard(ctx) {
   // A resposta recomendada fica no "Sim": com ela no "Não", a pessoa lia "não" e achava que estava recusando a instalação.
   const tudo = tem('modulos') || await ui.confirmar('Posso instalar tudo o que faz sentido pro seu perfil?', true, {
     sim: 'Sim, pode instalar tudo (recomendado)', nao: 'Quero escolher o que vai ser instalado',
-    explicacao: ctx.plataforma === 'darwin'
+    explicacao: ctx.app ? 'É a lista que eu te mostrei antes de começar. Se preferir, escolhe item por item.' : ctx.plataforma === 'darwin'
       ? 'Vou instalar o Claude, o Obsidian (onde ficam as suas notas), o Maestri (a janela onde você conversa com o Claude) e o Google Chrome, se ainda não tiver. Também deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pro Claude conseguir ler. Nada que você já tem é apagado.'
       : 'Vou instalar o Claude, o Obsidian (onde ficam as suas notas) e o Google Chrome, se ainda não tiver, e deixo um atalho do Claude na Área de Trabalho. Também deixo agendados um backup das notas e uma atualização por semana. Nada que você já tem é apagado.',
   });
@@ -151,7 +153,7 @@ export async function wizard(ctx) {
   ui.ok(`Pronto, ${c.bold(nome)}. Agora é comigo. Vai aparecendo na tela o que estou fazendo.`);
   if (tecnologia === 'pouco') {
     ui.info(ctx.app
-      ? 'Quando eu precisar de você, aparece um cartão amarelo com a mão ✋ dizendo exatamente o que fazer. No resto do tempo, é só esperar.'
+      ? 'Quando eu precisar de você, aparece uma janelinha na frente de tudo dizendo exatamente o que fazer. No resto do tempo, é só esperar.'
       : 'Vai aparecer bastante coisa escrita na tela, muitas vezes em inglês. É normal e não precisa ler.\nQuando eu precisar de você, aparece uma caixa amarela com a mão ✋ dizendo exatamente o que fazer.');
   }
   return ctx.resp;

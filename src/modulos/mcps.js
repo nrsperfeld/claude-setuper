@@ -33,7 +33,9 @@ export async function instalar(ctx) {
   if (!escolhidos.length) return ui.info(ctx.app ? 'Nenhuma ferramenta escolhida agora. Dá pra ligar depois abrindo o Claude Setuper de novo.' : 'Nenhuma ferramenta escolhida agora. Dá pra ligar depois com: claude-setuper --modulos mcps');
   if (ctx.semApps || ctx.dryRun) return;
   const cat = catalogo(ctx);
-  await ligarConectores(ctx, cat.filter((m) => m.conector && escolhidos.includes(m.id)));
+  // No app os conectores (Gmail, Agenda...) ficam pro fim da aula; o Terminal segue ligando aqui.
+  if (!ctx.app || ctx.opcional) await ligarConectores(ctx, cat.filter((m) => m.conector && escolhidos.includes(m.id)));
+  if (ctx.opcional) return;
   if (!escolhidos.some((mid) => cat.find((x) => x.id === mid && !x.conector))) return;
   const ja = await instalados(ctx);
   const comLogin = [];
@@ -66,6 +68,11 @@ export async function instalar(ctx) {
 async function ligarConectores(ctx, conectores) {
   if (!conectores.length) return;
   const nomes = conectores.map((m) => m.nome).join(', ').replace(/, ([^,]*)$/, ' e $1');
+  if (ctx.app) {
+    await ctx.abrirUrl('https://claude.ai/settings/connectors');
+    await ui.confirmarFora({ rotulo: 'Gmail e Agenda', passos: [{ titulo: 'Clica em Conectar em cada um', linhas: [`Faz isso em ${nomes}. Escolhe a sua conta do Google e, quando ele perguntar se o Claude pode acessar, clica em Permitir. Faltou algum? Você volta nessa mesma página.`], figura: 'conectores' }], concluir: 'Terminei', nao: 'Deixar pra depois' });
+    return;
+  }
   ui.pausa(`Vou abrir a página de conectores do Claude pra ligar ${nomes}`, [
     'Entra com a mesma conta do Claude que você usou aqui.',
     `Pra cada um (${nomes}): clica nele, depois em Conectar, e escolhe a sua conta do Google.`,

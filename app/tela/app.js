@@ -1,480 +1,407 @@
 // Tela do app: recebe os eventos da instalação (os mesmos do Terminal) e desenha uma coisa por vez.
+// O desenho aprovado está em docs/superpowers/specs/2026-11-07-redesenho-experiencia-design.md.
 const S = window.setuper;
 const palco = document.getElementById('palco');
-const listaEtapas = document.getElementById('etapas');
-const detalhes = document.getElementById('detalhes');
+const janela = document.getElementById('janela');
+const faixa = document.getElementById('faixa');
+const rodape = document.getElementById('rodape');
+const folha = document.getElementById('folha');
 const anuncio = document.getElementById('anuncio');
+const clarao = document.getElementById('clarao');
+const seletorIdioma = document.getElementById('idioma');
 
 const estado = {
-  fase: 'carregando', // presente | preparo | inicio | perguntas | instalando | fim | falha
-  inicio: null, atualizacao: null, auto: null,
-  passos: [], atual: -1, falhos: new Set(), pendentes: new Set(), comecar: null,
-  tarefa: '', msgs: [], pausa: null, pedido: null, introPerguntas: '',
-  encerramento: '', grupos: [], soConferiu: false, falha: '',
-  ajuda: null, // null | 'gerando' | { arquivo, nome, pasta } | { erro }
+  fase: 'carregando', // carregando | presente | preparo | inicio | demo | confirma | perguntas | instalando | portal | video | fim | falha
+  inicio: null, atualizacao: null, auto: null, catalogo: {}, idioma: 'pt', plataforma: 'darwin',
+  passos: [], pesos: [], atual: -1, falhos: new Set(), pendentes: new Set(), comecar: null,
+  tarefa: '', demora: '', desde: 0, mexeu: 0, tarefaId: null, msgs: [], pausa: null, pedido: null,
+  encerramento: '', grupos: [], soConferiu: false, falha: '', exemplos: [], exemplo: 0, feitos: [],
+  folha: null, // null | 'detalhes' | 'fechar' | ajuda: 'gerando' | { arquivo, nome, pasta } | { erro }
+  detalhes: '',
 };
 
-// Monta elementos sem innerHTML: todo texto entra como texto.
+const t = (texto, vars) => {
+  const base = estado.catalogo[texto] ?? texto;
+  return vars ? base.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m)) : base;
+};
+
+// Monta elementos sem innerHTML: todo texto entra como texto. css: propriedades pelo CSSOM, que a CSP deixa passar.
 function h(tag, attrs = {}, ...filhos) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v == null || v === false) continue;
     if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
     else if (k === 'class') el.className = v;
+    else if (k === 'css') for (const [p, val] of Object.entries(v)) el.style.setProperty(p, val);
     else el.setAttribute(k, v === true ? '' : v);
   }
-  for (const f of filhos.flat()) if (f != null && f !== false) el.append(f.nodeType ? f : String(f));
+  for (const f of filhos.flat(3)) if (f != null && f !== false) el.append(f.nodeType ? f : String(f));
   return el;
 }
+const botao = (texto, onclick, tipo = 'btn', extra = {}) => h('button', { class: tipo, type: 'button', onclick, ...extra }, texto);
+const portal = (tam, classe = '') => h('div', { class: `portal ${classe}`, css: { '--t': tam } }, ['p-halo', 'p-nucleo', 'p-a p-c', 'p-a', 'p-a p-b'].map((c) => h('i', { class: c })));
+const portalLeve = (tam) => h('div', { class: 'portal', css: { '--t': tam } }, ['p-halo', 'p-nucleo', 'p-a', 'p-a p-b'].map((c) => h('i', { class: c })));
+const anel = (tam, p, classe = '', meio) => h('div', { class: `anel ${classe}`, css: { '--t': tam, '--p': String(p) } }, meio != null ? h('div', { class: 'meio' }, meio) : null);
+const icCerto = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 18 18'); s.setAttribute('class', 'ic'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = '<path d="M4 9.5l3.5 3.5L14 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'; return s; };
+const icFalta = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 18 18'); s.setAttribute('class', 'ic a'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = '<path d="M9 4v6M9 13.5v.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'; return s; };
 
-function botao(texto, onclick, secundario = false, extra = {}) {
-  return h('button', { class: secundario ? 'btn btn2' : 'btn', type: 'button', onclick, ...extra }, texto);
+// ---------- progresso: cada trecho aceso é etapa que terminou de verdade ----------
+function porcentagem() {
+  const pesos = estado.pesos.length === estado.passos.length && estado.pesos.length ? estado.pesos : estado.passos.map(() => 1);
+  const total = pesos.reduce((a, b) => a + b, 0) || 1;
+  const feitas = pesos.slice(0, Math.max(estado.atual, 0)).reduce((a, b) => a + b, 0);
+  return estado.fase === 'fim' || estado.fase === 'portal' ? 100 : Math.round((feitas / total) * 100);
 }
 
-// ---------- coluna da esquerda ----------
-function desenharEtapas() {
-  const itens = [];
-  const perguntasFeitas = !['presente', 'preparo', 'inicio', 'apresentacao', 'perguntas', 'carregando'].includes(estado.fase);
-  // No presente as respostas já vieram prontas: a primeira etapa é só a abertura.
-  const primeira = estado.inicio?.presente ? 'Boas-vindas' : 'Algumas perguntas';
-  itens.push([primeira, perguntasFeitas ? 'feito' : ['perguntas', 'presente', 'preparo'].includes(estado.fase) ? 'atual' : '']);
-  if (estado.passos.length) {
-    estado.passos.forEach((nome, i) => {
-      let classe = '';
-      if (estado.falhos.has(i)) classe = 'falhou';
-      else if (estado.pendentes.has(i) && (i < estado.atual || estado.fase === 'fim')) classe = 'pendente';
-      else if (i < estado.atual || estado.fase === 'fim') classe = 'feito';
-      else if (i === estado.atual) classe = 'atual';
-      itens.push([nome, classe]);
-    });
-  } else itens.push(['Instalação', '']);
-  itens.push(['Pronto', estado.fase === 'fim' ? (estado.pendentes.size || estado.falhos.size ? 'pendente' : 'feito') : '']);
-  listaEtapas.replaceChildren(...itens.map(([nome, classe]) => h('li', { class: classe, 'aria-current': classe === 'atual' ? 'step' : null }, h('span', { class: 'bola' }), h('span', {}, nome))));
-}
-
-// ---------- palco ----------
-function desenhar() {
-  desenharEtapas();
-  let conteudo;
-  document.body.classList.toggle('carta', estado.fase === 'presente' && !estado.pedido);
-  if (estado.pedido) conteudo = telaPedido(estado.pedido);
-  else if (estado.fase === 'presente') conteudo = telaPresente();
-  else if (estado.fase === 'preparo') conteudo = telaPreparo();
-  else if (estado.fase === 'inicio') conteudo = telaInicio();
-  else if (estado.fase === 'apresentacao') conteudo = telaApresentacao();
-  else if (estado.fase === 'perguntas') conteudo = [h('p', { class: 'mut' }, 'Um instante...')];
-  else if (estado.fase === 'instalando') conteudo = telaInstalando();
-  else if (estado.fase === 'fim') conteudo = telaFim();
-  else if (estado.fase === 'falha') conteudo = telaFalha();
-  else conteudo = [];
-  // Redesenhar a cada evento jogava a rolagem pro topo e apagava o que a pessoa estava digitando.
-  const tela = chaveDaTela();
-  const mesmaTela = tela === ultimaTela;
-  const rolagem = palco.scrollTop;
-  const digitado = palco.querySelector('input')?.value;
-  palco.replaceChildren(...[avisoAjuda(), conteudo].flat(3).filter((x) => x != null && x !== false));
-  if (mesmaTela) {
-    palco.scrollTop = rolagem;
-    const campo = palco.querySelector('input');
-    if (campo && digitado != null) campo.value = digitado;
-  } else {
-    ultimaTela = tela;
-    palco.scrollTop = 0;
-    const foco = palco.querySelector('[data-foco]');
-    if (foco) foco.focus();
-    // O leitor de tela anuncia só o título da tela nova, não a tela inteira a cada tarefa.
-    const titulo = palco.querySelector('h1, h2');
-    if (titulo) anuncio.textContent = titulo.textContent;
-  }
-}
+// ---------- desenho ----------
 let ultimaTela = '';
 function chaveDaTela() {
   if (estado.pedido) return `pedido:${estado.pedido.id}`;
-  if (estado.fase === 'instalando') return `pausa:${estado.pausa?.titulo || ''}`;
-  return `${estado.fase}:${estado.slide ?? ''}`;
+  if (estado.fase === 'instalando') return `instalando:${estado.pausa?.titulo || ''}`;
+  return estado.fase;
+}
+function desenhar() {
+  const telas = { presente: telaPresente, preparo: telaPreparo, inicio: telaInicio, demo: telaDemo, confirma: telaConfirma, perguntas: () => [h('p', { class: 't2' }, t('Um instante...'))], instalando: telaInstalando, portal: telaPortal, video: telaVideo, fim: telaFim, falha: telaFalha };
+  const conteudo = estado.pedido ? telaPedido(estado.pedido) : (telas[estado.fase]?.() ?? []);
+  const tela = chaveDaTela();
+  const mesma = tela === ultimaTela;
+  const rolagem = palco.scrollTop;
+  const digitado = palco.querySelector('input')?.value;
+  const marcas = [...palco.querySelectorAll('.ops')].map((o) => o.scrollTop);
+  palco.className = estado.pedido ? 'palco' : 'palco';
+  palco.replaceChildren(...[conteudo].flat(3).filter((x) => x != null && x !== false));
+  if (mesma) {
+    palco.scrollTop = rolagem;
+    const campo = palco.querySelector('input');
+    if (campo && digitado != null) campo.value = digitado;
+    [...palco.querySelectorAll('.ops')].forEach((o, i) => { o.scrollTop = marcas[i] || 0; });
+  } else {
+    ultimaTela = tela;
+    palco.scrollTop = 0;
+    palco.querySelector('[data-foco]')?.focus();
+    const titulo = palco.querySelector('h1, h2');
+    if (titulo) anuncio.textContent = titulo.textContent;
+  }
+  desenharEntorno();
+  desenharFolha();
+}
+function desenharEntorno() {
+  // A troca de idioma só aparece antes de começar.
+  const mostraIdioma = ['inicio', 'demo', 'confirma'].includes(estado.fase) && !estado.pedido;
+  seletorIdioma.hidden = !mostraIdioma;
+  if (mostraIdioma) seletorIdioma.replaceChildren(...['pt', 'en'].flatMap((id, i) => {
+    const nome = id === 'pt' ? 'Português' : 'English';
+    const item = estado.idioma === id ? h('span', {}, nome) : botao(nome, () => S.trocarIdioma(id), 'link');
+    return i ? [h('span', { class: 't3', 'aria-hidden': 'true' }, '·'), item] : [item];
+  }));
+  // A faixa diz o que está sendo preparado atrás das perguntas.
+  const preparando = estado.pedido && !estado.passos.length && estado.tarefa;
+  faixa.hidden = !preparando;
+  if (preparando) faixa.replaceChildren(h('div', { class: 'anel', 'aria-hidden': 'true' }), h('span', {}, t('Enquanto você responde: {tarefa}', { tarefa: estado.tarefa })));
+  const comRodape = estado.fase === 'instalando' && !estado.pedido;
+  rodape.hidden = !comRodape;
+  document.getElementById('pedir-ajuda').textContent = t('Precisa de ajuda?');
+  document.getElementById('ver-feito').textContent = t('Ver o que já foi feito');
+  janela.classList.toggle('brilho', !['falha', 'portal', 'video'].includes(estado.fase));
 }
 
+// ---------- boas-vindas ----------
 function telaInicio() {
   const { temInstalacao, nome } = estado.inicio || {};
-  const faixa = estado.atualizacao && h('div', { class: 'faixa' },
-    h('span', {}, `Tem uma versão nova do Claude Setuper (${estado.atualizacao}).`),
-    botao('Atualizar', () => S.atualizar(), true));
-  return [
-    faixa,
-    h('h1', {}, temInstalacao && nome ? `Que bom te ver de novo, ${nome}.` : 'Vamos preparar o seu Claude.'),
-    h('p', { class: 'mut' }, temInstalacao
-      ? 'Posso continuar a instalação de onde ela parou, ou só conferir se está tudo no lugar.'
-      : 'Leva de 15 a 30 minutos. Primeiro umas perguntas rápidas, depois eu instalo tudo sozinho. Quando eu precisar de você, aparece um cartão amarelo dizendo exatamente o que fazer.'),
-    !temInstalacao && h('section', { class: 'grupo' }, h('b', {}, 'Antes de começar, deixa à mão'),
-      h('ul', { class: 'lista-simples' },
-        h('li', {}, 'O computador na tomada e com internet.'),
-        h('li', {}, 'A senha do computador, a que você digita na tela de bloqueio pra desbloquear ele.'),
-        h('li', {}, 'O e-mail da sua conta do Claude. A conta precisa ter um plano pago (Pro ou maior).'))),
-    h('div', { class: 'botoes' },
-      botao(temInstalacao ? 'Continuar a instalação' : 'Começar', () => (temInstalacao ? comecar('instalar') : apresentar(0)), false, { 'data-foco': true }),
-      temInstalacao && botao('Só conferir', () => comecar('conferir'), true)),
-  ];
+  const faixaNova = estado.atualizacao && h('div', { class: 'bloco', css: { display: 'flex', 'align-items': 'center', gap: '16px', width: '560px', 'margin-bottom': '30px' } },
+    h('div', { css: { flex: '1' } }, h('h3', {}, t('Tem uma versão nova do Claude Setuper')), h('p', { class: 't2 peq' }, t('Atualizo agora e abro de novo em menos de um minuto.'))),
+    botao(t('Atualizar'), () => S.atualizar(), 'btn p'));
+  if (temInstalacao) {
+    return [faixaNova, anel('170px', estado.inicio.progresso ?? 0, '', `${estado.inicio.progresso ?? 0}%`),
+      h('h1', { css: { 'margin-top': '30px' } }, nome ? t('Que bom te ver de novo, {nome}.', { nome }) : t('Que bom te ver de novo.')),
+      h('p', { class: 'lead' }, t('Posso continuar de onde a instalação parou, usando as mesmas respostas, e não vou repetir nada do que já ficou pronto.')),
+      h('div', { class: 'botoes' }, botao(t('Continuar de onde parou'), () => comecar('instalar'), 'btn', { 'data-foco': true }), botao(t('Só conferir'), () => comecar('conferir'), 'btn2'))];
+  }
+  const primeira = estado.inicio?.primeiraAbertura !== false;
+  return [faixaNova, portal(faixaNova ? '130px' : '230px', primeira ? 'nasce' : ''), h('div', { css: { height: faixaNova ? '36px' : '50px' } }),
+    h('h1', { class: primeira ? 'sobe d1' : '' }, t('Vamos preparar o Claude pra trabalhar com você.')),
+    h('p', { class: `lead ${primeira ? 'sobe d2' : ''}` }, t('Ele vai trabalhar dentro do seu computador e lembrar do que vocês já fizeram juntos. Leva de 15 a 30 minutos, e eu faço quase tudo sozinho.')),
+    h('div', { class: `botoes ${primeira ? 'sobe d3' : ''}` }, botao(t('Começar'), () => irPara('demo'), 'btn', { 'data-foco': true }))];
 }
+function telaDemo() {
+  const coluna = (rotulo, conteudo, atraso) => h('div', { class: 'bloco sobe', css: { 'animation-delay': `${atraso}s` } }, h('p', { class: 't3 peq', css: { 'margin-bottom': '6px' } }, rotulo), conteudo);
+  return [h('h2', {}, t('O Claude sai do chat e vem pro seu computador.')),
+    h('p', { class: 'lead' }, t('Você pede, ele abre os seus arquivos e leva o trabalho até o fim. No que for importante, ele pede licença antes.')),
+    h('div', { css: { display: 'grid', 'grid-template-columns': 'repeat(3,minmax(0,1fr))', gap: '12px', width: '768px', 'max-width': '100%', 'margin-top': '28px', 'text-align': 'left' } },
+      coluna(t('Você pede'), h('p', {}, t('Organiza a minha pasta Downloads em pastas por tipo, sem apagar nada.')), 0),
+      coluna(t('Ele faz'), [t('Pasta Documentos'), t('Pasta Imagens'), t('Pasta Planilhas')].map((x) => h('div', { class: 'linha', css: { padding: '2px 0' } }, icCerto(), h('span', {}, x))), 0.9),
+      coluna(t('E lembra'), h('p', {}, t('Anota no caderno de notas, aqui no seu computador, que você prefere as coisas separadas por tipo. Da próxima vez ele já sabe.')), 1.8)),
+    h('div', { class: 'botoes' }, botao(t('Continuar'), () => irPara('confirma'), 'btn', { 'data-foco': true }))];
+}
+function telaConfirma() {
+  const mac = estado.plataforma === 'darwin';
+  const item = (b, s) => h('div', { class: 'linha', css: { padding: '5px 0' } }, h('div', {}, h('b', {}, b), h('p', { class: 't2 peq' }, s)));
+  return [h('h2', {}, t('Tudo pronto pra começar')),
+    h('p', { class: 't2' }, t('Nada do que você já tem no computador é apagado.')),
+    h('div', { css: { display: 'grid', 'grid-template-columns': 'repeat(2,minmax(0,1fr))', gap: '12px', width: '768px', 'max-width': '100%', 'margin-top': '22px' } },
+      h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('O que eu vou instalar')),
+        item('Claude', t('O assistente, trabalhando no seu computador')),
+        item('Obsidian', t('O caderno das suas notas e da memória do Claude')),
+        mac ? item('Maestri', t('A janela onde você conversa com ele')) : item(t('Atalho do Claude'), t('Fica na sua Área de Trabalho')),
+        item('Google Chrome', t('Só se você ainda não tiver'))),
+      h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('O que você precisa deixar à mão')),
+        item(t('Tomada e internet'), t('Leva de 15 a 30 minutos')),
+        item(t('A senha do computador'), t('Aquela que você digita na tela de bloqueio')),
+        item(t('A sua conta do Claude'), t('Com plano pago, Pro ou maior. Se ainda não tem, dá pra assinar quando eu pedir o login')))),
+    h('p', { class: 't3 peq', css: { 'margin-top': '14px', 'max-width': '700px' } }, mac
+      ? t('Também deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pro Claude conseguir ler. Enquanto eu baixo o que precisa, te faço umas perguntas.')
+      : t('Também deixo agendados um backup das notas e uma atualização por semana. Enquanto eu baixo o que precisa, te faço umas perguntas.')),
+    h('div', { class: 'botoes', css: { 'margin-top': '18px' } }, botao(t('Instalar'), () => comecar('instalar'), 'btn', { 'data-foco': true }))];
+}
+function irPara(fase) { estado.fase = fase; desenhar(); if (estado.auto) S.print(fase); }
 
 // ---------- presente: a carta de abertura e o que deixar à mão ----------
-// O recado vem do presente.json (texto de quem deu o presente), com a assinatura embaixo. Um botão só.
 function telaPresente() {
   const pr = estado.inicio.presente;
   const rc = pr.recado || {};
-  const paragrafos = String(rc.texto || '').split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean);
-  return [h('article', { class: 'carta-presente' },
-    pr.signo ? h('img', { class: 'signo', src: pr.signo, alt: '' }) : null,
-    h('p', { class: 'etiqueta' }, pr.rotulo),
-    rc.titulo ? h('h1', {}, rc.titulo) : null,
-    h('div', { class: 'carta-texto' }, paragrafos.map((t) => h('p', {}, t))),
-    rc.assinatura ? h('p', { class: 'assinatura' }, rc.assinatura) : null,
-    h('div', { class: 'botoes' }, botao('Começar', () => preparar(), false, { 'data-foco': true })))];
-}
-function preparar() {
-  estado.fase = 'preparo';
-  desenhar();
+  return [pr.signo ? h('img', { class: 'signo', src: pr.signo, alt: '' }) : portal('130px', 'nasce'),
+    h('p', { class: 'peq sobe d1', css: { color: 'var(--ambar)', 'font-weight': '600', 'margin-bottom': '8px', 'margin-top': pr.signo ? '0' : '42px' } }, pr.rotulo),
+    rc.titulo ? h('h1', { class: 'sobe d1' }, rc.titulo) : null,
+    h('p', { class: 'corpo-carta sobe d2' }, String(rc.texto || '').trim()),
+    rc.assinatura ? h('p', { class: 'med sobe d2', css: { 'margin-top': '14px' } }, rc.assinatura) : null,
+    h('div', { class: 'botoes sobe d3' }, botao(t('Começar'), () => irPara('preparo'), 'btn', { 'data-foco': true }))];
 }
 function telaPreparo() {
-  return [
-    h('h1', {}, 'Antes de começar'),
-    h('p', { class: 'mut' }, 'Leva de 15 a 30 minutos. As suas notas e as respostas já vieram prontas, então eu instalo quase tudo sozinho. Quando precisar de você, pra senha ou pra entrar numa conta, aparece um cartão em destaque dizendo exatamente o que fazer.'),
-    h('section', { class: 'grupo' }, h('b', {}, 'Deixa à mão'),
-      h('ul', { class: 'lista-simples' },
-        h('li', {}, 'O computador na tomada e com internet.'),
-        h('li', {}, 'A senha do computador, a que você digita na tela de bloqueio pra desbloquear ele.'),
-        h('li', {}, 'O e-mail da sua conta do Claude, pra entrar nela quando eu pedir.'))),
-    h('div', { class: 'botoes' }, botao('Vamos lá', () => comecar('instalar'), false, { 'data-foco': true })),
-  ];
-}
-// A marca do canto vira a do presente: o signo e o nome do cofre no lugar do Claude Setuper.
-function marcaDoPresente(pr) {
-  const marca = document.querySelector('.marca');
-  if (!marca || !pr) return;
-  document.title = 'Segundo Cérebro';
-  const [, , nomeCofre] = pr.rotulo.match(/^(Segundo Cérebro)\s+(.*)$/) || [];
-  marca.replaceChildren(
-    pr.signo ? h('img', { class: 'signo-marca', src: pr.signo, alt: '' }) : null,
-    h('div', {}, h('b', {}, 'Segundo Cérebro'), h('span', {}, nomeCofre || '')));
-}
-
-// ---------- apresentação: por que usar o Claude assim (só na primeira vez) ----------
-const ICONE = {
-  computador: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="9" width="36" height="24" rx="3"/><path d="M18 39h12M24 33v6"/><path d="M14 18l5 4-5 4M22 26h8"/></svg>',
-  memoria: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 8h18l6 6v26H12z"/><path d="M30 8v6h6M18 22h12M18 28h12M18 34h7"/></svg>',
-  estrela: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6l5 11 12 1-9 8 3 12-11-6-11 6 3-12-9-8 12-1z"/></svg>',
-};
-const APRESENTACAO = [
-  { icone: 'computador', titulo: 'Um Claude que trabalha no seu computador',
-    texto: 'No chat, você pergunta, copia a resposta e cola em outro lugar. Aqui o Claude abre os seus arquivos, escreve, organiza pastas, monta planilhas e leva o trabalho até o fim. No que for importante, ele pede licença antes.' },
-  { icone: 'memoria', titulo: 'E que lembra de você',
-    texto: 'Ele guarda num caderno de notas, aqui no seu computador, o que você já decidiu, como gosta das coisas e onde cada projeto parou, e lê esse caderno antes de começar. A gente chama esse caderno de segundo cérebro. Quando você corrige alguma coisa, ele anota e não repete o erro.' },
-  { icone: 'estrela', titulo: 'Do jeito que os usuários mais avançados trabalham',
-    texto: 'Memória que não se perde, comandos prontos pro seu tipo de trabalho, rotinas que rodam sozinhas e o Claude ligado nas ferramentas que você já usa. É assim que trabalha o 1% que mais tira proveito do Claude, e o Claude Setuper monta tudo isso pra você em uns 15 minutos.' },
-];
-function apresentar(i) {
-  estado.fase = 'apresentacao';
-  estado.slide = i;
-  desenhar();
-}
-function telaApresentacao() {
-  const i = estado.slide || 0;
-  const s = APRESENTACAO[i];
-  const ultimo = i === APRESENTACAO.length - 1;
-  const icone = h('div', { class: 'icone-apresentacao' });
-  icone.innerHTML = ICONE[s.icone]; // SVG fixo, escrito aqui; nada vindo de fora
-  return [
-    icone,
-    h('h1', {}, s.titulo),
-    h('p', { class: 'texto-apresentacao' }, s.texto),
-    h('div', { class: 'pontos', 'aria-label': `${i + 1} de ${APRESENTACAO.length}` }, APRESENTACAO.map((_, j) => h('span', { class: j === i ? 'ponto atual' : 'ponto' }))),
-    h('div', { class: 'botoes' },
-      botao(ultimo ? 'Vamos começar' : 'Continuar', () => (ultimo ? comecar('instalar') : apresentar(i + 1)), false, { 'data-foco': true }),
-      !ultimo && h('button', { class: 'link pular', type: 'button', onclick: () => comecar('instalar') }, 'Pular')),
-  ];
+  return [h('h2', {}, t('Antes de começar')),
+    h('p', { class: 'lead' }, t('Leva de 15 a 30 minutos. As suas notas e as respostas já vieram prontas, então eu instalo quase tudo sozinho. Quando precisar de você, pra senha ou pra entrar numa conta, aparece uma janelinha na frente de tudo dizendo o que fazer.')),
+    h('div', { class: 'bloco', css: { width: '520px', 'max-width': '100%', 'margin-top': '20px' } }, h('h3', {}, t('Deixa à mão')),
+      h('ul', { class: 'lista-pontos t2' }, h('li', {}, t('O computador na tomada e com internet.')), h('li', {}, t('A senha do computador, a que você digita na tela de bloqueio.')), h('li', {}, t('O e-mail da sua conta do Claude, pra entrar nela quando eu pedir.')))),
+    h('div', { class: 'botoes' }, botao(t('Vamos lá'), () => comecar('instalar'), 'btn', { 'data-foco': true }))];
 }
 
 function comecar(modo) {
   estado.fase = modo === 'instalar' ? 'perguntas' : 'instalando';
-  estado.falhos.clear(); estado.pendentes.clear(); estado.msgs = [];
-  if (modo !== 'instalar') estado.tarefa = 'Conferindo o que está instalado';
+  estado.falhos.clear(); estado.pendentes.clear(); estado.msgs = []; estado.feitos = [];
+  if (modo !== 'instalar') estado.tarefa = t('Conferindo o que está instalado');
   desenhar();
   S.iniciar(modo);
 }
 
-// ---------- pedir ajuda ----------
-async function pedirAjuda() {
-  estado.ajuda = 'gerando';
-  desenhar();
-  estado.ajuda = await S.pedirAjuda();
-  desenhar();
-}
-function avisoAjuda() {
-  const a = estado.ajuda;
-  if (!a) return null;
-  const fechar = botao('Fechar', () => { estado.ajuda = null; desenhar(); }, true);
-  if (a === 'gerando') return h('section', { class: 'cartao ajuda', role: 'status' }, h('p', {}, 'Conferindo a instalação e montando o arquivo pra quem te ajuda. Leva menos de um minuto...'));
-  if (a.erro) return h('section', { class: 'cartao ajuda', role: 'alert' }, h('p', {}, 'Não consegui montar o arquivo. Tira um print desta tela e manda pra quem instalou o Claude pra você.'), h('div', { class: 'botoes' }, fechar));
-  const onde = a.pasta === 'Desktop' ? 'na sua Mesa' : `na pasta ${a.pasta}`;
-  return h('section', { class: 'cartao ajuda', role: 'status' },
-    h('h2', {}, 'Arquivo pronto pra mandar'),
-    h('p', {}, `Criei o arquivo "${a.nome}" ${onde} e abri a pasta pra você. Manda ele pra quem instalou o Claude pra você, pelo WhatsApp ou por e-mail.`),
-    h('p', { class: 'mut pequeno' }, 'Ele tem o que essa pessoa precisa pra te ajudar, sem nenhuma senha nem código de login.'),
-    h('div', { class: 'botoes' }, fechar));
-}
-
+// ---------- perguntas ----------
 function telaPedido(p) {
-  const intro = estado.fase === 'perguntas' && estado.introPerguntas ? h('p', { class: 'mut pequeno' }, estado.introPerguntas) : null;
-  const explicacao = p.explicacao ? h('p', { class: 'explicacao' }, p.explicacao) : null;
+  const explicacao = p.explicacao ? h('p', { class: 't2', css: { 'max-width': '600px' } }, p.explicacao) : null;
   const responder = (valor) => { estado.pedido = null; S.responder(p.id, valor); desenhar(); };
 
   if (p.tipo === 'texto' || p.tipo === 'senha') {
-    const campo = h('input', { type: p.tipo === 'senha' ? 'password' : 'text', placeholder: p.placeholder || '', 'aria-label': p.msg, 'data-foco': true, autocomplete: 'off', spellcheck: 'false' });
+    const campo = h('input', { class: 'campo', type: p.tipo === 'senha' ? 'password' : 'text', placeholder: p.placeholder || '', 'aria-label': p.msg, 'data-foco': true, autocomplete: 'off', spellcheck: 'false' });
     if (p.padrao) campo.value = p.padrao;
-    const enviarCampo = () => responder(campo.value);
-    campo.addEventListener('keydown', (e) => { if (e.key === 'Enter') enviarCampo(); });
-    return [intro, h('h2', {}, p.msg), explicacao, campo, h('div', { class: 'erro-campo', role: 'alert' }, p.erro || ''), h('div', { class: 'botoes fixo' }, botao('Continuar', enviarCampo))];
+    campo.addEventListener('keydown', (e) => { if (e.key === 'Enter') responder(campo.value); });
+    return [portalLeve('96px'), h('div', { css: { height: '40px' } }), h('h2', { css: { 'margin-bottom': explicacao ? '8px' : '22px' } }, p.msg), explicacao, explicacao ? h('div', { css: { height: '16px' } }) : null, campo,
+      h('div', { class: 'erro-campo', role: 'alert' }, p.erro || ''), h('div', { class: 'botoes', css: { 'margin-top': '10px' } }, botao(t('Continuar'), () => responder(campo.value)))];
   }
-
   if (p.tipo === 'confirmar') {
-    return [intro, h('h2', {}, p.msg), explicacao, p.figura && FIGURAS[p.figura] ? FIGURAS[p.figura]() : null, h('div', { class: 'botoes fixo' },
-      botao(p.sim || 'Sim', () => responder(true), !p.padrao, p.padrao ? { 'data-foco': true } : {}),
-      p.nao === '' ? null : botao(p.nao || 'Não', () => responder(false), !!p.padrao, p.padrao ? {} : { 'data-foco': true }))];
+    return [h('h2', {}, p.msg), explicacao, h('div', { class: 'botoes' },
+      botao(p.sim || t('Sim'), () => responder(true), p.padrao ? 'btn' : 'btn2', p.padrao ? { 'data-foco': true } : {}),
+      p.nao === '' ? null : botao(p.nao || t('Não'), () => responder(false), p.padrao ? 'btn2' : 'btn', p.padrao ? {} : { 'data-foco': true }))];
   }
-
   // escolher (uma) ou varios (várias)
   const varios = p.tipo === 'varios';
   const marcados = new Set(varios ? p.padrao || [] : [p.padrao]);
   const cartoes = p.opcoes.map((o, i) => {
-    const el = h('button', { class: `opcao${varios ? ' varios' : ''}`, type: 'button', role: varios ? 'checkbox' : 'radio', 'aria-checked': String(marcados.has(o.value)), 'data-foco': i === 0 && !marcados.size ? true : null },
-      h('span', { class: 'marcador' }), h('span', {}, h('b', {}, o.label), o.hint && h('small', {}, o.hint)));
+    const el = h('button', { class: `op${varios ? ' varios' : ''}`, type: 'button', role: varios ? 'checkbox' : 'radio', 'aria-checked': String(marcados.has(o.value)), 'data-foco': (!marcados.size && i === 0) || (!varios && marcados.has(o.value)) ? true : null },
+      h('span', { class: 'marca' }), h('span', {}, h('b', {}, o.label), o.hint ? h('small', {}, o.hint) : null));
     el.addEventListener('click', () => {
-      if (varios) marcados.has(o.value) ? marcados.delete(o.value) : marcados.add(o.value);
-      else { marcados.clear(); marcados.add(o.value); }
-      for (const [j, c] of cartoes.entries()) c.setAttribute('aria-checked', String(marcados.has(p.opcoes[j].value)));
+      if (varios) { if (marcados.has(o.value)) marcados.delete(o.value); else marcados.add(o.value); } else { marcados.clear(); marcados.add(o.value); }
+      cartoes.forEach((c, j) => { const on = marcados.has(p.opcoes[j].value); c.setAttribute('aria-checked', String(on)); c.classList.toggle('on', on); });
     });
     if (!varios) el.addEventListener('dblclick', () => responder(o.value));
-    if (marcados.has(o.value) && !varios) el.setAttribute('data-foco', '');
+    if (marcados.has(o.value)) el.classList.add('on');
     return el;
   });
   const continuar = () => responder(varios ? p.opcoes.map((o) => o.value).filter((v) => marcados.has(v)) : [...marcados][0]);
-  return [intro, h('h2', {}, p.msg), explicacao, h('div', { class: 'opcoes', role: varios ? 'group' : 'radiogroup', 'aria-label': p.msg }, cartoes),
-    h('div', { class: 'botoes fixo' }, botao('Continuar', continuar))];
+  return [h('h2', {}, p.msg), explicacao, h('div', { class: 'ops', role: varios ? 'group' : 'radiogroup', 'aria-label': p.msg }, cartoes),
+    h('div', { class: 'botoes', css: { 'margin-top': '18px' } }, botao(t('Continuar'), continuar))];
 }
 
-function cartaoPausa(pz) {
-  const extras = [];
-  if (pz.codigos.length) {
-    const cod = pz.codigos[pz.codigos.length - 1];
-    extras.push(h('div', { class: 'codigo' }, h('code', {}, cod), botao('Copiar o código', (e) => { S.copiar(cod); e.target.textContent = 'Copiado'; }, true)));
-  }
-  const link = pz.links.length ? pz.links[pz.links.length - 1] : null;
-  let acoes = null;
-  if (pz.acoes?.length || pz.pular || pz.links.length) {
-    acoes = (h('div', { class: 'botoes' },
-      link && botao('Abrir no navegador', () => S.abrirLink(link)),
-      (pz.acoes || []).map((a) => botao(a.rotulo, () => S.abrirLink(a.url, a.app))),
-      botao('Pedir ajuda', pedirAjuda, true),
-      pz.pular ? botao(pz.pular, (e) => { S.pular(); e.target.disabled = true; e.target.textContent = 'Seguindo...'; }, true) : null));
-  }
-  return h('section', { class: pz.espera ? 'cartao espera' : 'cartao', role: 'status' },
-    h('h2', {}, pz.espera ? pz.titulo : `✋ ${pz.titulo}`),
-    pz.linhas.length ? h('ol', {}, pz.linhas.map((l) => h('li', {}, l))) : null,
-    // Com botões de ação, eles vêm antes do desenho: em tela baixa o desenho empurrava os botões pra fora.
-    acoes,
-    pz.figura && FIGURAS[pz.figura] ? FIGURAS[pz.figura]() : null,
-    pz.status ? h('p', { class: 'status-cartao' }, pz.status) : null,
-    extras);
-}
-
-// Nunca deixar a pessoa olhando um spinner sem saber o que acontece: tempo passado, quanto costuma
-// levar e, se ficar muito tempo sem novidade, o que ela pode fazer.
+// ---------- instalação ----------
 function tempo(ms) {
   const min = Math.floor(ms / 60000);
-  return min < 1 ? `${Math.floor(ms / 1000)} segundos` : min === 1 ? '1 minuto' : `${min} minutos`;
+  return min < 1 ? t('{n} segundos', { n: Math.floor(ms / 1000) }) : min === 1 ? t('1 minuto') : t('{n} minutos', { n: min });
 }
 function textoRelogio() {
   if (!estado.desde) return '';
-  const passou = `Trabalhando há ${tempo(Date.now() - estado.desde)}`;
-  return estado.demora ? `${passou}. Costuma levar ${estado.demora.replace(/, é normal$/, '')}.` : `${passou}.`;
+  const passou = t('Trabalhando há {tempo}.', { tempo: tempo(Date.now() - estado.desde) });
+  return estado.demora ? `${passou} ${t('Costuma levar {demora}.', { demora: estado.demora.replace(/, é normal$/, '') })}` : passou;
 }
 const PARADO = 4 * 60000;
-function avisoParado() {
-  if (!estado.mexeu || estado.pausa || Date.now() - estado.mexeu < PARADO) return null;
-  return h('div', { class: 'parado', id: 'parado' },
-    h('p', {}, `Faz ${tempo(Date.now() - estado.mexeu)} que essa parte não muda na tela. Em computador mais antigo ou internet mais lenta isso acontece, e o app continua trabalhando por trás: se der algum problema, eu aviso aqui.`),
-    h('p', {}, 'Se passar de 15 minutos assim, mande um pedido de ajuda pra quem está te ajudando com a instalação.'),
-    h('div', { class: 'botoes' }, botao('Pedir ajuda', pedirAjuda, true)));
-}
-
 function telaInstalando() {
-  const n = estado.atual + 1;
-  return [
-    estado.pausa && cartaoPausa(estado.pausa),
-    h('div', { class: 'agora' }, h('span', { class: 'girando', 'aria-hidden': 'true' }),
-      h('div', {}, h('b', {}, estado.tarefa || (estado.passos[estado.atual] ?? 'Preparando')),
-        estado.passos.length && n > 0 ? h('div', { class: 'mut pequeno' }, `Passo ${n} de ${estado.passos.length}`) : null,
-        estado.pausa ? null : h('div', { class: 'mut pequeno', id: 'relogio' }, textoRelogio()))),
-    estado.pausa ? null : avisoParado(),
-    h('ul', { class: 'mensagens' }, estado.msgs.slice(-4).map((m) => h('li', { class: m.nivel }, m.texto))),
-  ];
+  const pz = estado.pausa;
+  const p = porcentagem();
+  if (pz && !pz.espera) {
+    return [anel('150px', p, 'vez'), h('div', { css: { height: '26px' } }),
+      h('h2', { css: { 'font-size': '24px', 'line-height': '30px' } }, t('Agora é com você')),
+      h('p', { class: 'lead' }, t('O passo a passo está na janelinha do canto, que fica na frente de tudo. Quando você terminar, eu sigo sozinho.'))];
+  }
+  const parado = !pz && estado.mexeu && Date.now() - estado.mexeu >= PARADO;
+  const exemplo = estado.exemplos.length ? estado.exemplos[estado.exemplo % estado.exemplos.length] : null;
+  return [anel(parado ? '150px' : '190px', p, '', `${p}%`), h('div', { css: { height: '26px' } }),
+    h('h2', { css: { 'font-size': '24px', 'line-height': '30px' } }, pz ? pz.titulo : (estado.tarefa || estado.passos[estado.atual] || t('Preparando'))),
+    pz ? (pz.linhas || []).map((l) => h('p', { class: 't2' }, l)) : h('p', { class: 't2', id: 'relogio' }, textoRelogio()),
+    pz?.status ? h('p', { class: 't3 peq', css: { 'margin-top': '6px' } }, pz.status) : null,
+    parado ? h('div', { class: 'bloco', id: 'parado', css: { width: '560px', 'max-width': '100%', 'margin-top': '22px' } },
+      h('h3', {}, t('Faz {tempo} que esta parte não muda na tela', { tempo: tempo(Date.now() - estado.mexeu) })),
+      h('p', { class: 't2 peq', css: { 'margin-top': '4px' } }, t('Em computador mais antigo ou internet mais lenta isso acontece, e eu continuo trabalhando por trás. Se der algum problema, aviso aqui. Se passar de 15 minutos assim, manda um pedido de ajuda pra quem está te ajudando com a instalação.')),
+      h('div', { class: 'g-acoes' }, botao(t('Pedir ajuda'), pedirAjuda, 'btn2 p')))
+      : exemplo ? h('div', { class: 'bloco', css: { width: '560px', 'max-width': '100%', 'margin-top': '24px' } },
+        h('p', { class: 't3 peq', css: { 'margin-bottom': '4px' } }, t('Um exemplo do que você vai poder pedir:')), h('p', {}, exemplo)) : null,
+    parado ? null : h('p', { class: 't3 peq', css: { 'margin-top': '16px' } }, t('Pode fazer outra coisa enquanto isso. Quando eu precisar de você, esta janela volta pra frente e toca um som.')),
+    estado.msgs.filter((m) => m.nivel === 'aviso' || m.nivel === 'erro').slice(-2).map((m) => h('p', { class: m.nivel === 'erro' ? 'status-erro peq' : 't2 peq', css: { 'margin-top': '8px' } }, m.texto))];
 }
 
-// Dicas de Terminal ("rode: ...") não servem pra quem está no app; o botão de resolver cobre esses casos.
-const TECNICO = /^rode:|claude-setuper|https?:\/\//;
-// O que a pessoa faz em cada pendência comum, sem comando.
-const RESOLVER = 'O botão "Resolver o que falta" abre isso de novo pra você.';
-const DICAS_APP = [
-  [/^Login no Claude/, 'Falta entrar na sua conta do Claude. Sem isso ele ainda não consegue conversar com você.'],
-  [/^Conta conectada|^Contas conectadas/, 'Falta entrar na sua conta do GitHub. ' + RESOLVER],
-  [/^git sabe/, 'Se resolve sozinho quando a conta do GitHub estiver conectada.'],
-  [/^Login na Vercel/, 'Falta entrar na sua conta da Vercel. ' + RESOLVER],
-  [/^Extensão Claude no Chrome/, 'Falta adicionar a extensão do Claude no Chrome. ' + RESOLVER],
-  [/^Complementos do Obsidian ligados/, 'Falta clicar em "Trust author and enable plugins" no Obsidian. ' + RESOLVER],
+// ---------- fim: o anel fecha, abre, vem o vídeo e depois o Maestri ----------
+const faltas = () => estado.grupos.flatMap((g) => g.itens.filter((i) => !i.ok).map((i) => ({ ...i, grupo: g.nome })));
+const semLogin = () => faltas().some((i) => /^Login no Claude/.test(i.item));
+function telaPortal() {
+  return [h('div', { class: 'abre-uma' }, portalLeve('190px')), h('div', { css: { height: '40px' } }), h('h2', { class: 'apaga-uma' }, estado.comecar?.nome ? t('Pronto, {nome}.', { nome: estado.comecar.nome }) : t('Pronto.'))];
+}
+function abrirPortal() {
+  estado.fase = 'portal';
+  desenhar();
+  clarao.hidden = false;
+  clarao.className = 'clarao clarao-uma';
+  S.portal();
+  const fim = matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 4200;
+  setTimeout(() => { clarao.hidden = true; estado.video = estado.inicio?.video; if (estado.video) { estado.fase = 'video'; desenhar(); } else concluir(); }, fim);
+}
+function concluir() {
+  // Depois do vídeo, a janela sai da frente e o guia começa a aula por cima do Maestri.
+  estado.fase = 'fim';
+  desenhar();
+  S.concluir();
+}
+function telaVideo() {
+  const v = h('video', { class: 'abertura', src: estado.video, autoplay: true, playsinline: true, 'aria-label': t('Vídeo de abertura') });
+  v.addEventListener('ended', concluir);
+  v.addEventListener('error', concluir);
+  const pular = botao(t('Pular'), concluir, 'btn2 p video-pular');
+  pular.hidden = true;
+  setTimeout(() => { pular.hidden = false; }, 15000); // decisão do Nathan: o pular aparece depois de 15 segundos
+  return [v, pular];
+}
+const RESOLVER = () => t('O botão "Resolver o que falta" abre isso de novo pra você.');
+const DICAS_APP = () => [
+  [/^Login no Claude/, t('Falta entrar na sua conta do Claude. Sem isso ele ainda não consegue conversar com você.')],
+  [/^Conta conectada|^Contas conectadas/, t('Falta entrar na sua conta do GitHub. É opcional.')],
+  [/^git sabe/, t('Se resolve sozinho quando a conta do GitHub estiver conectada.')],
+  [/^Login na Vercel/, t('Falta entrar na sua conta da Vercel. É opcional.')],
+  [/^Extensão Claude no Chrome/, t('Falta adicionar a extensão do Claude no Chrome. É opcional.')],
+  [/^Complementos do Obsidian ligados/, t('Falta clicar em "Trust author and enable plugins" no Obsidian. {resolver}', { resolver: RESOLVER() })],
 ];
+const TECNICO = /^rode:|claude-setuper|https?:\/\//;
 function dicaApp(i) {
-  const d = DICAS_APP.find(([re]) => re.test(i.item));
+  const d = DICAS_APP().find(([re]) => re.test(i.item));
   if (d) return d[1];
-  return i.dica && !TECNICO.test(i.dica) ? i.dica : RESOLVER;
+  return i.dica && !TECNICO.test(i.dica) ? i.dica : RESOLVER();
 }
-
 function telaFim() {
-  // O que falta (em português simples) primeiro; o que ficou pronto vem resumido pelos nomes curtos.
-  const faltas = estado.grupos.flatMap((g) => g.itens.filter((i) => !i.ok).map((i) => ({ ...i, grupo: g.nome })));
+  const nome = estado.comecar?.nome || '';
+  const f = faltas();
   const prontos = estado.grupos.filter((g) => g.itens.every((i) => i.ok)).map((g) => g.nome);
-  const cm = estado.comecar || {};
-  const nome = cm.nome || (estado.encerramento.match(/^Pronto, ([^.]+)\./) || [])[1] || '';
-  // Sem login o Claude não conversa: dizer "Pronto" e pôr "Abrir o Claude" em destaque seria mentir pra pessoa.
-  const semLogin = faltas.some((i) => /^Login no Claude/.test(i.item));
   const resolver = () => comecar('instalar');
-  let titulo, texto;
-  if (estado.soConferiu) { titulo = 'Conferência da instalação'; texto = ''; }
-  else if (semLogin) { titulo = nome ? `Quase pronto, ${nome}.` : 'Quase pronto.'; texto = 'Falta só entrar na sua conta do Claude. Sem isso ele ainda não consegue conversar com você.'; }
-  else { titulo = estado.encerramento.split('.')[0] + '.'; texto = estado.encerramento.split('. ').slice(1).join('. '); }
-  return [
-    h('h1', {}, titulo),
-    texto && h('p', { class: 'mut' }, texto),
-    h('div', { class: 'botoes' },
-      semLogin
-        ? [botao('Entrar na minha conta do Claude', resolver, false, { 'data-foco': true }), botao('Abrir o Claude mesmo assim', () => S.abrirClaude(), true)]
-        : [botao('Abrir o Claude', () => S.abrirClaude(), false, { 'data-foco': true }), faltas.length ? botao('Resolver o que falta', resolver, true) : null]),
-    !estado.soConferiu && !semLogin && paraComecar(cm),
-    faltas.length
-      ? h('section', { class: 'grupo' }, h('b', {}, faltas.length === 1 ? 'Falta 1 coisa, que depende de você' : `Faltam ${faltas.length} coisas, que dependem de você`),
-        h('ul', {}, faltas.map((i) => h('li', { class: 'nao' }, h('span', { class: 's' }, '!'), h('span', {}, i.item, h('small', {}, dicaApp(i)))))),
-        h('p', { class: 'mut pequeno rodape-grupo' }, 'Pode abrir o Claude Setuper de novo quando quiser: ele usa as mesmas respostas e faz só o que falta.'))
-      : h('p', { class: 'mut' }, 'Tudo certo. Pode fechar esta janela.'),
-    prontos.length > 0 && h('section', { class: 'grupo' }, h('b', {}, 'Pronto pra usar'),
-      h('ul', { class: 'prontos' }, prontos.map((n) => h('li', { class: 'sim' }, h('span', { class: 's' }, '✓'), h('span', {}, n))))),
-  ];
+  if (!estado.soConferiu && semLogin()) {
+    return [anel('170px', 92, 'vez'), h('h1', { css: { 'margin-top': '30px' } }, nome ? t('Quase pronto, {nome}.', { nome }) : t('Quase pronto.')),
+      h('p', { class: 'lead' }, t('Falta só entrar na sua conta do Claude. Sem isso ele ainda não consegue conversar com você, e o resto já ficou instalado.')),
+      h('div', { class: 'botoes' }, botao(t('Entrar na minha conta do Claude'), resolver, 'btn', { 'data-foco': true }), botao(t('Fazer depois'), () => S.fechar(), 'btn2')),
+      h('p', { class: 't3 peq', css: { 'margin-top': '18px' } }, t('Se fechar agora, é só abrir o Claude Setuper de novo que eu volto neste ponto.'))];
+  }
+  return [h('h2', {}, estado.soConferiu ? t('Conferi tudo o que está instalado') : (estado.encerramento.split('.')[0] + '.')),
+    h('p', { class: 't2' }, f.length ? (f.length === 1 ? t('Está funcionando. Falta uma coisa, e ela depende de você.') : t('Está funcionando. Faltam {n} coisas, e elas dependem de você.', { n: f.length })) : t('Tudo certo. Está tudo no lugar.')),
+    h('div', { css: { display: 'grid', 'grid-template-columns': f.length ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)', gap: '12px', width: f.length ? '768px' : '420px', 'max-width': '100%', 'margin-top': '22px', 'max-height': 'calc(100vh - 290px)', 'overflow-y': 'auto' } },
+      f.length ? h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('Falta')), f.map((i) => h('div', { class: 'linha' }, icFalta(), h('div', {}, h('b', {}, i.item), h('p', { class: 't2 peq' }, dicaApp(i)))))) : null,
+      prontos.length ? h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('Pronto pra usar')), prontos.map((n) => h('div', { class: 'linha', css: { padding: '3px 0' } }, icCerto(), h('span', {}, n)))) : null),
+    h('div', { class: 'botoes' }, f.length ? botao(t('Resolver o que falta'), resolver, 'btn', { 'data-foco': true }) : null, botao(estado.plataforma === 'darwin' ? t('Abrir o Maestri') : t('Abrir o Claude'), () => S.abrirClaude(), f.length ? 'btn2' : 'btn', f.length ? {} : { 'data-foco': true }))];
 }
-
-// "Pra começar": onde o Claude está, como voltar amanhã e três pedidos do cardápio do perfil.
-function paraComecar(cm) {
-  const ondeEsta = cm.maestri
-    ? 'O Claude está na janela do Maestri. É só escrever pra ele, como numa conversa de mensagem.'
-    : 'O Claude abre pelo atalho "Claude" na sua Área de Trabalho. É só escrever pra ele, como numa conversa de mensagem.';
-  const voltar = cm.maestri
-    ? 'Pra voltar amanhã, abre o Maestri: ele fica na pasta Aplicativos e no Launchpad.'
-    : 'Pra voltar amanhã, é só abrir o mesmo atalho.';
-  return h('section', { class: 'grupo comecar' }, h('b', {}, 'Pra começar'),
-    h('ul', { class: 'lista-simples' }, h('li', {}, ondeEsta), h('li', {}, voltar),
-      cm.notas ? h('li', {}, 'Nas suas notas tem o "Cardápio do Claude", com pedidos prontos do seu tipo de trabalho.') : null),
-    cm.exemplos?.length ? [h('p', { class: 'mut pequeno exemplos-titulo' }, cm.presente ? 'Três pedidos pra começar, é só copiar e colar no Claude:' : 'Alguns pedidos pra copiar e trocar o que está entre colchetes:'),
-      h('ul', { class: 'exemplos' }, cm.exemplos.map((e) => h('li', {}, h('span', {}, e), botao('Copiar', (ev) => { S.copiar(e); ev.target.textContent = 'Copiado'; }, true))))] : null);
-}
-
 function telaFalha() {
-  return [h('section', { class: 'cartao falha', role: 'alert' },
-    h('h2', {}, 'Algo deu errado e eu precisei parar'),
-    h('p', {}, estado.falha),
-    h('p', { class: 'mut' }, 'Confere a internet e tenta de novo: eu continuo de onde parei. Se repetir, clica em Pedir ajuda e manda o arquivo pra quem te passou o Claude Setuper.'),
-    h('div', { class: 'botoes' }, botao('Tentar de novo', () => comecar('instalar'), false, { 'data-foco': true }), botao('Pedir ajuda', pedirAjuda, true)))];
+  return [anel('150px', porcentagem(), 'erro'), h('div', { css: { height: '28px' } }),
+    h('h2', { css: { 'font-size': '24px', 'line-height': '30px' } }, t('Algo deu errado e eu precisei parar')),
+    h('p', { class: 'lead' }, estado.falha),
+    h('p', { class: 't2', css: { 'margin-top': '8px', 'max-width': '560px' } }, t('Confere a internet e tenta de novo: eu continuo de onde parei, e o que já está pronto continua pronto.')),
+    h('div', { class: 'botoes' }, botao(t('Tentar de novo'), () => comecar('instalar'), 'btn', { 'data-foco': true }), botao(t('Pedir ajuda'), pedirAjuda, 'btn2'))];
 }
 
-
-// ---------- figuras: onde clicar ----------
-// Desenhos simples das janelas que a pessoa vai ver, com o botão certo marcado.
-function alvo(texto, classe = '') { return h('span', { class: `alvo ${classe}` }, texto, h('span', { class: 'seta' }, 'clica aqui')); }
-const FIGURAS = {
-  'apple-ferramentas': () => h('figure', { class: 'figura mac' },
-    h('div', { class: 'janela-mac' },
-      h('div', { class: 'icone-mac', 'aria-hidden': 'true' }, '⚙︎'),
-      h('p', {}, h('b', {}, 'O comando "xcode-select" requer as ferramentas de linha de comando para desenvolvedores.'), ' Deseja instalar as ferramentas agora?'),
-      h('div', { class: 'botoes-mac' }, h('span', { class: 'bmac' }, 'Obter Xcode'), h('span', { class: 'bmac' }, 'Agora Não'), alvo('Instalar', 'bmac azul'))),
-    h('figcaption', {}, 'É uma janela da própria Apple. Pode confiar.')),
-  'obsidian-confiar': () => h('figure', { class: 'figura obsidian' },
-    h('div', { class: 'janela-obsidian' },
-      h('b', {}, 'Do you trust the author of this vault?'),
-      h('span', { class: 'linha-cinza' }), h('span', { class: 'linha-cinza curta' }),
-      h('div', { class: 'botoes-obsidian' }, alvo('Trust author and enable plugins', 'bobs'), h('span', { class: 'bobs apagado' }, 'Browse vault in Restricted Mode'))),
-    h('figcaption', {}, 'A janela vem em inglês. Ela pergunta se pode ligar o Dataview e o Templater, os dois complementos mais usados do Obsidian. Pode confiar.')),
-  'chrome-extensao': () => h('figure', { class: 'figura chrome' },
-    h('div', { class: 'janela-chrome' },
-      h('div', { class: 'loja-topo' }, h('span', { class: 'icone-loja', 'aria-hidden': 'true' }), h('b', {}, 'Claude'), alvo('Usar no Chrome', 'bchrome'))),
-    h('figcaption', {}, 'É só um desenho do botão: o clique é na janela do Chrome. Se lá estiver escrito "Adicionar ao Chrome", é o mesmo. Se ele pedir a conta Google, pode pular.')),
-};
-
-// Anel de foco só pra quem navega pelo teclado (estilo.css, body.teclado).
+// ---------- folhas: ajuda, detalhes e versão ----------
+async function pedirAjuda() {
+  estado.folha = 'gerando';
+  desenharFolha();
+  estado.folha = await S.pedirAjuda();
+  desenharFolha();
+}
+function desenharFolha() {
+  const f = estado.folha;
+  if (!f) return folha.replaceChildren();
+  const fechar = botao(t('Fechar'), () => { estado.folha = null; desenharFolha(); }, 'btn2 p');
+  let corpo;
+  if (f === 'gerando') corpo = [h('p', { class: 't2' }, t('Conferindo a instalação e montando o arquivo pra quem te ajuda. Leva menos de um minuto...'))];
+  else if (f === 'detalhes') {
+    corpo = [h('div', { css: { display: 'grid', 'grid-template-columns': '230px minmax(0,1fr)', gap: '20px' } },
+      h('div', {}, h('h3', { css: { 'margin-bottom': '8px' } }, t('O que já foi feito')), estado.passos.map((n, i) => h('p', { class: i <= estado.atual ? 'peq' : 'peq t3', css: { 'line-height': '24px' } }, `${i < estado.atual ? '✓' : i === estado.atual ? '→' : '·'} ${n}`))),
+      h('div', {}, h('h3', {}, t('Registro técnico')), h('p', { class: 't3 peq' }, t('Em inglês, pra quem for te ajudar. Você não precisa ler nem fazer nada do que está aqui.')), h('pre', { class: 'log' }, estado.detalhes.slice(-6000)))),
+      h('div', { class: 'g-acoes', css: { 'justify-content': 'flex-end' } }, fechar)];
+  } else if (f.erro) corpo = [h('p', {}, t('Não consegui montar o arquivo. Tira um print desta tela e manda pra quem te passou o Claude Setuper.')), h('div', { class: 'g-acoes', css: { 'justify-content': 'flex-end' } }, fechar)];
+  else {
+    const onde = f.pasta === 'Desktop' ? t('na sua Mesa') : t('na pasta {pasta}', { pasta: f.pasta });
+    corpo = [h('h2', { css: { 'font-size': '22px', 'line-height': '28px' } }, t('Arquivo pronto pra mandar')),
+      h('p', { class: 't2' }, t('Criei o arquivo "{nome}" {onde} e abri a pasta pra você. Manda ele pra quem te passou o Claude Setuper, pelo WhatsApp ou por e-mail.', { nome: f.nome, onde })),
+      h('p', { class: 't3 peq', css: { 'margin-top': '10px' } }, t('Ele tem o que essa pessoa precisa pra te ajudar, sem nenhuma senha nem código de login.')),
+      h('div', { class: 'g-acoes', css: { 'justify-content': 'flex-end', 'margin-top': '18px' } }, fechar)];
+  }
+  folha.replaceChildren(h('div', { class: 'veu' }, h('div', { class: 'folha', role: 'dialog', css: f === 'detalhes' ? { width: '760px', 'max-width': '92vw' } : {} }, corpo)));
+}
+document.getElementById('pedir-ajuda').addEventListener('click', pedirAjuda);
+document.getElementById('ver-feito').addEventListener('click', () => { estado.folha = 'detalhes'; desenharFolha(); });
+S.aoMenu?.((acao) => { if (acao === 'detalhes') { estado.folha = 'detalhes'; desenharFolha(); } else if (acao === 'ajuda') pedirAjuda(); });
 document.addEventListener('keydown', (e) => { if (['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) document.body.classList.add('teclado'); }, true);
 document.addEventListener('pointerdown', () => document.body.classList.remove('teclado'), true);
-
-// ---------- detalhes ----------
-function anotar(texto) {
-  detalhes.textContent = (detalhes.textContent + texto).slice(-20000);
-  if (!detalhes.hidden) detalhes.scrollTop = detalhes.scrollHeight;
-}
-document.getElementById('pedir-ajuda').addEventListener('click', () => pedirAjuda());
-document.getElementById('ver-detalhes').addEventListener('click', (e) => {
-  detalhes.hidden = !detalhes.hidden;
-  document.getElementById('aviso-detalhes').hidden = detalhes.hidden;
-  e.target.setAttribute('aria-expanded', String(!detalhes.hidden));
-  e.target.textContent = detalhes.hidden ? 'Ver detalhes técnicos' : 'Esconder detalhes técnicos';
-  detalhes.scrollTop = detalhes.scrollHeight;
-});
+const anotar = (texto) => { estado.detalhes = (estado.detalhes + texto).slice(-20000); };
 
 // ---------- eventos da instalação ----------
 S.aoEvento((ev) => {
   switch (ev.tipo) {
-    case 'inicio':
-      estado.inicio = ev; estado.auto = ev.auto; estado.fase = ev.presente && !ev.temInstalacao ? 'presente' : 'inicio';
-      document.getElementById('versao').textContent = `versão ${ev.versao}`;
-      if (ev.presente) marcaDoPresente(ev.presente);
+    case 'inicio': {
+      estado.inicio = ev; estado.auto = ev.auto; estado.catalogo = ev.catalogo || {}; estado.idioma = ev.idioma || 'pt'; estado.plataforma = ev.plataforma || 'darwin';
+      document.documentElement.lang = estado.idioma === 'en' ? 'en' : 'pt-BR';
+      if (!['demo', 'confirma'].includes(estado.fase)) estado.fase = ev.presente && !ev.temInstalacao ? 'presente' : 'inicio';
       break;
+    }
     case 'atualizacao': estado.atualizacao = ev.versao; break;
     case 'abertura': if (estado.fase !== 'instalando') estado.fase = 'perguntas'; break;
-    case 'plano': estado.passos = ev.passos; estado.atual = -1; estado.fase = 'instalando'; break;
+    case 'plano': estado.passos = ev.passos; estado.pesos = ev.pesos || []; estado.exemplos = ev.exemplos || []; estado.atual = -1; estado.fase = 'instalando'; break;
     case 'passo': estado.atual = ev.n - 1; estado.pausa = null; estado.tarefa = ''; estado.desde = estado.mexeu = Date.now(); estado.demora = ''; anotar(`\n── ${ev.n}/${ev.total} ${ev.titulo}\n`); break;
     case 'msg':
       anotar(`${ev.texto}\n`);
-      if (estado.fase === 'perguntas' && ev.nivel === 'info') { estado.introPerguntas = ev.texto; break; }
-      // Avisos informativos vão pros detalhes; com um cartão aberto, aparecem nele ("Estou esperando...").
       if (ev.nivel === 'info') { if (estado.pausa) estado.pausa.status = ev.texto; break; }
       estado.msgs.push(ev);
       estado.pausa = null;
       if (ev.nivel === 'erro' && estado.atual >= 0) estado.falhos.add(estado.atual);
-      // Aviso dentro de um passo é coisa que ficou pra depois (um login, um clique): a etapa fica âmbar, não verde.
-      if (ev.nivel === 'aviso' && estado.atual >= 0 && estado.fase === 'instalando' && !ev.texto.startsWith('Terminei')) estado.pendentes.add(estado.atual); // o resumo final não é da última etapa
+      if (ev.nivel === 'aviso' && estado.atual >= 0 && estado.fase === 'instalando' && !ev.texto.startsWith('Terminei')) estado.pendentes.add(estado.atual);
       break;
     case 'tarefa':
       if (ev.estado === 'fazendo') {
-        // Tarefa nova zera o relógio; a mesma tarefa só atualizando o andamento conta como sinal de vida.
         if (estado.tarefaId !== ev.id) { estado.tarefaId = ev.id; estado.desde = Date.now(); }
         if (estado.tarefa !== ev.texto) estado.mexeu = Date.now();
         estado.tarefa = ev.texto;
         estado.demora = ev.demora || '';
-        if (ev.atras) { estado.desde -= ev.atras; estado.mexeu -= ev.atras; } // só a demonstração usa
+        if (ev.atras) { estado.desde -= ev.atras; estado.mexeu -= ev.atras; }
       } else { estado.msgs.push({ nivel: ev.estado === 'feito' ? 'ok' : 'erro', texto: ev.texto }); estado.tarefa = ''; anotar(`${ev.texto}\n`); }
       break;
-    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, figura: ev.figura, acoes: ev.acoes || [], pular: ev.pular, espera: !!ev.espera, links: [], codigos: [] }; anotar(`✋ ${ev.titulo}\n`); break;
-    case 'link':
-    case 'codigo':
-      estado.pausa ||= { titulo: 'Termine no navegador e volte pra cá', linhas: [], links: [], codigos: [] };
-      if (ev.tipo === 'link') estado.pausa.links.push(ev.url); else estado.pausa.codigos.push(ev.codigo);
-      break;
+    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, espera: !!ev.espera, status: '' }; anotar(`> ${ev.titulo}\n`); break;
+    case 'pausa-fora': estado.pausa = { titulo: ev.titulo, linhas: [], espera: false, status: '' }; estado.fase = 'instalando'; break;
+    case 'fimpausa': estado.pausa = null; break;
+    case 'fimpedido': if (estado.pedido?.id === ev.id) estado.pedido = null; break;
     case 'saida': anotar(ev.texto); return; // não redesenha a tela a cada linha
-    case 'pedido': estado.pedido = { ...ev.pergunta, id: ev.id }; break;
+    case 'pedido': estado.pedido = { ...ev.pergunta, id: ev.id }; if (!['instalando', 'perguntas'].includes(estado.fase)) estado.fase = 'perguntas'; break;
     case 'encerramento': estado.encerramento = ev.texto; break;
-    case 'fim': estado.fase = 'fim'; estado.grupos = ev.grupos; estado.soConferiu = ev.soConferiu; estado.comecar = ev.comecar || null; estado.pausa = null; estado.pedido = null; break;
+    case 'fim': {
+      estado.grupos = ev.grupos; estado.soConferiu = ev.soConferiu; estado.comecar = ev.comecar || null; estado.pausa = null; estado.pedido = null;
+      // Sem login ou só conferindo, nada de portal: mostra o que falta.
+      if (!ev.soConferiu && !semLogin() && !ev.semPortal) { abrirPortal(); if (estado.auto) roteiro(ev); return; }
+      estado.fase = 'fim'; break;
+    }
     case 'falha': estado.fase = 'falha'; estado.falha = ev.texto; break;
   }
   desenhar();
@@ -482,28 +409,24 @@ S.aoEvento((ev) => {
 });
 
 // ---------- modo roteiro (só nos testes da VM) ----------
-// Responde cada tela com o padrão (nome e idade vêm do arquivo de teste) e guarda um print de cada uma.
-function print(nome) {
-  setTimeout(() => S.print(nome), 1200); // rAF para numa janela em segundo plano, e a VM desenha devagar
-}
+function print(nome) { setTimeout(() => S.print(nome), 1200); }
 function roteiro(ev) {
   const a = estado.auto;
   if (ev.tipo === 'inicio' && estado.fase === 'presente') {
-    // Presente: a carta, o "deixa à mão" e a instalação, como a pessoa faria.
     print('presente');
-    setTimeout(() => { preparar(); print('preparo'); }, 3000);
+    setTimeout(() => { irPara('preparo'); print('preparo'); }, 3000);
     setTimeout(() => comecar('instalar'), 6000);
     return;
   }
   if (ev.tipo === 'inicio') {
     print('inicio');
-    // Passa pela apresentação como a pessoa faria, com um print de cada tela.
-    APRESENTACAO.forEach((_, i) => setTimeout(() => { apresentar(i); print(`apresentacao-${i + 1}`); }, 1500 + i * 2500));
-    setTimeout(() => comecar('instalar'), 1500 + APRESENTACAO.length * 2500);
+    setTimeout(() => irPara('demo'), 1500);
+    setTimeout(() => irPara('confirma'), 4000);
+    setTimeout(() => comecar('instalar'), 6500);
     return;
   }
   if (ev.tipo === 'pedido') {
-    setTimeout(() => S.print('pergunta'), 300); // antes da resposta automática, que sai em 1,2 s
+    setTimeout(() => S.print('pergunta'), 300);
     const p = estado.pedido;
     const msg = p.msg || '';
     let valor = p.padrao;
@@ -519,9 +442,13 @@ function roteiro(ev) {
 S.pronto();
 
 setInterval(() => {
-  if (estado.fase !== 'instalando' || estado.pausa || estado.pedido) return;
-  const r = document.getElementById('relogio');
-  if (r) r.textContent = textoRelogio();
-  const precisa = estado.mexeu && Date.now() - estado.mexeu >= PARADO;
-  if (precisa !== !!document.getElementById('parado')) desenhar();
+  if (estado.fase === 'instalando' && !estado.pedido && !estado.pausa) {
+    const r = document.getElementById('relogio');
+    if (r) r.textContent = textoRelogio();
+    const precisa = estado.mexeu && Date.now() - estado.mexeu >= PARADO;
+    if (precisa !== !!document.getElementById('parado')) desenhar();
+  }
+  if (estado.pedido && estado.fase === 'perguntas') desenharEntorno();
 }, 1000);
+// Troca o exemplo da espera sem atrapalhar quem está lendo.
+setInterval(() => { if (estado.fase === 'instalando' && !estado.pedido && !estado.pausa && estado.exemplos.length > 1) { estado.exemplo++; desenhar(); } }, 20000);

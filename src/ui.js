@@ -38,6 +38,15 @@ export const ui = {
   // Caixa destacada, usada nas pausas: uma ação só.
   // `figura` é a ilustração de onde clicar; só o app desenha.
   pulou: () => false,
+  pediuTentar: () => false,
+
+  // No app isso vira o guia flutuante; no Terminal, uma caixa e uma confirmação.
+  async confirmarFora({ passos, concluir = 'Pronto', nao = 'Não' }) {
+    p.note(passos.map((x) => [x.titulo, ...(x.linhas || [])].join('\n')).join('\n\n'), c.yellow('✋ Sua vez'));
+    const r = await p.confirm({ message: concluir, initialValue: true, active: concluir, inactive: nao || 'Não' });
+    checar(r);
+    return r;
+  },
 
   pausa(titulo, linhas, _opcoes) {
     p.note(Array.isArray(linhas) ? linhas.join('\n') : linhas, c.yellow(`✋ ${titulo}`));

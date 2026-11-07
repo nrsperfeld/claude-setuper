@@ -11,6 +11,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+export const OPCIONAIS_APP = ['github', 'vercel'];
+// Quanto cada etapa pesa no anel. Provisório: os valores finais vêm das instalações medidas na VM.
+const PESOS = { base: 45, nucleo: 2, effortless: 2, obsidian: 10, chrome: 10, pacotes: 2, mcps: 2, rotinas: 2, sentinela: 2, maestri: 10, atalho: 1 };
+
 export const VERSAO = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')).version;
 
 const AJUDA = `
@@ -61,15 +65,17 @@ export async function main(argv) {
 export async function instalar(ctx, flags) {
   ui.abertura('Claude Setuper', `versão ${VERSAO}${ctx.dryRun ? '  (modo de teste, nada vai ser alterado)' : ''}`);
 
-  // No app, as ferramentas da Apple instalam enquanto a pessoa responde as perguntas.
-  if (ctx.app) await (await import('./modulos/base.js')).adiantarFerramentasApple(ctx);
+  // No app, as perguntas acontecem enquanto o computador baixa e instala o que não depende delas.
+  if (ctx.app) await (await import('./modulos/base.js')).adiantarPreparo(ctx);
   await wizard(ctx);
   const ids = flags.modulos ? flags.modulos.split(',') : ctx.resp.modulos;
   let lista = modulosParaPlataforma(ids, ctx.plataforma);
   const pulados = ids.filter((id) => !lista.some((m) => m.id === id));
   // Com as mesmas respostas de antes, roda só o que ficou faltando (um login, um clique), em vez de tudo de novo.
   if (ctx.reaproveitou && !flags.modulos) lista = await soOQueFalta(ctx, lista);
-  ui.plano?.(lista.map((m) => m.nomeCurto || m.nome)); // o app mostra a lista inteira de passos antes de começar
+  // No app, GitHub e Vercel ficam fora do caminho principal: viram opcionais no fim da aula.
+  if (ctx.app && !flags.modulos) lista = lista.filter((m) => !OPCIONAIS_APP.includes(m.id));
+  ui.plano?.(lista.map((m) => m.nomeCurto || m.nome), lista.map((m) => PESOS[m.id] || 1)); // o app mostra o progresso real
   if (pulados.length) ui.info(`No seu sistema estes não se aplicam e vou pular: ${pulados.join(', ')}`);
 
   ctx.estado.versao = VERSAO;

@@ -1,12 +1,15 @@
 // A mesma interface do src/ui.js (Terminal), só que conversando com a janela do app.
 // `enviar` manda um evento pra tela; `pedir` manda uma pergunta e espera a resposta da pessoa.
 const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
-const limpo = (s) => String(s ?? '').replace(ANSI, '');
-// Igual ao src/ui.js: frase curta da tarefa vale; saída de comando nunca vai pra tela.
-const mensagemFeito = (r, feito) => (typeof r === 'string' && r && r.length <= 100 && !r.includes('\n') && !r.includes('==>') ? r : feito);
-const opcoesLimpas = (opcoes) => opcoes.map((o) => ({ value: o.value, label: limpo(o.label), hint: o.hint ? limpo(o.hint) : '' }));
+const semAnsi = (s) => String(s ?? '').replace(ANSI, '');
 
-export function criarUiApp(enviar, pedir) {
+export function criarUiApp(enviar, pedir, traduzir = (s) => s) {
+  // Tudo que vai pra tela passa pelo catálogo: o texto em português é a chave.
+  const tr = (s) => traduzir(semAnsi(s));
+  const limpo = tr;
+  const mensagemFeito = (r, feito) => (typeof r === 'string' && r && r.length <= 100 && !r.includes('\n') && !r.includes('==>') ? r : feito);
+  const opcoesLimpas = (opcoes) => opcoes.map((o) => ({ value: o.value, label: limpo(o.label), hint: o.hint ? limpo(o.hint) : '' }));
+  let tentar = false;
   let tarefas = 0;
   let andamentoAtual = null;
   let pulado = false;
@@ -20,8 +23,8 @@ export function criarUiApp(enviar, pedir) {
       enviar({ tipo: 'encerramento', texto: limpo(texto) });
     },
     // Só o app usa: a lista de passos aparece inteira antes de começar.
-    plano(nomes) {
-      enviar({ tipo: 'plano', passos: nomes.map(limpo) });
+    plano(nomes, pesos) {
+      enviar({ tipo: 'plano', passos: nomes.map(tr), pesos });
     },
     passo(n, total, titulo, curto) {
       enviar({ tipo: 'passo', n, total, titulo: limpo(curto || titulo) });
@@ -32,12 +35,20 @@ export function criarUiApp(enviar, pedir) {
     erro: msg('erro'),
     // acoes: botões que abrem um link; pular: texto do botão que deixa a pessoa seguir sem fazer o passo.
     // espera: a pessoa não precisa fazer nada agora (o cartão vem sem a mão).
-    pausa(titulo, linhas, { figura, acoes = [], pular, espera = false } = {}) {
+    // rotulo: o que aparece no topo do guia; espera: nada pra fazer agora, fica só na janela principal.
+    pausa(titulo, linhas, { figura, acoes = [], pular, espera = false, rotulo, opcional } = {}) {
       pulado = false;
-      enviar({ tipo: 'pausa', titulo: limpo(titulo), linhas: (Array.isArray(linhas) ? linhas : [linhas]).map(limpo), figura, acoes, pular: pular ? limpo(pular) : '', espera });
+      tentar = false;
+      enviar({ tipo: 'pausa', titulo: limpo(titulo), linhas: (Array.isArray(linhas) ? linhas : [linhas]).map(limpo), figura, acoes: acoes.map((a) => ({ ...a, rotulo: limpo(a.rotulo) })), pular: pular ? limpo(pular) : '', espera, rotulo: rotulo ? limpo(rotulo) : '', opcional: !!opcional });
     },
     pulou: () => pulado,
     marcarPulado() { pulado = true; },
+    pediuTentar() { const r = tentar; tentar = false; return r; },
+    marcarTentar() { tentar = true; },
+    // Ação fora do app com botão de concluir: fica no guia flutuante até a pessoa responder.
+    confirmarFora({ rotulo, passos, concluir, nao }) {
+      return pedir({ tipo: 'fora', rotulo: rotulo ? limpo(rotulo) : '', passos: passos.map((p) => ({ ...p, titulo: limpo(p.titulo), linhas: (p.linhas || []).map(limpo) })), concluir: limpo(concluir), nao: nao ? limpo(nao) : '' });
+    },
 
     async tarefa(fazendo, feito, fn, { demora } = {}) {
       const id = ++tarefas;

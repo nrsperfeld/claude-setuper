@@ -23,7 +23,7 @@ const NIVEIS = {
 };
 // Edit(...) cobre todas as ferramentas de edição de arquivo; Write(...) em deny gera aviso no Claude Code.
 // AskUserQuestion fica de fora: a caixinha de múltipla escolha deixa a entrevista rasa. Pergunta em texto aprofunda.
-const HOOKS = ['cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs', 'cerebro-trava.cjs', 'ativacao.cjs'];
+const HOOKS = ['cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs', 'cerebro-trava.cjs', 'ativacao.cjs', 'aula.cjs'];
 const SKILLS = ['decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar', 'guardar'];
 const INICIO = '<!-- claude-setuper -->';
 const FIM = '<!-- /claude-setuper -->';
@@ -93,8 +93,11 @@ export async function instalar(ctx) {
         SessionStart: [
           { hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-inicio.cjs'))}"`, timeout: 10 }] },
           { hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'ativacao.cjs'))}"`, timeout: 10 }] },
+          { hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'aula.cjs'))}"`, timeout: 5 }] },
         ],
         Stop: [{ hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-fim.cjs'))}"`, timeout: 10 }] }],
+        UserPromptSubmit: [{ hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'aula.cjs'))}"`, timeout: 5 }] }],
+        Notification: [{ hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'aula.cjs'))}"`, timeout: 5 }] }],
         // Antes de escrever: trava o cofre fora de CLAUDE/. Depois de escrever: confere o formato da nota.
         PreToolUse: [{ matcher: 'Write|Edit|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-trava.cjs'))}"`, timeout: 10 }] }],
         PostToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command: `node "${ctx.posix(path.join(d, 'hooks', 'cerebro-nota.cjs'))}"`, timeout: 10 }] }],

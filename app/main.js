@@ -1,6 +1,6 @@
-// App do Claude Setuper no Mac: a mesma instalação do Terminal (src/), com telas no lugar do texto.
-// Desenho em docs/superpowers/specs/2026-10-24-app-mac-design.md.
-import { app, BrowserWindow, ipcMain, shell, clipboard, dialog, nativeTheme } from 'electron';
+// App do Claude Setuper: a mesma instalação do Terminal (src/), com telas no lugar do texto.
+// Desenho em docs/superpowers/specs/2026-11-07-redesenho-experiencia-design.md.
+import { app, BrowserWindow, ipcMain, shell, clipboard, dialog, nativeTheme, Menu, screen } from 'electron';
 import { spawn, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { criarUiApp } from './ui-app.js';
 import { criarTerminal } from './terminal.js';
+import { criarAula } from './aula.js';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 // Empacotado, o Setuper vem dentro do app (setuper/); rodando do repositório, é a pasta de cima.
@@ -19,6 +20,7 @@ const argumento = (nome) => { const i = process.argv.indexOf(nome); return i > 0
 const HOME_TESTE = argumento('--home') ? path.resolve(argumento('--home')) : '';
 const HOME = HOME_TESTE || os.homedir();
 const PASTA = path.join(HOME, 'Claude Setuper');
+const CLAUDE_DIR = path.join(HOME, '.claude');
 // Modo presente: um segundo cérebro pronto dentro do app (Contents/Resources/presente) ou apontado por --presente.
 const PRESENTE = (() => {
   const dir = argumento('--presente') || process.env.CLAUDE_SETUPER_PRESENTE || path.join(process.resourcesPath || '', 'presente');
@@ -27,6 +29,7 @@ const PRESENTE = (() => {
 const NOME_APP = PRESENTE ? 'Segundo Cérebro' : 'Claude Setuper';
 const flagsBase = () => ({ app: true, ...(HOME_TESTE ? { home: HOME_TESTE } : {}), ...(PRESENTE ? { presente: PRESENTE } : {}) });
 const TESTE = lerJson(path.join(PASTA, '.teste-auto.json')); // só existe nos testes da VM
+const SO_AULA = process.argv.includes('--aula'); // aberto pelo Maestri pra continuar a aula
 
 // Aberto pelo Finder, o app herda um PATH mínimo; sem isso não acha brew, node, claude, gh.
 process.env.PATH = [...new Set([
@@ -40,37 +43,133 @@ if (TESTE?.esperaMax) process.env.CLAUDE_SETUPER_ESPERA_MAX = String(TESTE.esper
 const perfil = argumento('--perfil');
 const semApps = process.argv.includes('--sem-apps'); // só pra testar as telas sem instalar nada
 let janela;
+let guia = null;
+let guiaProntoJa = false;
+let cenaGuia = null;
 let rodando = false;
+let emOpcional = false;
 const pendentes = new Map();
 let proximoPedido = 0;
+let i18n = { t: (s) => s, catalogoAtual: () => ({}), idiomaAtual: () => 'pt' };
+let aula = null;
 
+function lerJson(p) {
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
+}
+
+// ---------- idioma ----------
+const arqIdioma = () => path.join(PASTA, 'idioma.txt');
+function idiomaInicial() {
+  const dito = argumento('--idioma');
+  if (dito) return dito;
+  try { return fs.readFileSync(arqIdioma(), 'utf8').trim(); } catch {}
+  return (app.getLocale() || 'pt').toLowerCase().startsWith('pt') ? 'pt' : 'en';
+}
+function escolherIdioma(id) {
+  i18n.definirIdioma(id);
+  fs.mkdirSync(PASTA, { recursive: true });
+  fs.writeFileSync(arqIdioma(), i18n.idiomaAtual());
+}
+
+// ---------- eventos para a janela e para o guia ----------
 function enviar(ev) {
   if (TESTE) fs.appendFileSync(path.join(PASTA, 'registro.log'), `[evento] ${JSON.stringify(ev).slice(0, 160)}\n`);
   if (janela && !janela.isDestroyed()) janela.webContents.send('ui', ev);
+  aoEventoDoGuia(ev);
+}
+function aoEventoDoGuia(ev) {
+  if (ev.tipo === 'pausa') {
+    if (ev.espera) return esconderGuia();
+    return mostrarGuia({ rotulo: ev.rotulo || i18n.t('Sua vez'), contagem: ev.opcional ? i18n.t('Opcional') : '', passos: [{ titulo: ev.titulo, linhas: ev.linhas, figura: ev.figura, print: printDe(ev.figura) }], acoes: ev.acoes, pular: ev.pular });
+  }
+  if (ev.tipo === 'link' || ev.tipo === 'codigo') {
+    if (!cenaGuia) return;
+    if (ev.tipo === 'link') cenaGuia.link = ev.url; else cenaGuia.codigo = ev.codigo;
+    return mandarAoGuia(ev);
+  }
+  if (ev.tipo === 'msg') {
+    if (ev.nivel === 'info') { if (cenaGuia && !cenaGuia.aula) mandarAoGuia({ tipo: 'status', texto: ev.texto }); return; }
+    if (cenaGuia && !cenaGuia.aula && !cenaGuia.id) esconderGuia();
+    return;
+  }
+  if ((ev.tipo === 'passo' || ev.tipo === 'fim' || ev.tipo === 'falha') && cenaGuia && !cenaGuia.aula) esconderGuia();
+}
+// Print real da janela, se já existir para este idioma.
+function printDe(figura) {
+  if (!figura) return '';
+  const p = path.join(AQUI, 'tela', 'prints', i18n.idiomaAtual(), `${figura}.png`);
+  return fs.existsSync(p) ? pathToFileURL(p).href : '';
+}
+function criarGuia() {
+  if (guia && !guia.isDestroyed()) return guia;
+  const area = screen.getPrimaryDisplay().workArea;
+  guia = new BrowserWindow({
+    width: 340, height: 420, x: area.x + area.width - 340 - 24, y: area.y + 24,
+    frame: false, resizable: false, minimizable: false, maximizable: false, fullscreenable: false, skipTaskbar: true, show: false,
+    alwaysOnTop: true, backgroundColor: '#1B1B25', hasShadow: true, roundedCorners: true, title: NOME_APP,
+    ...(process.platform === 'darwin' ? { type: 'panel' } : {}),
+    webPreferences: { preload: path.join(AQUI, 'preload.cjs'), contextIsolation: true, sandbox: true, backgroundThrottling: false },
+  });
+  // Fica na frente de tudo, em qualquer mesa e também sobre app em tela cheia.
+  guia.setAlwaysOnTop(true, 'floating');
+  guia.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
+  guiaProntoJa = false;
+  guia.loadFile(path.join(AQUI, 'tela', 'guia.html'));
+  guia.on('closed', () => { guia = null; });
+  return guia;
+}
+function mandarAoGuia(ev) {
+  if (guia && !guia.isDestroyed() && guiaProntoJa) guia.webContents.send('guia', { ...ev, catalogo: i18n.catalogoAtual() });
+}
+function mostrarGuia(cena) {
+  cenaGuia = cena;
+  if (!TESTE && !cena.aula && !process.argv.includes('--demo-telas')) shell.beep(); // a pessoa pode estar fazendo outra coisa
+  criarGuia();
+  if (guiaProntoJa) mandarAoGuia({ tipo: 'cena', cena });
+  guia.showInactive();
+}
+function esconderGuia() {
+  cenaGuia = null;
+  if (guia && !guia.isDestroyed()) guia.hide();
 }
 
 function pedir(pergunta) {
   const id = ++proximoPedido;
   return new Promise((resolver) => {
     pendentes.set(id, resolver);
+    if (pergunta.tipo === 'fora') {
+      // Ação fora do app: fica no guia até a pessoa responder, e a janela principal diz pra olhar pra ele.
+      mostrarGuia({ id, rotulo: pergunta.rotulo || i18n.t('Sua vez'), passos: pergunta.passos.map((p) => ({ ...p, print: printDe(p.figura) })), concluir: pergunta.concluir, nao: pergunta.nao });
+      enviar({ tipo: 'pausa-fora', titulo: pergunta.passos[0]?.titulo || '' });
+      // Nos testes da VM ninguém clica: responde sozinho, como a pessoa faria.
+      if (TESTE) setTimeout(() => responderPedido(id, true), 3000);
+      return;
+    }
+    if (emOpcional) janela?.show();
     enviar({ tipo: 'pedido', id, pergunta });
   });
 }
-
-function lerJson(p) {
-  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
+function responderPedido(id, valor) {
+  const r = pendentes.get(id);
+  if (!r) return;
+  pendentes.delete(id);
+  if (cenaGuia?.id === id) { esconderGuia(); enviar({ tipo: 'fimpausa' }); }
+  enviar({ tipo: 'fimpedido', id });
+  if (emOpcional) { janela?.hide(); if (aula) aula.redesenhar(); }
+  r(valor);
 }
 
-// Janela nativa do Mac pedindo a senha, usada pelo sudo do instalador do Homebrew (SUDO_ASKPASS).
+// Janela nativa pedindo a senha do computador, usada pelo sudo do instalador do Homebrew (SUDO_ASKPASS).
 function criarAskpass() {
   fs.mkdirSync(PASTA, { recursive: true });
   const arquivo = path.join(PASTA, 'pedir-senha.sh');
   const teste = path.join(PASTA, '.teste-auto.json');
+  const texto = i18n.t('O {app} precisa da senha do seu computador pra instalar as ferramentas de base. É a senha que você digita na tela de bloqueio, pra desbloquear o computador (não é a do e-mail nem a do iCloud). Ela não fica guardada em lugar nenhum.', { app: NOME_APP }).replace(/"/g, '');
   fs.writeFileSync(arquivo, `#!/bin/sh
-# Pede a senha do Mac numa janela. Criado pelo Claude Setuper (app).
+# Pede a senha do computador numa janela. Criado pelo Claude Setuper (app).
 if [ -f "${teste}" ]; then sed -n 's/.*"senha" *: *"\\([^"]*\\)".*/\\1/p' "${teste}"; exit 0; fi
 exec /usr/bin/osascript \\
-  -e 'display dialog "O ${NOME_APP} precisa da senha do seu Mac pra instalar as ferramentas de base. É a senha que você digita na tela de bloqueio, pra desbloquear o computador (não é a do e-mail nem a do iCloud). Ela não fica guardada em lugar nenhum." default answer "" with hidden answer with title "${NOME_APP}" with icon note buttons {"Cancelar", "OK"} default button "OK"' \\
+  -e 'display dialog "${texto}" default answer "" with hidden answer with title "${NOME_APP}" with icon note buttons {"${i18n.t('Cancelar')}", "OK"} default button "OK"' \\
   -e 'text returned of result'
 `, { mode: 0o700 });
   fs.chmodSync(arquivo, 0o700);
@@ -83,14 +182,19 @@ async function importarSetuper(rel) {
 
 let jaTentou = false;
 
-async function instalarTudo() {
+async function novoCtx(extra = {}) {
   const { criarCtx } = await importarSetuper('ctx.js');
+  const ctx = criarCtx({ ...flagsBase(), askpass: criarAskpass(), perfil, semApps, ...extra });
+  ctx.runVisivel = criarTerminal(ctx, enviar);
+  return ctx;
+}
+
+async function instalarTudo() {
   const { instalar } = await importarSetuper('cli.js');
-  const ctx = criarCtx({ ...flagsBase(), askpass: criarAskpass(), perfil, semApps });
+  const ctx = await novoCtx();
   // "Tentar de novo" na mesma abertura do app: as respostas acabaram de ser dadas, vai direto ao que falta.
   ctx.repetirDireto = jaTentou;
   jaTentou = true;
-  ctx.runVisivel = criarTerminal(ctx, enviar);
   ctx.log('--- app', VERSAO, perfil);
   const r = await instalar(ctx, { perfil });
   if (r?.parou) throw new Error(`${r.parou}: ${r.motivo}`);
@@ -124,19 +228,19 @@ async function instalarComando(ctx) {
   }
 }
 
-// O que a tela final mostra em "Pra começar": onde o Claude está e três pedidos do cardápio do perfil
-// (no presente, os três pedidos que vieram no presente.json).
+const respostasSalvas = () => lerJson(path.join(PASTA, 'estado.json'))?.respostas || {};
+function exemplosDoPerfil(r = respostasSalvas()) {
+  try {
+    const raiz = path.join(SETUPER, 'templates');
+    const en = path.join(raiz, 'en', 'cardapio', `${r.perfil || 'dia-a-dia'}.md`);
+    const arq = i18n.idiomaAtual() === 'en' && fs.existsSync(en) ? en : path.join(raiz, 'cardapio', `${r.perfil || 'dia-a-dia'}.md`);
+    return fs.readFileSync(arq, 'utf8').split('\n').filter((l) => l.startsWith('- ') && !l.includes('[')).map((l) => l.slice(2).trim());
+  } catch { return []; }
+}
 function paraComecar() {
-  const r = lerJson(path.join(PASTA, 'estado.json'))?.respostas || {};
-  let exemplos = [];
-  const doPresente = PRESENTE ? (lerJson(path.join(PRESENTE, 'presente.json'))?.paraComecar || []).filter((x) => typeof x === 'string' && x.trim()).slice(0, 3) : [];
-  if (doPresente.length) exemplos = doPresente;
-  else try {
-    const cardapio = fs.readFileSync(path.join(SETUPER, 'templates', 'cardapio', `${r.perfil || 'dia-a-dia'}.md`), 'utf8');
-    exemplos = cardapio.split('\n').filter((l) => l.startsWith('- ')).slice(0, 3).map((l) => l.slice(2).trim());
-  } catch {}
+  const r = respostasSalvas();
   const maestri = ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'].some((p) => fs.existsSync(p));
-  return { nome: r.nome || '', exemplos, maestri, notas: (r.modulos || []).includes('obsidian'), presente: doPresente.length > 0 };
+  return { nome: r.nome || '', maestri };
 }
 
 // Mesma conferência do "claude-setuper doctor", devolvida em dados pra tela.
@@ -186,95 +290,76 @@ open "${appPath}"`;
 function abrirClaude() {
   const maestri = ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'].find((p) => fs.existsSync(p));
   if (maestri) spawn('open', [maestri], { detached: true, stdio: 'ignore' }).unref();
-  else spawn('osascript', ['-e', 'tell application "Terminal" to do script "claude"', '-e', 'tell application "Terminal" to activate'], { detached: true, stdio: 'ignore' }).unref();
+  else if (process.platform === 'darwin') spawn('osascript', ['-e', 'tell application "Terminal" to do script "claude"', '-e', 'tell application "Terminal" to activate'], { detached: true, stdio: 'ignore' }).unref();
+}
+
+function montarMenu() {
+  const t = i18n.t;
+  const paraTela = (acao) => () => janela?.webContents.send('menu', acao);
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
+    { role: 'editMenu' },
+    { role: 'windowMenu' },
+    { role: 'help', label: t('Ajuda'), submenu: [
+      { label: t('Ver o que já foi feito'), click: paraTela('detalhes') },
+      { label: t('Pedir ajuda'), click: paraTela('ajuda') },
+      { label: t('Abrir o registro técnico'), click: () => shell.openPath(path.join(PASTA, 'registro.log')) },
+    ] },
+  ]));
 }
 
 function criarJanela() {
   janela = new BrowserWindow({
-    width: 960, height: 680, minWidth: 820, minHeight: 600,
-    title: NOME_APP, titleBarStyle: 'hiddenInset', backgroundColor: '#0f0f10', show: false,
+    width: 960, height: 640, minWidth: 820, minHeight: 600,
+    title: NOME_APP, titleBarStyle: 'hiddenInset', backgroundColor: '#08080D', show: false,
     webPreferences: { preload: path.join(AQUI, 'preload.cjs'), contextIsolation: true, sandbox: true, backgroundThrottling: false },
   });
   janela.loadFile(path.join(AQUI, 'tela', 'index.html'));
-  janela.once('ready-to-show', () => janela.show());
+  janela.once('ready-to-show', () => { if (!SO_AULA) janela.show(); });
   // Erros da tela vão pro registro, junto com o resto.
   janela.webContents.on('console-message', (ev) => {
-    if (ev.level === 'error' || ev.level === 'warning') fs.appendFileSync(path.join(PASTA, 'registro.log'), `[tela] ${ev.message}\n`);
+    if (ev.level === 'error' || ev.level === 'warning') { fs.mkdirSync(PASTA, { recursive: true }); fs.appendFileSync(path.join(PASTA, 'registro.log'), `[tela] ${ev.message}\n`); }
   });
   janela.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
   janela.on('close', (e) => {
     if (!rodando || TESTE) return;
     const escolha = dialog.showMessageBoxSync(janela, {
-      type: 'warning', buttons: ['Continuar instalando', 'Fechar mesmo assim'], defaultId: 0, cancelId: 0,
-      message: 'A instalação ainda está rodando.',
-      detail: `Se fechar agora, é só abrir o ${NOME_APP} de novo depois: eu continuo de onde parei.`,
+      type: 'warning', buttons: [i18n.t('Continuar instalando'), i18n.t('Fechar mesmo assim')], defaultId: 0, cancelId: 0,
+      message: i18n.t('A instalação ainda está rodando.'),
+      detail: i18n.t('Se fechar agora, é só abrir o {app} de novo depois: eu continuo de onde parei.', { app: NOME_APP }),
     });
     if (escolha === 0) e.preventDefault();
   });
 }
 
+async function mandarInicio() {
+  const estadoSalvo = lerJson(path.join(PASTA, 'estado.json'));
+  const feitos = Object.values(estadoSalvo?.modulos || {}).filter((m) => m.ok).length;
+  const total = Object.keys(estadoSalvo?.respostas?.modulos || {}).length || 1;
+  const video = path.join(AQUI, 'tela', 'video', `abertura-${i18n.idiomaAtual()}.mp4`);
+  enviar({
+    tipo: 'inicio', versao: VERSAO, temInstalacao: !!estadoSalvo?.respostas, nome: estadoSalvo?.respostas?.nome || '', auto: TESTE || null,
+    presente: await dadosDoPresente(), idioma: i18n.idiomaAtual(), catalogo: i18n.catalogoAtual(), plataforma: process.platform,
+    video: fs.existsSync(video) ? `video/abertura-${i18n.idiomaAtual()}.mp4` : '', progresso: Math.min(99, Math.round((feitos / total) * 100)),
+    primeiraAbertura: !estadoSalvo,
+  });
+}
+
 ipcMain.on('pronto', async () => {
-  // Só pra conferir o visual das telas sem rodar uma instalação inteira: cada cena vira um print em telas/.
-  if (process.argv.includes('--demo-cartoes')) {
-    const passos = ['Preparar o computador', 'Configurar o Claude', 'Ajuste automático', 'Segundo cérebro', 'GitHub', 'Claude no Chrome', 'Publicar sites', 'Comandos prontos', 'Apps conectados', 'Rotinas', 'Manter atualizado', 'Janela do Claude'];
-    const { ui } = await importarSetuper('ui.js');
-    const cartao = (n, titulo, linhas, figura, extras = []) => [
-      { tipo: 'passo', n, total: passos.length, titulo: passos[n - 1] },
-      { tipo: 'tarefa', id: n, estado: 'feito', texto: 'Ferramenta instalada' },
-      { tipo: 'pausa', titulo, linhas, figura }, ...extras,
-    ];
-    const cenas = [
-      ['ferramentas-apple', cartao(1, 'O Mac vai abrir uma janela pedindo pra instalar umas ferramentas da Apple', ['Clica em Instalar.', 'Depois aparece o contrato: clica em Concordo.', 'Demora entre 3 e 10 minutos. Eu fico esperando aqui.'], 'apple-ferramentas')],
-      ['obsidian', cartao(4, 'O Obsidian vai abrir e perguntar se pode ligar os complementos', ['Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.', 'Na janela do Obsidian (em inglês), clica em "Trust author and enable plugins".', 'Os complementos são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.', 'Se o Obsidian não aparecer, abre ele pela pasta Aplicativos. Eu espero você clicar.'], 'obsidian-confiar', [{ tipo: 'msg', nivel: 'info', texto: 'Estou esperando você clicar no Obsidian...' }])],
-      ['github-codigo', cartao(5, 'Vou abrir o navegador pra conectar a sua conta do GitHub', ['Vai aparecer aqui um código de 8 letras, com um botão pra copiar.', 'O navegador abre sozinho. Lá, cola o código, clica em Continuar e depois em Autorizar.', 'Depois volta pra cá, eu continuo.'], null, [{ tipo: 'link', url: 'https://github.com/login/device' }, { tipo: 'codigo', codigo: '07D6-0B19' }])],
-      ['chrome', [{ tipo: 'passo', n: 6, total: passos.length, titulo: passos[5] }, { tipo: 'pausa', titulo: 'Agora é no Chrome: adicionar a extensão do Claude', linhas: ['Abri o Chrome na página da extensão do Claude.', 'Lá no Chrome, clica em "Usar no Chrome" e depois em "Adicionar extensão". Quando ela entrar, eu sigo sozinho.', 'O Chrome não abriu nessa página? Clica em "Abrir a página da extensão", aqui embaixo.'], figura: 'chrome-extensao', acoes: [{ rotulo: 'Abrir a página da extensão', url: 'https://chromewebstore.google.com/' }], pular: 'Seguir sem a extensão' }]],
-      ['baixando', [{ tipo: 'passo', n: 6, total: passos.length, titulo: passos[5] }, { tipo: 'tarefa', id: 90, estado: 'fazendo', texto: 'Baixando o Google Chrome: 120 de 266 MB (45%)', demora: 'de 2 a 10 minutos, depende da internet e do computador', atras: 95000 }]],
-      ['parado', [{ tipo: 'passo', n: 6, total: passos.length, titulo: passos[5] }, { tipo: 'tarefa', id: 91, estado: 'fazendo', texto: 'Instalando o Google Chrome', demora: 'de 2 a 10 minutos, depende da internet e do computador', atras: 5 * 60000 }]],
-    ];
-    const dir = path.join(PASTA, 'telas');
-    fs.mkdirSync(dir, { recursive: true });
-    const print = async (nome) => { await new Promise((r) => setTimeout(r, 900)); fs.writeFileSync(path.join(dir, `demo-${nome}.png`), (await janela.webContents.capturePage()).toPNG()); };
-    enviar({ tipo: 'inicio', versao: VERSAO, temInstalacao: false, nome: '', auto: null });
-    enviar({ tipo: 'plano', passos });
-    for (const [nome, eventos] of cenas) { for (const ev of eventos) enviar(ev); await print(nome); }
-    // As perguntas novas, do jeito que os módulos fazem.
-    const github = ui.escolher('Quer ligar o GitHub?', [
-      { value: 'criar', label: 'Sim, e quero criar uma conta', hint: 'é de graça, leva 2 minutos' },
-      { value: 'tenho', label: 'Sim, já tenho conta' },
-      { value: 'pular', label: 'Agora não', hint: 'dá pra ligar depois, abrindo o Claude Setuper de novo' },
-    ], { padrao: 'criar', explicacao: 'O GitHub guarda uma cópia de tudo que você e o Claude criarem, com o histórico de cada mudança. Se algo der errado ou o computador quebrar, nada se perde, e dá pra voltar a qualquer versão. É opcional, mas é o que deixa o seu trabalho seguro.' });
-    await print('pergunta-github');
-    for (const [id, r] of pendentes) { pendentes.delete(id); r('pular'); }
-    await github;
-    enviar({ tipo: 'fim', soConferiu: false, grupos: [
-      { nome: 'Preparar o computador', itens: [{ item: 'Claude Code', ok: true }, { item: 'Login no Claude', ok: false, dica: 'rode: claude auth login' }] },
-      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Complementos do Obsidian ligados (clique de confiança)', ok: false, dica: 'abra o cofre e clique em "Trust author and enable plugins"' }] },
-    ] });
-    enviar({ tipo: 'encerramento', texto: 'Pronto, Ana. O Maestri está abrindo com o Claude e as suas notas do lado. Vai lá.' });
-    enviar({ tipo: 'fim', soConferiu: false, grupos: [
-      { nome: 'Preparar o computador', itens: [{ item: 'Claude Code', ok: true }, { item: 'Login no Claude', ok: false, dica: 'rode: claude auth login' }] },
-      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Complementos do Obsidian ligados (clique de confiança)', ok: false, dica: 'abra o cofre e clique em "Trust author and enable plugins"' }] },
-      ...['Configurar o Claude', 'Ajuste automático', 'Comandos prontos', 'Apps conectados', 'Rotinas', 'Janela do Claude'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] })),
-    ] });
-    await print('fim');
-    // A mesma tela com o login feito: aparece o "Pra começar" com os pedidos do cardápio.
-    enviar({ tipo: 'encerramento', texto: 'Pronto, Ana. O Maestri está abrindo com o Claude e as suas notas do lado.' });
-    enviar({ tipo: 'fim', soConferiu: false, comecar: { nome: 'Ana', maestri: true, notas: true, exemplos: ['Monta um plano de estudo pra prova de [matéria] no dia [data], que caiba na minha rotina.', 'Me faz 5 perguntas sobre [assunto], uma de cada vez, sem dar a resposta antes de eu tentar.', 'Me explica [conteúdo difícil] com um exemplo do meu dia a dia, e depois eu explico de volta.'] }, grupos: [
-      { nome: 'Segundo cérebro', itens: [{ item: 'Obsidian instalado', ok: true }, { item: 'Complementos do Obsidian ligados (clique de confiança)', ok: false, dica: '' }] },
-      ...['Preparar o computador', 'Configurar o Claude', 'Ajuste automático', 'Comandos prontos', 'Rotinas', 'Janela do Claude'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] })),
-    ] });
-    await print('fim-com-login');
-    await janela.webContents.executeJavaScript("document.getElementById('pedir-ajuda').click()");
-    await new Promise((r) => setTimeout(r, 6000));
-    await print('pedir-ajuda');
-    return;
-  }
-  const estado = lerJson(path.join(PASTA, 'estado.json'));
-  enviar({ tipo: 'inicio', versao: VERSAO, temInstalacao: !!estado?.respostas, nome: estado?.respostas?.nome || '', auto: TESTE || null, presente: await dadosDoPresente() });
+  if (process.argv.includes('--demo-telas')) return demoTelas();
+  if (SO_AULA) return comecarAula();
+  await mandarInicio();
   // O app do presente não se troca pelo Claude Setuper comum: a versão nova dos releases não traz o cofre.
   if (PRESENTE) return;
   const nova = await versaoNova();
   if (nova && app.isPackaged) enviar({ tipo: 'atualizacao', versao: nova });
+});
+ipcMain.on('trocar-idioma', async (_e, id) => {
+  escolherIdioma(id);
+  const { ui } = await importarSetuper('ui.js');
+  Object.assign(ui, criarUiApp(enviar, pedir, i18n.t));
+  montarMenu();
+  await mandarInicio();
 });
 
 // O que a tela de boas-vindas do presente mostra: o recado, a assinatura e o signo (como imagem embutida).
@@ -298,7 +383,7 @@ ipcMain.on('iniciar', async (_e, modo) => {
   rodando = true;
   try {
     if (modo === 'instalar') await instalarTudo();
-    enviar({ tipo: 'tarefa', id: 0, estado: 'fazendo', texto: 'Conferindo se ficou tudo no lugar' });
+    enviar({ tipo: 'tarefa', id: 0, estado: 'fazendo', texto: i18n.t('Conferindo se ficou tudo no lugar') });
     enviar({ tipo: 'fim', grupos: await conferencia(), soConferiu: modo !== 'instalar', comecar: paraComecar() });
   } catch (e) {
     fs.appendFileSync(path.join(PASTA, 'registro.log'), `[app] ${e.stack || e.message}\n`);
@@ -308,10 +393,7 @@ ipcMain.on('iniciar', async (_e, modo) => {
   }
 });
 
-ipcMain.on('resposta', (_e, { id, valor }) => {
-  const r = pendentes.get(id);
-  if (r) { pendentes.delete(id); r(valor); }
-});
+ipcMain.on('resposta', (_e, { id, valor }) => responderPedido(id, valor));
 // programa: 'chrome' abre no Chrome mesmo que o navegador padrão seja outro (a loja de extensões só serve no Chrome).
 ipcMain.on('abrir-link', (_e, url, programa) => {
   // programa: 'obsidian' abre o próprio app (recém-instalado, o link obsidian:// ainda pode não funcionar).
@@ -329,6 +411,19 @@ ipcMain.on('copiar', (_e, texto) => clipboard.writeText(String(texto)));
 ipcMain.on('abrir-claude', () => abrirClaude());
 ipcMain.on('atualizar', () => atualizarApp());
 ipcMain.on('mostrar-registro', () => shell.openPath(path.join(PASTA, 'registro.log')));
+ipcMain.on('fechar', () => app.quit());
+// O portal e o vídeo ficam na frente do Maestri, que já abriu atrás.
+ipcMain.on('portal', () => { if (janela && !TESTE) { janela.setAlwaysOnTop(true, 'floating'); janela.show(); } });
+ipcMain.on('concluir', () => comecarAula());
+ipcMain.on('guia-pronto', () => { guiaProntoJa = true; if (cenaGuia) mandarAoGuia({ tipo: 'cena', cena: cenaGuia }); });
+ipcMain.on('guia-altura', (_e, altura) => {
+  if (!guia || guia.isDestroyed()) return;
+  const limite = screen.getPrimaryDisplay().workArea.height - 48;
+  guia.setSize(340, Math.min(limite, Math.max(140, Math.ceil(altura) + 2)));
+});
+ipcMain.on('guia-acao', async (_e, acao) => { if (acao === 'tentar') (await importarSetuper('ui.js')).ui.marcarTentar?.(); });
+ipcMain.on('aula', (_e, acao) => aula?.acao(acao));
+ipcMain.on('ligar-opcional', (_e, id) => ligarOpcional(id));
 // Pedir ajuda: o mesmo arquivo do `claude-setuper pedir-ajuda`, na Mesa, e mostra ele no Finder.
 ipcMain.handle('pedir-ajuda', async () => {
   try {
@@ -351,19 +446,135 @@ ipcMain.handle('print', async (_e, nome) => {
   fs.writeFileSync(path.join(dir, `${String(fs.readdirSync(dir).length + 1).padStart(2, '0')}-${nome}.png`), img.toPNG());
 });
 
+// ---------- a aula por cima do Maestri ----------
+function comecarAula() {
+  if (janela && !janela.isDestroyed()) { janela.setAlwaysOnTop(false); janela.hide(); }
+  abrirClaude();
+  if (!aula) {
+    aula = criarAula({
+      claudeDir: CLAUDE_DIR, pasta: PASTA, t: i18n.t, mac: process.platform === 'darwin', respostas: respostasSalvas,
+      mostrar: (cena) => mostrarGuia(cena), esconder: esconderGuia, aoTerminar: () => app.quit(),
+    });
+  }
+  aula.iniciar();
+}
+// As opções do fim da aula rodam o mesmo módulo do Terminal, com o guia e as perguntas do app.
+async function ligarOpcional(id) {
+  if (emOpcional) return;
+  emOpcional = true;
+  try {
+    const { modulo } = await importarSetuper('modulos/index.js');
+    const ctx = await novoCtx();
+    ctx.resp = ctx.estado.respostas || {};
+    ctx.opcional = true;
+    const m = modulo(id === 'conectores' ? 'mcps' : id);
+    if (id === 'conectores' && !(ctx.resp.mcps || []).length) ctx.resp = { ...ctx.resp, mcps: ['gmail', 'google-calendar'] };
+    await m.instalar(ctx);
+    ctx.salvarEstado();
+    // Com o GitHub ligado, o backup das notas passa a poder ser ligado também.
+    if (id === 'github') await modulo('rotinas').instalar(ctx);
+    aula?.marcarFeito(id);
+  } catch (e) {
+    fs.appendFileSync(path.join(PASTA, 'registro.log'), `[opcional ${id}] ${e.stack || e.message}\n`);
+  } finally {
+    emOpcional = false;
+    if (janela && !janela.isDestroyed()) janela.hide();
+    aula?.redesenhar();
+  }
+}
+
+// ---------- só pra conferir o visual sem instalar nada: cada cena vira um print em telas/ ----------
+async function demoTelas() {
+  const dir = path.join(PASTA, 'telas');
+  fs.mkdirSync(dir, { recursive: true });
+  const print = async (nome, alvo = janela) => {
+    await new Promise((r) => setTimeout(r, 900));
+    fs.writeFileSync(path.join(dir, `${nome}.png`), (await alvo.webContents.capturePage()).toPNG());
+  };
+  const js = (c) => janela.webContents.executeJavaScript(c);
+  const passos = ['Preparar o computador', 'Configurar o Claude', 'Ajuste automático', 'Segundo cérebro', 'Google Chrome', 'Comandos prontos', 'Apps conectados', 'Rotinas', 'Manter atualizado', 'Janela do Claude'];
+  const pesos = [45, 2, 2, 10, 10, 2, 2, 2, 2, 10];
+  enviar({ tipo: 'inicio', versao: VERSAO, temInstalacao: false, nome: '', auto: null, idioma: i18n.idiomaAtual(), catalogo: i18n.catalogoAtual(), plataforma: process.platform, primeiraAbertura: true });
+  await new Promise((r) => setTimeout(r, 2800));
+  await print('01-abertura');
+  await js("[...document.querySelectorAll('.btn')].at(-1).click()");
+  await new Promise((r) => setTimeout(r, 2200));
+  await print('02-demo');
+  await js("[...document.querySelectorAll('.btn')].at(-1).click()");
+  await print('03-confirma');
+  const { ui } = await importarSetuper('ui.js');
+  enviar({ tipo: 'tarefa', id: 1, estado: 'fazendo', texto: i18n.t('Instalando o Claude') });
+  const fora = ui.confirmarFora({ rotulo: 'Ferramentas da Apple', passos: [{ titulo: 'Clica em Instalar, na janela da Apple', linhas: ['Ela é do próprio Mac, pode confiar.'], figura: 'apple-ferramentas' }, { titulo: 'Clica em Concordo', linhas: ['Depois é só esperar: a Apple leva de 3 a 10 minutos, e enquanto isso eu te faço umas perguntas.'], figura: 'apple-contrato' }], concluir: 'Já cliquei', nao: 'Não apareceu' });
+  await print('04-apple-principal');
+  await print('04-apple-guia', guia);
+  for (const [id] of pendentes) responderPedido(id, true);
+  await fora;
+  const p1 = ui.perguntar('Como você quer que o Claude te chame?', { placeholder: 'Seu primeiro nome ou apelido' });
+  await print('05-pergunta-nome');
+  for (const [id] of pendentes) responderPedido(id, 'Marina');
+  await p1;
+  const p2 = ui.escolher('Pra que você vai usar o Claude, Marina?', [{ value: 'a', label: 'Pro meu trabalho no dia a dia', hint: 'e-mails, textos, planilhas, pesquisa' }, { value: 'b', label: 'Pra minha empresa', hint: 'decisões, números, propostas, equipe' }, { value: 'c', label: 'Pro marketing', hint: 'copy, posts, campanhas, roteiros' }, { value: 'd', label: 'Pra edição de vídeo', hint: 'cortes, roteiros, títulos, legendas' }, { value: 'e', label: 'Pros estudos', hint: 'escola, faculdade, cursinho, vestibular' }], { padrao: 'a' });
+  await print('06-pergunta-perfil');
+  for (const [id] of pendentes) responderPedido(id, 'a');
+  await p2;
+  enviar({ tipo: 'plano', passos: passos.map(i18n.t), pesos, exemplos: exemplosDoPerfil({ perfil: 'dia-a-dia' }) });
+  enviar({ tipo: 'passo', n: 2, total: passos.length, titulo: passos[1] });
+  enviar({ tipo: 'tarefa', id: 2, estado: 'fazendo', texto: i18n.t('Instalando o Claude'), demora: 'de 2 a 5 minutos' });
+  await print('07-instalando');
+  enviar({ tipo: 'passo', n: 4, total: passos.length, titulo: passos[3] });
+  ui.pausa('Clica no primeiro botão do Obsidian', ['A janela vem em inglês. Ela só pergunta se pode ligar dois complementos das suas notas, e pode confiar.'], { rotulo: 'Suas notas', figura: 'obsidian-confiar', acoes: [{ rotulo: 'Abrir o Obsidian', url: 'obsidian://open', app: 'obsidian' }], pular: 'Fazer isso depois' });
+  await print('08-pausa-principal');
+  await print('08-pausa-guia', guia);
+  enviar({ tipo: 'passo', n: 5, total: passos.length, titulo: passos[4] });
+  ui.pausa('Cola este código no GitHub', ['Depois clica em Continue e em Authorize.'], { rotulo: 'Conectar o GitHub', figura: 'github-codigo', pular: 'Deixar pra depois', acoes: [{ rotulo: 'Tentar de novo', reabrir: 'tentar' }], opcional: true });
+  enviar({ tipo: 'codigo', codigo: '07D6-0B19' });
+  enviar({ tipo: 'link', url: 'https://github.com/login/device' });
+  await print('09-github-guia', guia);
+  enviar({ tipo: 'passo', n: 5, total: passos.length, titulo: passos[4] });
+  enviar({ tipo: 'tarefa', id: 90, estado: 'fazendo', texto: i18n.t('Instalando o Google Chrome'), demora: 'de 2 a 10 minutos', atras: 5 * 60000 });
+  await js('desenhar()');
+  await print('10-parado');
+  enviar({ tipo: 'falha', texto: i18n.t('Não consegui baixar o Google Chrome.') });
+  await print('11-falha');
+  await print('12-falha-folha');
+  enviar({ tipo: 'fim', soConferiu: false, comecar: { nome: 'Marina' }, grupos: [{ nome: 'Base', itens: [{ item: 'Login no Claude', ok: false, dica: '' }] }] });
+  await print('13-sem-login');
+  enviar({ tipo: 'fim', soConferiu: true, comecar: { nome: 'Marina' }, grupos: [{ nome: 'Segundo cérebro', itens: [{ item: 'Complementos do Obsidian ligados (clique de confiança)', ok: false, dica: '' }] }, ...['Preparar o computador', 'Configurar o Claude', 'Comandos prontos', 'Rotinas', 'Janela do Claude'].map((nome) => ({ nome, itens: [{ item: nome, ok: true }] }))] });
+  await print('14-conferencia');
+  enviar({ tipo: 'fim', soConferiu: false, comecar: { nome: 'Marina' }, grupos: [{ nome: 'Base', itens: [{ item: 'Claude Code', ok: true }] }] });
+  await new Promise((r) => setTimeout(r, 1500));
+  await print('15-portal-meio');
+  await new Promise((r) => setTimeout(r, 3400));
+  fs.writeFileSync(path.join(PASTA, 'estado.json'), JSON.stringify({ respostas: { nome: 'Marina', autonomia: 'equilibrado' }, modulos: {} }));
+  await print('16-aula-1', guia);
+  aula.acao('avancar');
+  await print('17-aula-2', guia);
+  aula.acao('avancar');
+  await print('18-aula-3', guia);
+  aula.acao('pular');
+  await print('19-aula-fim', guia);
+  fs.writeFileSync(path.join(dir, 'pronto.txt'), 'ok');
+  app.quit();
+}
+
 // Testando com --home, os dados do Electron também ficam na casa de teste.
 if (HOME_TESTE) app.setPath('userData', path.join(HOME_TESTE, 'Library', 'Application Support', NOME_APP));
 if (PRESENTE) app.setName(NOME_APP);
 
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  app.on('second-instance', () => { if (janela) { if (janela.isMinimized()) janela.restore(); janela.focus(); } });
+  app.on('second-instance', () => {
+    if (aula?.ativa()) return aula.redesenhar();
+    if (janela) { if (janela.isMinimized()) janela.restore(); janela.show(); janela.focus(); }
+  });
   app.whenReady().then(async () => {
-    if (process.argv.includes('--tema-claro')) nativeTheme.themeSource = 'light'; // só pros prints de conferência
-    else if (PRESENTE) nativeTheme.themeSource = 'dark'; // o presente é escuro, como o cofre e o .dmg
+    nativeTheme.themeSource = 'dark'; // o app é sempre escuro, a abertura depende disso
+    i18n = await importarSetuper('i18n.js');
+    escolherIdioma(idiomaInicial());
     const { ui } = await importarSetuper('ui.js');
-    Object.assign(ui, criarUiApp(enviar, pedir));
+    Object.assign(ui, criarUiApp(enviar, pedir, i18n.t));
+    montarMenu();
     criarJanela();
   });
-  app.on('window-all-closed', () => app.quit());
+  app.on('window-all-closed', () => { if (!aula) app.quit(); });
 }

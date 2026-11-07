@@ -164,12 +164,11 @@ async function abrirEConfiar(ctx, vault) {
   // O Obsidian abre em inglês: o botão é "Trust author and enable plugins", o primeiro da esquerda.
   const abrir = ctx.win ? 'Se o Windows perguntar se pode abrir o Obsidian, clica em Permitir.' : 'Se o Mac perguntar se quer abrir um app baixado da internet, clica em Abrir.';
   const sumiu = ctx.win ? 'Se o Obsidian não aparecer, abre ele pelo menu Iniciar. Eu espero você clicar.' : 'Se o Obsidian não aparecer, abre ele pela pasta Aplicativos. Eu espero você clicar.';
-  ui.pausa('O Obsidian vai abrir e perguntar se pode ligar os complementos', ctx.app
-    ? [abrir, 'No Obsidian, clica em "Trust author and enable plugins", o botão marcado no desenho aqui embaixo.',
-      'Se o Obsidian não aparecer, clica em Abrir o Obsidian, aqui embaixo.']
+  ui.pausa(ctx.app ? 'Clica no primeiro botão do Obsidian' : 'O Obsidian vai abrir e perguntar se pode ligar os complementos', ctx.app
+    ? ['A janela vem em inglês. Ela só pergunta se pode ligar dois complementos das suas notas, e pode confiar.', abrir]
     : [abrir, 'Na janela do Obsidian (em inglês), clica em "Trust author and enable plugins".',
       'Os complementos são o Dataview e o Templater, os dois mais usados do Obsidian. Pode confiar.', sumiu],
-  { figura: 'obsidian-confiar', acoes: [{ rotulo: 'Abrir o Obsidian', url: `obsidian://open?path=${encodeURIComponent(vault)}`, app: 'obsidian' }], pular: 'Fazer isso depois' });
+  { rotulo: 'Suas notas', figura: 'obsidian-confiar', acoes: [{ rotulo: 'Abrir o Obsidian', url: `obsidian://open?path=${encodeURIComponent(vault)}`, app: 'obsidian' }], pular: 'Fazer isso depois' });
   // No Windows abre o programa direto: o link obsidian:// só funciona depois que o Obsidian abriu uma vez.
   // O cofre já está marcado como aberto no obsidian.json, então ele abre nele.
   if (ctx.win) {
