@@ -46,6 +46,8 @@ function desenhar() {
   const p = cena.passos[cena.i] || cena.passos[0];
   const n = cena.passos.length;
   const kids = [h('div', { class: 'g-topo' }, h('span', { class: 'g-ponto' }), h('span', {}, cena.rotulo || t('Sua vez')), h('span', {}, cena.contagem || (n > 1 ? t('{i} de {n}', { i: cena.i + 1, n }) : '')))];
+  // O programa que a pessoa tem que olhar, com o ícone de verdade dele.
+  if (p.app) kids.push(h('div', { class: 'g-app' }, p.app.icone ? h('img', { src: p.app.icone, alt: '' }) : h('span', { class: 'g-letra', 'aria-hidden': 'true' }, (p.app.nome || '?')[0]), h('div', {}, h('b', {}, p.app.nome), h('small', {}, p.app.dica))));
   if (p.tela) kids.push(h('div', { class: 'g-tela' }, p.tela ? h('span', {}, p.tela) : null, p.teclas?.length ? h('div', { class: 'g-teclas' }, p.teclas.map((x) => h('span', { class: 'tecla' }, x))) : null));
   else { const img = imagem(p); if (img) kids.push(img); }
   kids.push(h('p', { class: 'g-tit' }, p.titulo));
@@ -57,7 +59,7 @@ function desenhar() {
   const acoes = [];
   if (cena.link) acoes.push(botao(t('Abrir a página'), () => G.abrirLink(cena.link), 'btn2 p'));
   (cena.acoes || []).forEach((a) => acoes.push(botao(a.rotulo, () => (a.reabrir ? G.acaoGuia(a.reabrir) : G.abrirLink(a.url, a.app)), 'btn2 p')));
-  if (temProximo()) acoes.push(botao(t('Próximo passo'), () => { cena.i++; desenhar(); G.ajustarGuia(raiz.scrollHeight); }));
+  if (temProximo()) acoes.push(botao(t('Próximo passo'), () => { cena.i++; desenhar(); G.passoGuia(cena.i); }));
   if (p.botao) acoes.push(botao(p.botao, () => G.aula('avancar')));
   if (cena.concluir && cena.i === n - 1) acoes.push(botao(cena.concluir, () => { G.responder(cena.id, true); }));
   if (cena.nao) acoes.push(botao(cena.nao, () => { G.responder(cena.id, false); }, 'link'));

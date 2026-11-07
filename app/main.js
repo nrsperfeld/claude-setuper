@@ -1,6 +1,6 @@
 // App do Claude Setuper: a mesma instalação do Terminal (src/), com telas no lugar do texto.
 // Desenho em docs/superpowers/specs/2026-11-07-redesenho-experiencia-design.md.
-import { app, BrowserWindow, ipcMain, shell, clipboard, dialog, nativeTheme, Menu, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, clipboard, dialog, nativeTheme, nativeImage, Menu, screen } from 'electron';
 import { spawn, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { criarUiApp } from './ui-app.js';
 import { criarTerminal } from './terminal.js';
 import { criarAula } from './aula.js';
+import { criarSetas } from './setas.js';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 // Empacotado, o Setuper vem dentro do app (setuper/); rodando do repositório, é a pasta de cima.
@@ -27,6 +28,80 @@ const PRESENTE = (() => {
   return fs.existsSync(path.join(dir, 'presente.json')) ? path.resolve(dir) : '';
 })();
 const NOME_APP = PRESENTE ? 'Segundo Cérebro' : 'Claude Setuper';
+// Qual programa cada ação pede, pra mostrar o ícone dele no guia e apontar a seta pra janela dele.
+const PROGRAMAS = {
+  apple: { nome: () => i18n.t('Instalador da Apple'), caminho: '/System/Library/CoreServices/Install Command Line Developer Tools.app', pgrep: 'Install Command Line Developer Tools' },
+  senha: { nome: () => i18n.t('Janela de senha'), proprio: true, dono: /^osascript$/ },
+  navegador: { navegador: true },
+  chrome: { nome: () => 'Google Chrome', caminho: '/Applications/Google Chrome.app', dono: /^Google Chrome$/ },
+  obsidian: { nome: () => 'Obsidian', caminho: '/Applications/Obsidian.app', dono: /^Obsidian$/ },
+  maestri: { nome: () => 'Maestri', caminhos: ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'], dono: /^Maestri$/ },
+};
+// Pra onde apontar em cada janela conhecida. x e y são a proporção da janela; o texto diz o que fazer ali.
+const POR_FIGURA = {
+  'apple-ferramentas': { programa: 'apple', alvos: [{ x: 0.86, y: 0.84, rotulo: 'Clica em Instalar' }] },
+  'apple-contrato': { programa: 'apple', alvos: [{ x: 0.9, y: 0.92, rotulo: 'Clica em Concordo' }] },
+  senha: { programa: 'senha', alvos: [{ x: 0.5, y: 0.62, rotulo: 'Digita a senha aqui' }] },
+  'claude-login': { programa: 'navegador', alvos: [{ x: 0.5, y: 0.45, rotulo: 'Entra na sua conta aqui' }] },
+  'obsidian-confiar': { programa: 'obsidian', alvos: [{ x: 0.5, y: 0.56, rotulo: 'Clica em Trust author and enable plugins' }] },
+  'chrome-extensao': { programa: 'chrome', alvos: [{ x: 0.8, y: 0.3, rotulo: 'Clica em Usar no Chrome' }] },
+  'github-criar': { programa: 'navegador', alvos: [{ x: 0.5, y: 0.42, rotulo: 'Cria a sua conta aqui' }] },
+  'github-codigo': { programa: 'navegador', alvos: [{ x: 0.5, y: 0.42, rotulo: 'Cola o código aqui' }] },
+  vercel: { programa: 'navegador', alvos: [{ x: 0.5, y: 0.42, rotulo: 'Entra aqui' }] },
+  conectores: { programa: 'navegador', alvos: [{ x: 0.5, y: 0.42, rotulo: 'Clica em Conectar aqui' }] },
+};
+// O ícone de verdade do programa, lido do próprio app. (app.getFileIcon derruba o Electron 44 no Mac.)
+const rodar = (cmd, args) => new Promise((res) => execFile(cmd, args, { timeout: 8000 }, (erro, saida) => res(erro ? '' : String(saida).trim())));
+async function iconeDoApp(caminho) {
+  if (process.platform !== 'darwin' || !caminho || !fs.existsSync(caminho)) return '';
+  let nome = await rodar('/usr/bin/plutil', ['-extract', 'CFBundleIconFile', 'raw', path.join(caminho, 'Contents', 'Info.plist')]);
+  if (!nome) return '';
+  if (!nome.endsWith('.icns')) nome += '.icns';
+  const icns = path.join(caminho, 'Contents', 'Resources', nome);
+  if (!fs.existsSync(icns)) return '';
+  const saida = path.join(os.tmpdir(), `setuper-icone-${process.pid}-${path.basename(caminho, '.app').replace(/\W/g, '')}.png`);
+  await rodar('/usr/bin/sips', ['-s', 'format', 'png', '-Z', '104', icns, '--out', saida]);
+  try { const dados = fs.readFileSync(saida); fs.rmSync(saida, { force: true }); return `data:image/png;base64,${dados.toString('base64')}`; } catch { return ''; }
+}
+const icones = new Map();
+async function dadosDoPrograma(id) {
+  if (icones.has(id)) return icones.get(id);
+  const p = PROGRAMAS[id];
+  const dados = { nome: p.nome ? p.nome() : '', icone: '', dono: p.dono, pgrep: p.pgrep };
+  try {
+    if (p.navegador) {
+      const info = await app.getApplicationInfoForProtocol('https://example.com');
+      dados.nome = info.name.replace(/\.app$/, '');
+      dados.icone = (await iconeDoApp(info.path)) || info.icon?.toDataURL() || '';
+      dados.dono = new RegExp(`^${dados.nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+    } else if (p.proprio) {
+      dados.icone = nativeImage.createFromPath(path.join(AQUI, 'tela', 'icone.png')).resize({ width: 104, height: 104 }).toDataURL();
+    } else {
+      dados.icone = await iconeDoApp(p.caminho || p.caminhos.find((c) => fs.existsSync(c)));
+    }
+  } catch {}
+  // Programa recém-instalado: tenta o ícone de novo na próxima vez.
+  if (dados.icone) icones.set(id, dados);
+  return dados;
+}
+// Completa a cena do guia: ícone do programa em cada passo e, pra cada passo, as setas.
+async function completarCena(cena) {
+  cena.passos = await Promise.all(cena.passos.map(async (p) => {
+    const fig = POR_FIGURA[p.figura];
+    const id = p.programa || fig?.programa || cena.appId;
+    if (!id) return p;
+    const d = await dadosDoPrograma(id);
+    const lista = p.alvos || fig?.alvos || [];
+    return { ...p, app: { nome: d.nome, icone: d.icone, dica: i18n.t('Olha pra esta janela: as setas mostram onde') }, setas: lista.map((a) => ({ ...a, rotulo: i18n.t(a.rotulo), dono: d.dono, pgrep: d.pgrep })) };
+  }));
+  return cena;
+}
+function apontarPasso() {
+  if (!setas) return;
+  const p = cenaGuia?.passos?.[Math.min(passoAtual, (cenaGuia.passos.length || 1) - 1)];
+  setas.mostrar(p?.setas || []);
+}
+
 const flagsBase = () => ({ app: true, idioma: i18n.idiomaAtual(), ...(HOME_TESTE ? { home: HOME_TESTE } : {}), ...(PRESENTE ? { presente: PRESENTE } : {}) });
 const TESTE = lerJson(path.join(PASTA, '.teste-auto.json')); // só existe nos testes da VM
 const SO_AULA = process.argv.includes('--aula'); // aberto pelo Maestri pra continuar a aula
@@ -52,6 +127,9 @@ const pendentes = new Map();
 let proximoPedido = 0;
 let i18n = { t: (s) => s, catalogoAtual: () => ({}), idiomaAtual: () => 'pt' };
 let aula = null;
+let setas = null;
+let passoAtual = 0;
+let minimizamos = false;
 
 function lerJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
@@ -111,26 +189,44 @@ function criarGuia() {
     webPreferences: { preload: path.join(AQUI, 'preload.cjs'), contextIsolation: true, sandbox: true, backgroundThrottling: false },
   });
   // Fica na frente de tudo, em qualquer mesa e também sobre app em tela cheia.
-  guia.setAlwaysOnTop(true, 'floating');
+  guia.setAlwaysOnTop(true, 'pop-up-menu'); // acima das setas
   guia.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
   guiaProntoJa = false;
   guia.loadFile(path.join(AQUI, 'tela', 'guia.html'));
   guia.on('closed', () => { guia = null; });
   return guia;
 }
+// O que vai pro guia não leva as setas: elas têm expressões regulares e ficam só aqui.
+const semSetas = (cena) => ({ ...cena, passos: cena.passos.map(({ setas: _s, ...p }) => p) });
 function mandarAoGuia(ev) {
-  if (guia && !guia.isDestroyed() && guiaProntoJa) guia.webContents.send('guia', { ...ev, catalogo: i18n.catalogoAtual() });
+  if (guia && !guia.isDestroyed() && guiaProntoJa) guia.webContents.send('guia', { ...ev, ...(ev.cena ? { cena: semSetas(ev.cena) } : {}), catalogo: i18n.catalogoAtual() });
 }
-function mostrarGuia(cena) {
+async function mostrarGuia(cena) {
+  const pedida = cena;
   cenaGuia = cena;
+  passoAtual = 0;
+  await completarCena(cena);
+  if (cenaGuia !== pedida) return; // outra cena já entrou no lugar
   if (!TESTE && !cena.aula && !process.argv.includes('--demo-telas')) shell.beep(); // a pessoa pode estar fazendo outra coisa
   criarGuia();
   if (guiaProntoJa) mandarAoGuia({ tipo: 'cena', cena });
   guia.showInactive();
+  apontarPasso();
 }
 function esconderGuia() {
   cenaGuia = null;
+  setas?.esconder();
   if (guia && !guia.isDestroyed()) guia.hide();
+  if (minimizamos && janela && !janela.isDestroyed() && !aula) { minimizamos = false; janela.restore(); }
+}
+function criarVidro() {
+  setas = criarSetas({
+    BrowserWindow, screen, aqui: AQUI, t: i18n.t, janelaGuia: () => (guia && !guia.isDestroyed() ? guia : null),
+    // Troca o guia de canto quando ele está em cima do que a pessoa tem que clicar.
+    moverGuia: () => { const a = screen.getPrimaryDisplay().workArea; const b = guia.getBounds(); guia.setPosition(b.x > a.x + a.width / 2 ? a.x + 24 : a.x + a.width - b.width - 24, b.y); },
+    // A nossa janela não fica na frente do que a pessoa tem que clicar, a não ser que esteja respondendo uma pergunta.
+    aoSerCoberto: () => { if (janela && !janela.isDestroyed() && janela.isVisible() && ![...pendentes.keys()].some((id) => id !== cenaGuia?.id)) { minimizamos = true; janela.minimize(); } },
+  });
 }
 
 function pedir(pergunta) {
@@ -421,6 +517,7 @@ ipcMain.on('guia-altura', (_e, altura) => {
   const limite = screen.getPrimaryDisplay().workArea.height - 48;
   guia.setSize(340, Math.min(limite, Math.max(140, Math.ceil(altura) + 2)));
 });
+ipcMain.on('guia-passo', (_e, i) => { passoAtual = i; apontarPasso(); });
 ipcMain.on('guia-acao', async (_e, acao) => { if (acao === 'tentar') (await importarSetuper('ui.js')).ui.marcarTentar?.(); });
 ipcMain.on('aula', (_e, acao) => aula?.acao(acao));
 ipcMain.on('ligar-opcional', (_e, id) => ligarOpcional(id));
@@ -529,7 +626,9 @@ async function demoTelas() {
   ui.pausa('Cola este código no GitHub', ['Depois clica em Continue e em Authorize.'], { rotulo: 'Conectar o GitHub', figura: 'github-codigo', pular: 'Deixar pra depois', acoes: [{ rotulo: 'Tentar de novo', reabrir: 'tentar' }], opcional: true });
   enviar({ tipo: 'codigo', codigo: '07D6-0B19' });
   enviar({ tipo: 'link', url: 'https://github.com/login/device' });
+  await new Promise((r) => setTimeout(r, 1500));
   await print('09-github-guia', guia);
+  if (setas.vidro()) await print('09-github-setas', setas.vidro());
   enviar({ tipo: 'passo', n: 5, total: passos.length, titulo: passos[4] });
   enviar({ tipo: 'tarefa', id: 90, estado: 'fazendo', texto: i18n.t('Instalando o Google Chrome'), demora: 'de 2 a 10 minutos', atras: 5 * 60000 });
   await js('desenhar()');
@@ -574,6 +673,7 @@ else {
     const { ui } = await importarSetuper('ui.js');
     Object.assign(ui, criarUiApp(enviar, pedir, i18n.t));
     montarMenu();
+    criarVidro();
     criarJanela();
   });
   app.on('window-all-closed', () => { if (!aula) app.quit(); });

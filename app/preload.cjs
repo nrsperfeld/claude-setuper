@@ -19,7 +19,10 @@ contextBridge.exposeInMainWorld('setuper', {
   portal: () => ipcRenderer.send('portal'),
   concluir: () => ipcRenderer.send('concluir'),
   fechar: () => ipcRenderer.send('fechar'),
+  // as setas por cima da tela
+  aoSetas: (fn) => ipcRenderer.on('setas', (_e, ev) => fn(ev)),
   // o guia flutuante
+  passoGuia: (i) => ipcRenderer.send('guia-passo', i),
   aoGuia: (fn) => ipcRenderer.on('guia', (_e, ev) => fn(ev)),
   guiaPronto: () => ipcRenderer.send('guia-pronto'),
   ajustarGuia: (altura) => ipcRenderer.send('guia-altura', altura),

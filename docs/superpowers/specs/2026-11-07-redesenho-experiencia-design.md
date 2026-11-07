@@ -19,6 +19,7 @@ O app é a entrada de uma pessoa leiga na IA avançada: interface simples, com c
 
 ## Ajustes pedidos na revisão
 
+- Guias (pedido posterior): os popups mostram o ícone do programa que precisa ser olhado e setas óbvias até cada região da tela.
 - Perguntas (`i-perguntas`): mantém todas as perguntas atuais. Elas acontecem enquanto o app baixa o que precisa, para a pessoa não ficar parada. Isso substitui as 3 perguntas das pranchas 3 a 5, e a pergunta "Quero escolher o que vai ser instalado" continua existindo.
 - Espera (`i-exemplo`): deixar explícito que o pedido mostrado é um exemplo.
 
@@ -40,6 +41,7 @@ A senha do Homebrew pode aparecer enquanto a pessoa responde uma pergunta. A jan
 
 - `app/tela/`: reescrita com a identidade aprovada (`estilo.css` a partir de `setuper.css` do desenho). Sem coluna de etapas, uma coisa por vez, sempre escuro. O `aoEvento` e o modo roteiro dos testes da VM continuam.
 - `app/guia/`: janela nova do guia flutuante, sempre acima de tudo, em todos os espaços e em tela cheia. Recebe `pausa`, `link`, `codigo`. Tem passos, ações, pular e o botão de concluir. Prints reais entram por `app/guia/prints/<idioma>/<id>.png` quando existirem; enquanto isso, o desenho esquemático.
+- `app/setas.js` e `app/tela/setas.*`: janela transparente, que não recebe cliques, com setas até o lugar da tela. A posição das janelas vem do `CGWindowListCopyWindowInfo` (via `osascript -l JavaScript`), que não pede permissão. Janela que não abriu ou está atrás de outra manda a seta pro Dock. O guia mostra o ícone real do programa, lido do `.icns` do app (`app.getFileIcon` derruba o Electron 44 no Mac). As posições dentro de cada janela são proporções a calibrar com a instalação real. No Windows entra na fase 8.
 - `src/i18n.js` e `src/idiomas/en.json`: o texto em português é a chave. `t('Frase', {nome})`. Template em inglês fica em `templates/en/`, com o mesmo caminho relativo, e `ctx.template` escolhe. Teste procura texto sem tradução.
 - `src/modulos/base.js`: `adiantarPreparo(ctx)` roda em segundo plano durante as perguntas. `instalar` espera ele terminar e continua idempotente.
 - `src/modulos/github.js`, `chrome.js`, `vercel.js`, `mcps.js`: saem do caminho principal no app e viram opcionais no fim da aula, chamados por módulo a partir do guia. Terminal continua igual.
