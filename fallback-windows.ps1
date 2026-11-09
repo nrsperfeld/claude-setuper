@@ -9,7 +9,7 @@ Rodar sem perguntas:
   powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1" -Nome "Maria" -Trabalho "tenho uma loja de roupas" -Autonomia equilibrado
 
 Parâmetros:
-  -Nome, -Trabalho, -Autonomia (cauteloso | equilibrado | confiante), -Pacotes (escrita,negocios,pesquisa,criador,dev)
+  -Nome, -Trabalho, -Autonomia (cauteloso | equilibrado | confiante | livre), -Pacotes (escrita,negocios,pesquisa,criador,dev)
   -SemVercel -SemChrome -SemGitHub -SemRotinas    pula essas partes
   -SemLogin                                       não para no login do Claude (a pessoa faz depois com: claude auth login)
   -Desde N                                        começa do passo N (1 a 9)
@@ -24,7 +24,7 @@ Rodar de novo continua de onde parou. Registro completo em "%USERPROFILE%\Claude
 param(
   [string]$Nome,
   [string]$Trabalho,
-  [ValidateSet('cauteloso', 'equilibrado', 'confiante', '')][string]$Autonomia = '',
+  [ValidateSet('cauteloso', 'equilibrado', 'confiante', 'livre', '')][string]$Autonomia = '',
   [string]$Pacotes = '',
   [switch]$SemVercel, [switch]$SemChrome, [switch]$SemGitHub, [switch]$SemRotinas, [switch]$SemLogin,
   [int]$Desde = 1, [switch]$Refazer, [switch]$Doctor,
@@ -296,11 +296,12 @@ if ($Autonomia) { $Resp.autonomia = $Autonomia }
 if (-not $Resp.autonomia) {
   Write-Host "Como você prefere que o Claude trabalhe?"
   Write-Host "  1) Me pergunta antes de cada coisa"
-  Write-Host "  2) Faz o básico sozinho e me pergunta no que importa (recomendado)"
+  Write-Host "  2) Faz o básico sozinho e me pergunta no que importa"
   Write-Host "  3) Faz tudo e me avisa no fim"
-  $op = Read-Host "Digite 1, 2 ou 3"
-  $Resp.autonomia = @{ '1' = 'cauteloso'; '2' = 'equilibrado'; '3' = 'confiante' }[$op]
-  if (-not $Resp.autonomia) { $Resp.autonomia = 'equilibrado' }
+  Write-Host "  4) Nunca me pede licença pra nada (recomendado)"
+  $op = Read-Host "Digite 1, 2, 3 ou 4"
+  $Resp.autonomia = @{ '1' = 'cauteloso'; '2' = 'equilibrado'; '3' = 'confiante'; '4' = 'livre' }[$op]
+  if (-not $Resp.autonomia) { $Resp.autonomia = 'livre' }
 }
 if ($Pacotes) { $Resp.pacotes = $Pacotes }
 if (-not $Resp.pacotes) { $Resp.pacotes = 'escrita,negocios,pesquisa' }
@@ -311,6 +312,7 @@ $AutonomiaTexto = @{
   cauteloso   = 'Pergunte antes de qualquer ação que altere arquivos ou rode comandos. Prefira explicar o que vai fazer e esperar o ok.'
   equilibrado = 'Faça o básico sozinho (ler, escrever, organizar) e pergunte só no que for difícil de desfazer ou que mude a direção do trabalho.'
   confiante   = 'Faça o trabalho inteiro sem pedir confirmação, e no fim conte o que fez, em linguagem simples.'
+  livre       = 'Faça o trabalho inteiro sem pedir confirmação, e no fim conte o que fez, em linguagem simples. Antes de apagar qualquer coisa, faça uma cópia.'
 }[$Resp.autonomia]
 $TrabalhoSeguro = (($Resp.trabalho -replace '["''`$%&|<>^!\\]', ' ') -replace '\s+', ' ').Trim()
 if (-not $TrabalhoSeguro) { $TrabalhoSeguro = 'o meu trabalho do dia a dia' }
@@ -370,8 +372,9 @@ $Passos += @{ id = 'nucleo'; n = 2; nome = 'Ensinando o Claude quem você é'; a
     cauteloso   = @('Read', 'Glob', 'Grep', 'LS', 'WebSearch')
     equilibrado = @('Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'WebSearch', 'WebFetch', 'Bash(git:*)', 'Bash(ls:*)', 'Bash(cat:*)', 'Bash(mkdir:*)', 'Bash(npm:*)', 'Bash(node:*)', 'Bash(python3:*)', 'Bash(start:*)', 'Bash(obsidian:*)')
     confiante   = @('Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'Bash', 'WebSearch', 'WebFetch')
+    livre       = @('Read', 'Edit', 'Write', 'MultiEdit', 'Glob', 'Grep', 'LS', 'Bash', 'WebSearch', 'WebFetch')
   }[$Resp.autonomia]
-  $modo = @{ cauteloso = 'default'; equilibrado = 'acceptEdits'; confiante = 'auto' }[$Resp.autonomia]
+  $modo = @{ cauteloso = 'default'; equilibrado = 'acceptEdits'; confiante = 'auto'; livre = 'bypassPermissions' }[$Resp.autonomia]
   $hooksDir = Join-Path $ClaudeDir 'hooks'
   foreach ($h in @('cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs')) { Escrever (Join-Path $hooksDir $h) (Tpl "hooks/$h") }
   $settingsPath = Join-Path $ClaudeDir 'settings.json'
@@ -379,7 +382,7 @@ $Passos += @{ id = 'nucleo'; n = 2; nome = 'Ensinando o Claude quem você é'; a
   if (Test-Path $settingsPath) { try { $settings = Get-Content $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $settings = $null } }
   if ($settings) { Copy-Item $settingsPath "$settingsPath.antes-do-setuper" -Force }
   $novo = [ordered]@{
-    permissions = [ordered]@{ allow = $allow; deny = @('Bash(rm -rf:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)'); defaultMode = $modo }
+    permissions = [ordered]@{ allow = $allow; deny = @('Bash(rm -rf:*)', 'Bash(sudo:*)', 'Bash(wget:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)', 'Read(appsettings.Production.json)', 'Edit(appsettings.Production.json)'); defaultMode = $modo }
     hooks = [ordered]@{
       SessionStart = @(@{ hooks = @(@{ type = 'command'; command = "node `"$(Posix (Join-Path $hooksDir 'cerebro-inicio.cjs'))`""; timeout = 10 }) })
       Stop         = @(@{ hooks = @(@{ type = 'command'; command = "node `"$(Posix (Join-Path $hooksDir 'cerebro-fim.cjs'))`""; timeout = 10 }) })
@@ -392,6 +395,7 @@ $Passos += @{ id = 'nucleo'; n = 2; nome = 'Ensinando o Claude quem você é'; a
     $envAntigo = $settings.PSObject.Properties['env']
     if ($envAntigo -and $envAntigo.Value) { foreach ($p in $envAntigo.Value.PSObject.Properties) { if (-not $novo['env'].Contains($p.Name)) { $novo['env'][$p.Name] = $p.Value } } }
   }
+  if ($Resp.autonomia -eq 'livre') { $novo['skipDangerousModePermissionPrompt'] = $true }
   Escrever $settingsPath (Json $novo)
   foreach ($s in @('decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar')) { Escrever (Join-Path (Join-Path (Join-Path $ClaudeDir 'skills') $s) 'SKILL.md') (Tpl "skills/$s.md") }
   EscreverSeFaltar (Join-Path (Join-Path $ClaudeDir 'memoria') 'MEMORIA.md') (Tpl 'memoria/MEMORIA.md')
