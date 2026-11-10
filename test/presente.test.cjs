@@ -116,7 +116,7 @@ async function rodarWizard(ctx, respostas = {}) {
     return respostas[k];
   };
   Object.assign(ui, {
-    perguntar: async (m) => responder(m), escolher: async (m) => responder(m), escolherVarios: async (m) => responder(m),
+    perguntar: async (m) => responder(m), escolher: async (m, _ops, o) => { if (m.includes('Como você prefere')) ctx.padraoAutonomia = o?.padrao; return responder(m); }, escolherVarios: async (m) => responder(m),
     confirmar: async (m) => responder(m), ok: () => {}, info: () => {}, linha: () => {},
   });
   try {
@@ -264,11 +264,24 @@ test('presente sem idade: não pergunta a idade, trata como adulto e não põe "
   const original = { tarefa: ui.tarefa, aviso: ui.aviso, info: ui.info };
   ui.tarefa = async (_a, _b, fn) => fn(() => {});
   ui.aviso = () => {}; ui.info = () => {};
+  const claudeJson = path.join(ctx.home, '.claude.json');
+  fs.writeFileSync(claudeJson, JSON.stringify({ oauthAccount: { emailAddress: 'ana@x' }, projects: { '/outra': { allowedTools: ['Read'] } } }));
   try {
     await nucleo.instalar(ctx);
   } finally {
     Object.assign(ui, original);
   }
+  // A home fica confiável (o Claude abre sem a tela de confiança) e o login da pessoa continua lá.
+  const cfg = JSON.parse(fs.readFileSync(claudeJson, 'utf8'));
+  assert.strictEqual(cfg.projects[ctx.posix(ctx.home)].hasTrustDialogAccepted, true);
+  assert.strictEqual(cfg.oauthAccount.emailAddress, 'ana@x');
+  assert.deepStrictEqual(cfg.projects['/outra'].allowedTools, ['Read']);
+  // "Livre" sobe em bypass, só com as travas da lista.
+  const settings = JSON.parse(fs.readFileSync(path.join(ctx.home, '.claude', 'settings.json'), 'utf8'));
+  assert.strictEqual(settings.permissions.defaultMode, 'bypassPermissions');
+  assert.strictEqual(settings.skipDangerousModePermissionPrompt, true);
+  for (const trava of ['Bash(rm -rf:*)', 'Bash(sudo:*)', 'Bash(wget:*)', 'Read(.env)', 'Edit(.env)', 'Read(appsettings.Production.json)']) assert.ok(settings.permissions.deny.includes(trava), trava);
+  assert.ok(!settings.permissions.deny.includes('Bash(git push --force:*)'));
   const md = fs.readFileSync(path.join(ctx.home, '.claude', 'CLAUDE.md'), 'utf8');
   assert.match(md, /Me chamo Ana\. Tenho uma loja/);
   assert.doesNotMatch(md, /anos|menor de 18/);
@@ -279,4 +292,14 @@ test('presente sem idade: não pergunta a idade, trata como adulto e não põe "
 test('fora do presente a idade continua sendo perguntada', async () => {
   const ctx = await ctxCom(undefined);
   await assert.rejects(rodarWizard(ctx, { 'Como você quer': 'Ana', 'Pra que você': 'estudante' }), /não devia perguntar: Quantos anos/);
+});
+
+test('o padrão é nunca pedir licença, menos pra quem não pode ter essa opção', async () => {
+  const responder = { 'Me conta da sua empresa': 'Uma padaria.', 'Como você prefere': 'livre', 'Com o que você mais vai usar': ['escrita'], 'Quais dessas ferramentas': [] };
+  const adulto = await ctxCom(pastaPresente({ ...PRESENTE, respostas: { idade: '45', tecnologia: 'basico', ia: 'chat', modulos: ['obsidian'] } }));
+  await rodarWizard(adulto, responder);
+  assert.strictEqual(adulto.padraoAutonomia, 'livre');
+  const comecando = await ctxCom(pastaPresente({ ...PRESENTE, respostas: { idade: '45', tecnologia: 'pouco', ia: 'chat', modulos: ['obsidian'] } }));
+  await rodarWizard(comecando, { ...responder, 'Como você prefere': 'equilibrado' });
+  assert.strictEqual(comecando.padraoAutonomia, 'equilibrado');
 });

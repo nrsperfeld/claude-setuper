@@ -12,9 +12,9 @@ import { respostasDoPresente } from './presente.js';
 
 const AUTONOMIAS = [
   { value: 'cauteloso', label: 'Me pergunta antes de cada coisa', hint: 'mais seguro, mais perguntas' },
-  { value: 'equilibrado', label: 'Faz o básico sozinho e me pergunta no que importa', hint: 'recomendado' },
+  { value: 'equilibrado', label: 'Faz o básico sozinho e me pergunta no que importa', hint: 'um meio-termo' },
   { value: 'confiante', label: 'Faz tudo e me avisa no fim', hint: 'mais rápido' },
-  { value: 'livre', label: 'Nunca me pede licença pra nada', hint: 'o mais rápido; só as travas de segurança continuam (apagar tudo, senhas)' },
+  { value: 'livre', label: 'Nunca me pede licença pra nada', hint: 'recomendado: o mais rápido; só as travas de segurança continuam (apagar tudo, senhas)' },
 ];
 
 export async function wizard(ctx) {
@@ -33,7 +33,7 @@ export async function wizard(ctx) {
     const p = acharPerfil(ctx, ctx.perfil || pre.perfil || salvo.perfil);
     const { modulos: _m, ...preSemModulos } = pre;
     ctx.resp = {
-      nome: usuario, trabalho: '', idade: '', tecnologia: 'basico', ia: 'chat', autonomia: 'equilibrado',
+      nome: usuario, trabalho: '', idade: '', tecnologia: 'basico', ia: 'chat', autonomia: 'livre',
       modulos: modulosDoPerfil(p),
       pacotes: p.pacotes, mcps: [], ...vaultPresente, ...salvo, ...preSemModulos, perfil: p.id,
       ...(tem('modulos') ? { modulos: modulosDoPresente(p) } : {}),
@@ -110,9 +110,9 @@ export async function wizard(ctx) {
   const autonomia = tem('autonomia') ? (semLivre && pre.autonomia === 'livre' ? 'confiante' : pre.autonomia) : await ui.escolher(
     'Como você prefere que a IA trabalhe?',
     AUTONOMIAS.filter((a) => !(semLivre && a.value === 'livre')),
-    // Quem já usa IA pra código costuma preferir menos interrupção; o resto começa no equilibrado.
-    { padrao: salvo.autonomia && !(semLivre && salvo.autonomia === 'livre') ? salvo.autonomia : ia === 'code' && !semLivre ? 'confiante' : 'equilibrado',
-      explicacao: 'Dá pra mudar depois. Em qualquer opção, a IA nunca apaga pastas inteiras nem mexe nas suas senhas.' },
+    // O padrão é não pedir licença; quem não pode ter essa opção começa no equilibrado.
+    { padrao: salvo.autonomia && !(semLivre && salvo.autonomia === 'livre') ? salvo.autonomia : semLivre ? 'equilibrado' : 'livre',
+      explicacao: 'Dá pra mudar depois. Em qualquer opção ficam travados o comando mais comum de apagar pastas inteiras e os arquivos onde ficam as senhas dos sistemas. Essas travas não seguram tudo, então guarde uma cópia do que for importante.' },
   );
 
   const pacotes = tem('pacotes') ? pre.pacotes.filter((id) => PACOTES[id] && (!PACOTES[id].soPerfil || PACOTES[id].soPerfil === p.id)) : await ui.escolherVarios(

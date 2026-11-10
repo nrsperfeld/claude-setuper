@@ -28,7 +28,7 @@ const HOOKS = ['cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs', 'cer
 const SKILLS = ['decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar', 'guardar'];
 const INICIO = '<!-- claude-setuper -->';
 const FIM = '<!-- /claude-setuper -->';
-const DENY = ['AskUserQuestion', 'Bash(rm -rf:*)', 'Bash(sudo rm:*)', 'Bash(git push --force:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)'];
+const DENY = ['AskUserQuestion', 'Bash(rm -rf:*)', 'Bash(sudo:*)', 'Bash(wget:*)', 'Read(.env)', 'Read(.env.*)', 'Edit(.env)', 'Edit(.env.*)', 'Read(appsettings.Production.json)', 'Edit(appsettings.Production.json)'];
 
 export async function verificar(ctx) {
   const d = ctx.claudeDir;
@@ -108,6 +108,8 @@ export async function instalar(ctx) {
       language: ctx.idioma === 'en' ? 'English' : 'Português', voiceEnabled: true, voice: { enabled: true, mode: 'hold' },
       ...(nivel.extra || {}),
     });
+    // Sem isso o Claude abre perguntando se confia na pasta, com "No, exit" já marcado. O atalho abre na home e as subpastas herdam.
+    ctx.mesclarJson(path.join(ctx.home, '.claude.json'), { projects: { [ctx.posix(ctx.home)]: { hasTrustDialogAccepted: true } } });
     if (ctx.plataforma === 'darwin') {
       ctx.mesclarJson(path.join(d, 'settings.json'), {
         // Nas rotinas automáticas (revisão, leitura diária) não avisa: a pessoa não pediu nada.
