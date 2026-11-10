@@ -18,4 +18,4 @@ if exist ".git" (
 )
 
 echo --- %date% %time% >> "%DIR%\revisao-semanal.log"
-claude -p --permission-mode acceptEdits --tools "Read,Write,Edit,Glob,Grep" < "%DIR%\prompt-revisao.md" >> "%DIR%\revisao-semanal.log" 2>&1
+call claude -p --permission-mode acceptEdits --tools "Read,Write,Edit,Glob,Grep" < "%DIR%\prompt-revisao.md" >> "%DIR%\revisao-semanal.log" 2>&1

@@ -44,6 +44,20 @@ test('trava: bloqueia escrita nas pastas da pessoa e libera CLAUDE/, .obsidian e
   assert.strictEqual(hook('cerebro-trava.cjs', { tool_input: { notebook_path: path.join(v, 'a.ipynb') } }, env).codigo, 2);
 });
 
+test('trava: maiúsculas trocadas no Mac e atalho (link simbólico) pro cofre continuam travados', () => {
+  const v = cofre();
+  const env = { CLAUDE_SETUPER_VAULT: v };
+  const t = (fp) => hook('cerebro-trava.cjs', { tool_name: 'Write', tool_input: { file_path: fp } }, env).codigo;
+  if (process.platform === 'darwin') {
+    assert.strictEqual(t(path.join(v.toUpperCase(), '2. ÁREAS', 'x.md')), 2);
+    assert.strictEqual(t(path.join(v, 'claude', 'feedback', 'x.md')), 0);
+  }
+  const atalho = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'atalho-')), 'cofre');
+  fs.symlinkSync(v, atalho);
+  assert.strictEqual(t(path.join(atalho, '2. ÁREAS', 'nova', 'x.md')), 2);
+  assert.strictEqual(t(path.join(atalho, 'CLAUDE', 'feedback', 'x.md')), 0);
+});
+
 test('trava: mensagem explica pro Claude e não trava sem cofre configurado', () => {
   const v = cofre();
   const r = hook('cerebro-trava.cjs', { tool_input: { file_path: path.join(v, '2. ÁREAS', 'x.md') } }, { CLAUDE_SETUPER_VAULT: v });
@@ -223,4 +237,32 @@ test('remover tira só o bloco e deixa o que a pessoa escreveu antes e depois', 
     await remover(ctx);
   `);
   assert.strictEqual(fs.readFileSync(arq, 'utf8'), 'Antes.\n\nDepois.\n');
+});
+
+// ---------- rotinas
+
+test('rotinas: o nome do cofre entra nos scripts como texto, nunca como comando', async () => {
+  const { criarCtx } = await import(path.join(RAIZ, 'src', 'ctx.js'));
+  const rotinas = await import(path.join(RAIZ, 'src', 'modulos', 'rotinas.js'));
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'rotinas-casa-'));
+  const sentinela = path.join(casa, 'EXECUTOU');
+  const vault = path.join(casa, 'Documents', `Cofre $(touch "${sentinela}") \`id\` "aspas" \\ fim`);
+  const ctx = await criarCtx({ home: casa, semApps: true });
+  ctx.resp = { vault };
+  await rotinas.instalar(ctx);
+  for (const nome of ['ingest-diario.sh', 'revisao-semanal.sh', 'backup-diario.sh']) {
+    const script = path.join(ctx.pastaSetuper, 'rotinas', nome);
+    const linha = fs.readFileSync(script, 'utf8').split('\n').find((l) => l.startsWith('VAULT='));
+    const r = spawnSync('bash', ['-c', `${linha}; printf %s "$VAULT"`], { encoding: 'utf8' });
+    assert.strictEqual(r.stdout, vault, nome);
+  }
+  assert.ok(!fs.existsSync(sentinela), 'o nome do cofre virou comando');
+});
+
+test('rotinas do Windows chamam o claude com CALL, pra voltar ao script quando ele é claude.cmd', () => {
+  for (const nome of ['ingest-diario.cmd', 'revisao-semanal.cmd']) {
+    const txt = fs.readFileSync(path.join(RAIZ, 'templates', 'rotinas', nome), 'utf8');
+    const linhas = txt.split(/\r?\n/).filter((l) => /^\s*(call\s+)?claude\s+-p/i.test(l));
+    assert.ok(linhas.length && linhas.every((l) => /^\s*call\s+claude/i.test(l)), nome);
+  }
 });
