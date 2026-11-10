@@ -12,6 +12,7 @@ let intel;
 // Pelo processador de verdade, não pelo app: um app x64 rodando via Rosetta num Mac M1 continua usando o Homebrew.
 export async function macIntel(ctx) {
   if (ctx.plataforma !== 'darwin') return false;
+  if (process.env.SETUPER_FINGIR_INTEL) return true; // teste na VM: exercita o caminho de Intel com o app x64 no Rosetta
   if (intel === undefined) intel = (await ctx.run('sysctl', ['-in', 'hw.optional.arm64'], { ignorarErro: true, sempre: true })).trim() !== '1';
   return intel;
 }
@@ -143,3 +144,19 @@ export async function instalarSemBrew(ctx, args) {
   if (args[0] === 'node') return instalarNode(ctx);
   throw new Error(`não sei instalar ${args.join(' ')} sem o Homebrew`);
 }
+
+// O Maestri solta versão quase todo dia e o Homebrew às vezes aponta pra um arquivo que já saiu do ar (404).
+// O próprio feed de atualização dele sempre diz o arquivo certo.
+export const FEED_MAESTRI = 'https://updates.maestri.dev/appcast.xml';
+export const urlDoFeed = (xml) => /<enclosure[^>]*\burl="([^"]+\.zip)"/.exec(xml)?.[1] || '';
+export async function instalarMaestriDoFeed(ctx) {
+  const url = urlDoFeed(await (await fetch(FEED_MAESTRI)).text());
+  if (!url) throw new Error('não achei o download do Maestri');
+  const tmp = pastaTemp();
+  const arquivo = path.join(tmp, 'Maestri.zip');
+  await baixar(url, arquivo, 'o Maestri');
+  await ctx.run('ditto', ['-x', '-k', arquivo, tmp]);
+  await copiarApp(ctx, path.join(tmp, 'Maestri.app'), '/Applications/Maestri.app', 'Maestri');
+  await ctx.run('xattr', ['-dr', 'com.apple.quarantine', '/Applications/Maestri.app'], { ignorarErro: true });
+}
+

@@ -35,7 +35,7 @@ function appInstalado(ctx) {
 }
 
 export async function verificar(ctx) {
-  const vault = ctx.estado.respostas?.vault || path.join(ctx.home, 'Documents', 'Segundo Cérebro');
+  const vault = ctx.estado.respostas?.vault || path.join(ctx.home, 'Documents', ctx.pasta('Segundo Cérebro'));
   const temApp = appInstalado(ctx) || (await ctx.existeComando('obsidian'));
   const reg = ctx.lerJson(path.join(dirConfigObsidian(ctx), 'obsidian.json'), { vaults: {} });
   const registrado = Object.values(reg.vaults || {}).some((v) => nfc(v.path) === nfc(vault));
@@ -47,13 +47,13 @@ export async function verificar(ctx) {
   ];
   if (await ctx.existeComando('obsidian')) {
     const out = await ctx.run('obsidian', ['plugin', 'id=dataview', `vault=${path.basename(vault)}`], { ignorarErro: true, sempre: true, timeout: 15000 });
-    itens.push({ item: 'Complementos do Obsidian ligados (clique de confiança)', ok: /enabled\s+true/.test(out), dica: 'abra o Obsidian e clique em "Trust author and enable plugins"' });
+    itens.push({ item: 'Complementos do Obsidian ligados', ok: /enabled\s+true/.test(out), dica: 'abra o Obsidian e clique em "Trust author and enable plugins"' });
   }
   return itens;
 }
 
 export async function instalar(ctx) {
-  const vault = ctx.resp.vault || path.join(ctx.home, 'Documents', 'Segundo Cérebro');
+  const vault = ctx.resp.vault || path.join(ctx.home, 'Documents', ctx.pasta('Segundo Cérebro'));
   ctx.resp.vault = vault;
 
   await instalarApp(ctx);
@@ -68,7 +68,7 @@ export async function instalar(ctx) {
       fs.mkdirSync(path.join(vault, 'CLAUDE', pasta), { recursive: true });
       ctx.escreverSeFaltar(path.join(vault, 'CLAUDE', pasta, 'README.md'), ctx.template('vault/README-pasta.md', { pasta, tag }));
     }
-    for (const p of ['1. PROJETOS', '2. ÁREAS', '3. RECURSOS', '4. ARQUIVO', 'TEMPLATES', '_anexos']) fs.mkdirSync(path.join(vault, ctx.pasta(p)), { recursive: true });
+    for (const p of ['1. PROJETOS', '2. ÁREAS', '3. RECURSOS', '4. ARQUIVO', 'TEMPLATES', ctx.pasta('_anexos')]) fs.mkdirSync(path.join(vault, ctx.pasta(p)), { recursive: true });
     ctx.escreverSeFaltar(path.join(vault, ctx.arq('Comece aqui.md')), ctx.template('vault/Comece aqui.md'));
     ctx.escreverSeFaltar(path.join(vault, ctx.arq('Painel do Claude.md')), ctx.template('vault/Painel do Claude.md'));
     ctx.escreverSeFaltar(path.join(vault, 'TEMPLATES', ctx.arq('Nota do Claude.md')), ctx.template('vault/template-nota.md'));
@@ -76,7 +76,7 @@ export async function instalar(ctx) {
     if (!presenteTemNotas(ctx, path.join('CLAUDE', ctx.pasta('padrões')))) ctx.escreverSeFaltar(path.join(vault, 'CLAUDE', ctx.pasta('padrões'), ctx.arq('Como falar comigo.md')), ctx.template('vault/padrao-inicial.md'));
 
     const obs = path.join(vault, '.obsidian');
-    ctx.escreverSeFaltar(path.join(obs, 'app.json'), { attachmentFolderPath: '_anexos', newFileLocation: 'root', useMarkdownLinks: false, alwaysUpdateLinks: true, showUnsupportedFiles: false });
+    ctx.escreverSeFaltar(path.join(obs, 'app.json'), { attachmentFolderPath: ctx.pasta('_anexos'), newFileLocation: 'root', useMarkdownLinks: false, alwaysUpdateLinks: true, showUnsupportedFiles: false });
     ctx.escreverSeFaltar(path.join(obs, 'appearance.json'), { theme: 'obsidian', baseFontSize: 16, accentColor: '#c8873c', showViewHeader: true });
     ctx.escreverSeFaltar(path.join(obs, 'core-plugins.json'), CORE_PLUGINS);
     ctx.escreverSeFaltar(path.join(obs, 'templates.json'), { folder: 'TEMPLATES', dateFormat: 'YYYY-MM-DD', timeFormat: 'HH:mm' });
@@ -195,6 +195,11 @@ async function abrirEConfiar(ctx, vault) {
   }
   const cli = await ctx.existeComando('obsidian');
   if (!cli) {
+    // No Windows o app não tem como ver o clique, e sem esperar o guia sumiria antes de a pessoa ler.
+    if (ctx.app && ctx.win) {
+      await ui.confirmarFora({ rotulo: 'Suas notas', passos: [{ titulo: 'Clica no primeiro botão do Obsidian', linhas: ['A janela vem em inglês. Ela só pergunta se pode ligar dois complementos das suas notas, e pode confiar.', sumiu], figura: 'obsidian-confiar' }], concluir: 'Já cliquei', nao: 'Fazer isso depois' });
+      return;
+    }
     if (!ctx.app) ui.info('Quando terminar, ative também o "Command line interface" nas Configurações do Obsidian (General). Sigo em frente.');
     return;
   }

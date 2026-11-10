@@ -70,7 +70,7 @@ export async function instalar(ctx) {
   } else ui.ok(`Conta do GitHub já conectada: ${contas.join(', ')}`);
 
   await configurarGit(ctx, contas[0]);
-  fs.mkdirSync(path.join(ctx.home, 'Projetos'), { recursive: true });
+  fs.mkdirSync(path.join(ctx.home, ctx.pasta('Projetos')), { recursive: true });
 
   // No app a segunda conta sai do caminho: quem precisa dela usa o comando claude-setuper.
   if (!ctx.sim && !ctx.app && contas.length < 2) {
@@ -139,7 +139,7 @@ async function configurarGit(ctx, login) {
 }
 
 async function segundaConta(ctx, login) {
-  const pasta = path.join(ctx.home, 'Projetos', login);
+  const pasta = path.join(ctx.home, ctx.pasta('Projetos'), login);
   fs.mkdirSync(pasta, { recursive: true });
   const user = JSON.parse((await ctx.run('gh', ['api', 'user', '-H', `Authorization: token ${await ctx.run('gh', ['auth', 'token', '--user', login], { ignorarErro: true })}`], { ignorarErro: true })) || '{}');
   const cfg = path.join(ctx.home, `.gitconfig-${login}`);

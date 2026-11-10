@@ -35,7 +35,7 @@ export function criarCtx(flags = {}) {
     sim: !!flags.sim, // aceita todos os defaults sem perguntar
     assistido: !!flags.assistido,
     perfil: flags.perfil || '',
-    app: !!flags.app, // rodando dentro do app do Mac (sem Terminal)
+    app: !!flags.app, // rodando dentro do app (sem Terminal)
     askpass: flags.askpass || '', // programa que pede a senha numa janela do Mac (app)
     pastaSetuper,
     logPath,
@@ -69,7 +69,7 @@ export function criarCtx(flags = {}) {
         if (process.platform === 'win32') {
           const linha = [cmd, ...args].map(aspasWin).join(' ');
           const { stdout } = await execFileP('cmd.exe', ['/d', '/s', '/c', `"${linha}"`], {
-            env: { ...process.env, ...opts.env }, windowsVerbatimArguments: true,
+            env: { ...process.env, ...opts.env }, windowsVerbatimArguments: true, windowsHide: !opts.comJanela, // sem isso, no app, cada comando pisca uma janela preta
             maxBuffer: 50 * 1024 * 1024, timeout: opts.timeout ?? 15 * 60 * 1000, cwd: opts.cwd,
           });
           return (stdout || '').trim();
@@ -127,7 +127,7 @@ export function criarCtx(flags = {}) {
 
     async existeComando(nome) {
       try {
-        if (process.platform === 'win32') await execFileP('where.exe', [nome], { env: process.env });
+        if (process.platform === 'win32') await execFileP('where.exe', [nome], { env: process.env, windowsHide: true });
         else await execFileP('/bin/sh', ['-c', `command -v ${nome}`], { env: process.env });
         return true;
       } catch {
@@ -154,8 +154,9 @@ export function criarCtx(flags = {}) {
       if (ctx.win) return flags.home ? path.join(ctx.home, 'AppData', 'Local') : (process.env.LOCALAPPDATA || path.join(ctx.home, 'AppData', 'Local'));
       return path.join(ctx.home, 'Library', 'Application Support');
     },
+    // O app passa a pasta que o próprio Windows informa, que pode estar dentro do OneDrive.
     desktop() {
-      return path.join(ctx.home, 'Desktop');
+      return flags.desktop || path.join(ctx.home, 'Desktop');
     },
 
     existe(p) {

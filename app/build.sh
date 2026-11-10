@@ -24,7 +24,7 @@ for ARQ in "${@:-arm64 x64}"; do
 
     # O app (telas) e, dentro dele, o Setuper inteiro: os mesmos módulos do instalador de Terminal.
     mkdir -p "$R/app/setuper"
-    cp main.js preload.cjs ui-app.js terminal.js aula.js setas.js pty.sh package.json "$R/app/"
+    cp main.js preload.cjs ui-app.js terminal.js aula.js setas.js windows.js pty.sh package.json "$R/app/"
     cp -R tela "$R/app/"
     cp -R ../src ../templates ../bin ../package.json "$R/app/setuper/"
     (cd "$R/app/setuper" && npm install --omit=dev --no-audit --no-fund --silent --registry="$REGISTRO")

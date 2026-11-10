@@ -62,6 +62,8 @@ def ligar_vm_nova():
     # Com a VM do Windows ligada ao mesmo tempo, a de 8 GB faz o Mac de 16 GB entrar em swap.
     if os.environ.get('VM_MEMORIA'):
         tart('set', VM, '--memory', os.environ['VM_MEMORIA'])
+    if os.environ.get('VM_TELA'):  # ex.: 1280x800, pra ver o app em telas de outro tamanho
+        tart('set', VM, '--display', os.environ['VM_TELA'], '--no-display-refit')
     subprocess.Popen([TART, 'run', VM, '--no-graphics'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     endereco = ip()
     for _ in range(60):
@@ -252,7 +254,15 @@ def rodar_app():
         time.sleep(3)
     codigo, saida = ssh(endereco, 'sw_vers -productVersion; xcode-select -p 2>&1; pgrep -x Finder >/dev/null && echo "sessão gráfica: sim"')
     registro(f'[teste] VM {VM} ligada em {endereco}\n{saida}')
-    if not REAL:
+    app_local = os.environ.get('VM_APP')  # o .app direto, como quem arrastou do .dmg pra Aplicativos, sem a linha do Terminal
+    if app_local:
+        pai, nome_app = os.path.split(app_local.rstrip('/'))
+        tar = subprocess.Popen(['tar', '-c', '-C', pai, nome_app], stdout=subprocess.PIPE)
+        r = subprocess.run(['ssh', *SSH_OPTS, f'admin@{endereco}', 'tar -x -C /Applications'], stdin=tar.stdout, env=SSH_ENV, capture_output=True)
+        tar.wait()
+        if r.returncode:
+            sys.exit(f'cópia do app falhou: {r.stderr.decode()}')
+    elif not REAL:
         copiar_setuper(endereco)
         r = subprocess.run(['ssh', *SSH_OPTS, f'admin@{endereco}', 'cat > /tmp/app.zip'], stdin=open(zip_app, 'rb'), env=SSH_ENV, capture_output=True)
         if r.returncode:
@@ -275,6 +285,12 @@ def rodar_app():
         linha = f'curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash -s -- {extras}'
     else:
         linha = f'export CLAUDE_SETUPER_APP_URL=file:///tmp/app.zip; cat /tmp/setuper/install.sh | bash -s -- {extras}'
+    if app_local:
+        env_app = ''
+        if os.environ.get('VM_INTEL'):  # app x64 no Rosetta, seguindo o caminho sem Homebrew que o Mac Intel usa
+            ssh(endereco, f"echo {SENHA} | sudo -S softwareupdate --install-rosetta --agree-to-license", timeout=600)
+            env_app = '--env SETUPER_FINGIR_INTEL=1'
+        linha = f"open -n {env_app} '/Applications/{nome_app}' --args {extras}"
     codigo, saida = ssh(endereco, linha, timeout=600)
     registro(f'[teste] linha do Terminal (código {codigo}):\n{saida[-1500:]}')
     inicio = time.time()

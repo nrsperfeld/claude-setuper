@@ -8,10 +8,12 @@ const RAIZ = path.join(__dirname, '..');
 const TEMPLATES = path.join(RAIZ, 'templates');
 const EN = path.join(TEMPLATES, 'en');
 const CATALOGO = JSON.parse(fs.readFileSync(path.join(RAIZ, 'src', 'idiomas', 'en.json'), 'utf8'));
-const ARQUIVOS_COM_T = ['app/tela/app.js', 'app/tela/guia.js', 'app/aula.js', 'app/main.js'];
+const ARQUIVOS_COM_T = ['app/tela/app.js', 'app/tela/guia.js', 'app/aula.js', 'app/main.js', 'app/setas.js'];
 // Em templates/en, mas não são template: são recados para quem desenvolve, em português.
 const SO_PRA_QUEM_DESENVOLVE = new Set(['NOMES.md', 'FRASES-INTERPOLADAS.md']);
 const PORTUGUES = /[ãõçáéíóúâê]/i;
+const { spawnSync } = require('node:child_process');
+const os = require('node:os');
 
 function listar(dir, base = dir) {
   const achados = [];
@@ -134,4 +136,17 @@ test('nada em português nos arquivos de templates/en', () => {
     });
   }
   assert.deepStrictEqual(sobra, []);
+});
+
+test('instalação em inglês: nenhuma frase em português na tela', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'setuper-en-'));
+  const r = spawnSync(process.execPath, [path.join(RAIZ, 'bin', 'claude-setuper.js'), '--sim', '--sem-apps', '--home', home, '--idioma', 'en', '--perfil', 'dia-a-dia'], { encoding: 'utf8' });
+  assert.strictEqual(r.status, 0, r.stderr);
+  const sobras = r.stdout.split('\n').filter((l) => PORTUGUES.test(l));
+  assert.deepStrictEqual(sobras, []);
+});
+
+test('texto do app sem os tiques de escrita de IA', () => {
+  const TIQUES = /—|não à toa|no fim do dia|trata-se|em suma|vale ressaltar|aterriss|transforma[çr]|jornada|poderos|incrível|mágic|revolucion|superpoder|próximo nível|sem limites/i;
+  assert.deepStrictEqual(Object.keys(CATALOGO).filter((k) => TIQUES.test(k)), []);
 });

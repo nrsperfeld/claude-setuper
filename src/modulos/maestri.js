@@ -36,7 +36,14 @@ export async function instalar(ctx) {
   const instalado = ctx.existe('/Applications/Maestri.app') || ctx.existe('/Applications/Setapp/Maestri.app');
   if (instalado) ui.ok('Maestri já está instalado');
   else if (!ctx.semApps) {
-    await ui.tarefa('Instalando o Maestri, o seu painel com a IA', 'Maestri instalado', async () => { await (await import('./base.js')).brewInstalar(ctx, 'maestri', ['--cask', 'maestri']); }, { demora: 'uns 2 minutos, é normal' });
+    await ui.tarefa('Instalando o Maestri, o seu painel com a IA', 'Maestri instalado', async () => {
+      try {
+        await (await import('./base.js')).brewInstalar(ctx, 'maestri', ['--cask', 'maestri']);
+      } catch (e) {
+        ctx.log('maestri: o Homebrew falhou, baixando pelo feed do próprio Maestri', e.message);
+        await (await import('./semBrew.js')).instalarMaestriDoFeed(ctx);
+      }
+    }, { demora: 'uns 2 minutos, é normal' });
   }
 
   await ui.tarefa('Preparando o painel com a IA e as suas notas', 'Painel pronto', async () => {
@@ -152,6 +159,6 @@ function oQuePedir(ctx) {
   let cardapio = '';
   try { cardapio = fs.readFileSync(config.cardapio, 'utf8'); } catch { return ctx.template('maestri/o-que-pedir.md'); }
   const pedidos = cardapio.split('\n').filter((l) => l.startsWith('- ')).slice(0, 6);
-  const onde = config.vault ? 'no seu segundo cérebro (Obsidian)' : 'na pasta Claude Setuper';
-  return [t('O que você pode pedir pra IA'), '', ...pedidos, '', `Tem mais no "Cardápio do Claude", ${onde}. Ou pergunta pra ela: "o que mais eu posso te pedir?"`, ''].join('\n');
+  const onde = t(config.vault ? 'no seu segundo cérebro (Obsidian)' : 'na pasta Claude Setuper');
+  return [t('O que você pode pedir pra IA'), '', ...pedidos, '', t('Tem mais no "Cardápio do Claude", {onde}. Ou pergunta pra ela: "o que mais eu posso te pedir?"', { onde }), ''].join('\n');
 }

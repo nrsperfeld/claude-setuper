@@ -1,4 +1,4 @@
-// A aula por cima do Maestri: o guia flutuante ensina o básico enquanto a pessoa faz de verdade.
+// A aula por cima do Maestri (no Windows, por cima da janela aberta pelo atalho): o guia flutuante ensina o básico enquanto a pessoa faz de verdade.
 // O avanço vem dos hooks do Claude (templates/hooks/aula.cjs). Toda lição tem saída, pra ninguém ficar preso.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,8 +13,8 @@ const OPCOES = (t, feitos) => [
 function licoes(t, { nome, autonomia, mac, feitos }) {
   const semPedidoDeLicenca = ['confiante', 'livre'].includes(autonomia);
   const atalhoNovo = mac ? '⌘' : 'Ctrl';
-  return [
-    { titulo: t('Isso aqui é um terminal'), linhas: [t('É uma janela de conversa por texto com o computador. Parece coisa de programador, mas aqui dentro quem responde é a sua IA, que se chama Claude, então você só precisa escrever como escreve no WhatsApp.')], tela: t('Janela grande à esquerda'), botao: t('Entendi'), alvos: [{ x: 0.3, y: 0.45, rotulo: t('Essa é a janela da IA') }, { x: 0.78, y: 0.3, rotulo: t('Estas notas são lembretes pra você') }] },
+  const lista = [
+    { titulo: t('Isso aqui é um terminal'), linhas: [t('É uma janela de conversa por texto com o computador. Parece coisa de programador, mas aqui dentro quem responde é a sua IA, que se chama Claude, então você só precisa escrever como escreve no WhatsApp.')], tela: mac ? t('Janela grande à esquerda') : t('A janela preta que abriu'), botao: t('Entendi'), alvos: [{ x: 0.3, y: 0.45, rotulo: t('Essa é a janela da IA') }, { x: 0.78, y: 0.3, rotulo: t('Estas notas são lembretes pra você') }] },
     { titulo: t('Manda a sua primeira mensagem'), linhas: [t('Clica na janela da IA, escreve o que quiser e aperta Enter. Se não souber o que escrever, usa a frase aí de cima.')], tela: t('❯ oi, me explica o que você consegue fazer aqui'), teclas: ['Enter'], espera: ['mensagem'], status: t('Quando você mandar, eu sigo sozinho.'), alvos: [{ x: 0.3, y: 0.86, rotulo: t('Escreve aqui') }] },
     semPedidoDeLicenca
       ? { titulo: t('Usa as setinhas pra escolher'), linhas: [t('Escreve /resume e aperta Enter. Aparece a lista das suas conversas: sobe e desce com as setas do teclado e aperta Enter na que quiser. Toda escolha aqui funciona assim.')], tela: '/resume', teclas: ['↑', '↓', 'Enter'], espera: ['sessao-resume'], status: t('Quando você escolher, eu sigo sozinho.'), alvos: [{ x: 0.3, y: 0.86, rotulo: t('Escreve /resume aqui') }] }
@@ -26,6 +26,8 @@ function licoes(t, { nome, autonomia, mac, feitos }) {
     { titulo: t('A barra em cima da sua mensagem'), linhas: [t('Ela mostra quanto a IA vai pensar nesse pedido, e ela escolhe isso sozinha, pouco pra coisa simples e muito pra coisa difícil. Também mostra quanto da conversa já foi usado. Se um dia parar de mudar, escreve /effortless auto.')], tela: 'effortless · Medium', botao: t('Entendi'), alvos: [{ x: 0.3, y: 0.81, rotulo: t('A barra é esta aqui') }] },
     { fim: true, titulo: nome ? t('O básico é isso, {nome}', { nome }) : t('O básico é isso'), linhas: [t('O resto você vai pegando com o uso, e pode perguntar pra própria IA. Estas quatro coisas são opcionais, ela já funciona sem elas. Dá pra ligar depois, abrindo o Claude Setuper de novo.')], opcoes: OPCOES(t, feitos), botao: t('Fechar a aula') },
   ];
+  // As proporções são do painel do Maestri, com as notas do lado. No Windows a janela é outra, então não aponta nada.
+  return mac ? lista : lista.map(({ alvos: _a, ...licao }) => licao);
 }
 
 export function criarAula({ claudeDir, pasta, t, mostrar, esconder, aoTerminar, respostas, mac }) {
@@ -46,7 +48,7 @@ export function criarAula({ claudeDir, pasta, t, mostrar, esconder, aoTerminar, 
     mostrar({
       rotulo: t('Aula'), contagem: atual.fim ? t('Fim') : t('{i} de {n}', { i: e.i + 1, n: total }), aula: true, volta: e.i > 0 && !atual.fim,
       // Lição que avança pelo hook também tem saída, caso o hook não dispare.
-      appId: 'maestri', passos: [{ ...atual, botao: atual.botao || t('Já fiz') }],
+      appId: mac ? 'maestri' : 'ia', passos: [{ ...atual, botao: atual.botao || t('Já fiz') }],
     });
   }
   function ir(n) {

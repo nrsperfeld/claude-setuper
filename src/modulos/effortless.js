@@ -23,7 +23,7 @@ export async function verificar(ctx) {
   if (!(await ctx.existeComando('claude'))) return [{ item: 'Effortless', ok: false, dica: 'instale o Claude Code primeiro' }];
   return [
     { item: 'Effortless (esforço automático)', ok: await instalado(ctx), dica: 'rode: claude-setuper --modulos effortless' },
-    { item: 'Effortless sem pedir configuração', ok: setupFeito(ctx), dica: 'rode: claude-setuper --modulos effortless' },
+    { item: 'Ajuste automático da IA', ok: setupFeito(ctx), dica: 'rode: claude-setuper --modulos effortless' },
   ];
 }
 

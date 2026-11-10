@@ -2,6 +2,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { ui } from '../ui.js';
+import { t } from '../i18n.js';
 
 export const id = 'mcps';
 export const nome = 'Ferramentas conectadas (Gmail, Drive, Notion...)';
@@ -67,7 +68,7 @@ export async function instalar(ctx) {
 // e eles aparecem sozinhos no Claude Code de quem entrou com a mesma conta do Claude.
 async function ligarConectores(ctx, conectores) {
   if (!conectores.length) return;
-  const nomes = conectores.map((m) => m.nome).join(', ').replace(/, ([^,]*)$/, ' e $1');
+  const nomes = conectores.map((m) => m.nome).join(', ').replace(/, ([^,]*)$/, t(' e $1'));
   if (ctx.app) {
     await ctx.abrirUrl('https://claude.ai/settings/connectors');
     await ui.confirmarFora({ rotulo: 'Gmail e Agenda', passos: [{ titulo: 'Clica em Conectar em cada um', linhas: [`Faz isso em ${nomes}. Escolhe a sua conta do Google e, quando ele perguntar se o Claude, a sua IA, pode acessar, clica em Permitir. Faltou algum? Você volta nessa mesma página.`], figura: 'conectores' }], concluir: 'Terminei', nao: 'Deixar pra depois' });

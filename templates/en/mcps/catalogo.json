@@ -1,0 +1,83 @@
+[
+  {
+    "id": "gmail",
+    "nome": "Gmail",
+    "hint": "read, search and draft your emails",
+    "conector": true
+  },
+  {
+    "id": "google-drive",
+    "nome": "Google Drive",
+    "hint": "find and read your documents and spreadsheets",
+    "conector": true
+  },
+  {
+    "id": "google-agenda",
+    "nome": "Google Calendar",
+    "hint": "see your calendar and schedule appointments",
+    "conector": true
+  },
+  {
+    "id": "notion",
+    "nome": "Notion",
+    "hint": "read and write in your Notion pages",
+    "transporte": "http",
+    "url": "https://mcp.notion.com/mcp",
+    "login": "The first time you use it, type /mcp in the AI window and authorize Notion in your browser."
+  },
+  {
+    "id": "figma",
+    "nome": "Figma",
+    "hint": "read designs and generate code from them",
+    "transporte": "http",
+    "url": "https://mcp.figma.com/mcp",
+    "login": "The first time you use it, type /mcp in the AI window and authorize Figma in your browser."
+  },
+  {
+    "id": "canva",
+    "nome": "Canva",
+    "hint": "create and edit designs in Canva",
+    "transporte": "http",
+    "url": "https://mcp.canva.com/mcp",
+    "login": "The first time you use it, type /mcp in the AI window and authorize Canva."
+  },
+  {
+    "id": "github",
+    "nome": "GitHub (advanced)",
+    "hint": "open issues and PRs and read repositories",
+    "transporte": "http",
+    "url": "https://api.githubcopilot.com/mcp/",
+    "token": "gh",
+    "pacotes": [
+      "dev"
+    ]
+  },
+  {
+    "id": "context7",
+    "nome": "Context7 (code documentation)",
+    "hint": "up-to-date library documentation",
+    "transporte": "stdio",
+    "comando": [
+      "npx",
+      "-y",
+      "@upstash/context7-mcp"
+    ],
+    "pacotes": [
+      "dev"
+    ]
+  },
+  {
+    "id": "playwright",
+    "nome": "Playwright (test websites)",
+    "hint": "open and test pages automatically",
+    "transporte": "stdio",
+    "comando": [
+      "npx",
+      "-y",
+      "@playwright/mcp@latest"
+    ],
+    "pacotes": [
+      "dev"
+    ]
+  }
+]

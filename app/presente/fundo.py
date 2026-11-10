@@ -67,14 +67,14 @@ body {{ background: radial-gradient(560px 300px at 50% -40px, rgba(200,135,60,.2
 <div class="faixa">
   <div class="passo">
     <div class="aviso"><div class="ic"><i></i></div><div class="barra" style="width: 78%"></div><div class="barra" style="width: 56%"></div>
-      <div class="bt cobre">&nbsp;</div><div class="bt">Mover para o Lixo</div></div>
-    <p><span class="num">1.</span>Arraste para Aplicativos e abra o app. Se aparecer um aviso, <b>feche o aviso</b>.</p>
+      <div class="bt cobre">Concluído</div><div class="bt">Mover para o Lixo</div></div>
+    <p><span class="num">1.</span>Arraste para Aplicativos e abra o app. O Mac mostra um aviso: clique em <b>Concluído</b>, nunca em Mover para o Lixo.</p>
   </div>
   <div class="passo">
     <div class="painel"><div class="tit">Privacidade e Segurança</div>
       <div class="linha"><div><div class="barra" style="width: 100%"></div><div class="barra" style="width: 70%"></div></div>
         <div class="abrir">Abrir Mesmo Assim</div></div></div>
-    <p><span class="num">2.</span>Abra Ajustes do Sistema, Privacidade e Segurança, e clique em <b>Abrir Mesmo Assim</b>. Depois ele abre direto.</p>
+    <p><span class="num">2.</span>Abra Ajustes do Sistema, Privacidade e Segurança, desça até o fim e clique em <b>Abrir Mesmo Assim</b>. Depois ele abre direto.</p>
   </div>
 </div>
 </body></html>'''

@@ -2,10 +2,11 @@
 const G = window.setuper;
 const raiz = document.getElementById('guia');
 let cat = {};
+let nomeApp = 'Claude Setuper';
 let cena = null; // { rotulo, passos: [{ titulo, linhas, figura, print }], i, acoes, pular, concluir, nao, id, codigo, link, status, aula, opcoes }
 const t = (texto, vars) => {
   const base = cat[texto] ?? texto;
-  return vars ? base.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m)) : base;
+  return (vars ? base.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m)) : base).replaceAll('Claude Setuper', nomeApp);
 };
 function h(tag, attrs = {}, ...filhos) {
   const el = document.createElement(tag);
@@ -74,6 +75,7 @@ const temProximo = () => cena.passos.length > 1 && cena.i < cena.passos.length -
 
 G.aoGuia((ev) => {
   if (ev.catalogo) cat = ev.catalogo;
+  if (ev.nomeApp) nomeApp = ev.nomeApp;
   if (ev.tipo === 'cena') cena = { i: 0, ...ev.cena };
   else if (ev.tipo === 'link' && cena) cena.link = ev.url;
   else if (ev.tipo === 'codigo' && cena) cena.codigo = ev.codigo;

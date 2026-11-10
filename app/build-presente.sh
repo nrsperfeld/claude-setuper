@@ -32,12 +32,11 @@ rm -f "$R/default_app.asar"
 
 # As telas e, dentro delas, o Setuper inteiro (os mesmos módulos do instalador de Terminal).
 mkdir -p "$R/app/setuper"
-cp main.js preload.cjs ui-app.js terminal.js pty.sh "$R/app/"
+cp main.js preload.cjs ui-app.js terminal.js aula.js setas.js windows.js pty.sh "$R/app/"
 cp -R tela "$R/app/"
 node -e "const p=require('./package.json'); p.productName='$NOME_APP'; p.name='segundo-cerebro'; require('fs').writeFileSync('$R/app/package.json', JSON.stringify(p,null,2)+'\n')"
 cp -R ../src ../templates ../bin ../package.json "$R/app/setuper/"
-if [ -d ../node_modules/@clack/prompts ]; then cp -R ../node_modules "$R/app/setuper/"
-else (cd "$R/app/setuper" && npm install --omit=dev --no-audit --no-fund --silent --registry="$REGISTRO"); fi
+(cd "$R/app/setuper" && npm install --omit=dev --no-audit --no-fund --silent --registry="$REGISTRO")
 chmod +x "$R/app/pty.sh"
 
 # O presente: presente.json, cofre/ e o signo, sem lixo de sistema nem o histórico de quem montou.

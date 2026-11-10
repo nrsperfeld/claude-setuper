@@ -7,6 +7,7 @@ import { remover } from './remover.js';
 import { exportar } from './exportar.js';
 import { atualizar } from './atualizar.js';
 import { gerarPedidoDeAjuda } from './ajuda.js';
+import { t } from './i18n.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,7 +65,7 @@ export async function main(argv) {
 }
 
 export async function instalar(ctx, flags) {
-  ui.abertura('Claude Setuper', `versão ${VERSAO}${ctx.dryRun ? '  (modo de teste, nada vai ser alterado)' : ''}`);
+  ui.abertura('Claude Setuper', `${t('versão {versao}', { versao: VERSAO })}${ctx.dryRun ? t('  (modo de teste, nada vai ser alterado)') : ''}`);
 
   // No app, as perguntas acontecem enquanto o computador baixa e instala o que não depende delas.
   if (ctx.app) await (await import('./modulos/base.js')).adiantarPreparo(ctx);
@@ -142,7 +143,7 @@ async function pedirAjuda(ctx) {
 
 function gravarRelatorio(ctx, falhas) {
   const linhas = [
-    `Claude Setuper ${ctx.estado.versao} — relatório`,
+    `Claude Setuper ${ctx.estado.versao}: relatório`,
     `Data: ${new Date().toLocaleString('pt-BR')}`,
     `Sistema: ${ctx.plataforma}`,
     `Nome: ${ctx.resp.nome} | Autonomia: ${ctx.resp.autonomia}`,
@@ -151,7 +152,7 @@ function gravarRelatorio(ctx, falhas) {
     '',
     falhas.length ? 'Log completo em: ' + ctx.logPath : 'Tudo certo.',
   ];
-  const p = path.join(ctx.pastaSetuper, 'relatorio.txt');
+  const p = path.join(ctx.pastaSetuper, ctx.arq('relatorio.txt'));
   fs.writeFileSync(p, linhas.join('\n') + '\n');
   ui.info(`Relatório salvo em ${p}. Manda pra quem está te ajudando.`);
 }

@@ -1,0 +1,41 @@
+{
+  "ordem": 2,
+  "nome": "For my business",
+  "hint": "decisions, numbers, proposals, team",
+  "trabalho": {
+    "pergunta": "Tell me about your business in one sentence: what it does and what your role is.",
+    "placeholder": "E.g., a construction company in Cape Cod. I own it and handle the finances and clients"
+  },
+  "pacotes": [
+    "empresa",
+    "negocios",
+    "escrita",
+    "pesquisa"
+  ],
+  "semModulos": [],
+  "claudeMd": "# My business\n\nI own a business and my time is short. Start with the recommendation and then explain why. When a decision involves money or time, run the numbers before giving your opinion: how much it costs, how much comes back and how long it takes. If a number is missing, ask me instead of making it up.\n\nWhen I ask for something for the team (a message, a procedure, a payment reminder), write it ready for me to send, in the tone of someone who is firm on results and respectful of people.\n",
+  "id": "empresario",
+  "primeiraVitoria": "Let's do the first real task now, with a number from my business. Ask me to drag in a spreadsheet or PDF from the business (sales, costs, a bank statement, a budget). If I don't have anything handy, ask me for the month's revenue and main costs. With that, show me the 3 things that matter most in there and a recommendation, with the math done. Save the summary in a note in my second brain.",
+  "semana": [
+    "Write the message or procedure I keep repeating to the team, ready to send.",
+    "Put together a sales proposal from three pieces of information I give you about the client.",
+    "Run the numbers on a decision I've been putting off: how much it costs, how much comes back and how long it takes.",
+    "Read the latest emails or messages from a client that I paste and tell me what they really want.",
+    "Put together the agenda for the next team meeting, with what to decide on each point.",
+    "Review the business's week with me and note in my second brain the decisions we made."
+  ],
+  "wiki": [
+    {
+      "pasta": "clients",
+      "oQue": "one page per important client: who they are, what they bought, how the relationship is going"
+    },
+    {
+      "pasta": "people",
+      "oQue": "people on the team, partners and collaborators"
+    },
+    {
+      "pasta": "topics",
+      "oQue": "subjects that keep coming back in the business, like sales, finance, the team and suppliers"
+    }
+  ]
+}

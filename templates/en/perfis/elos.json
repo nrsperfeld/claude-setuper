@@ -1,0 +1,42 @@
+{
+  "ordem": 6,
+  "nome": "For the ELOS team",
+  "hint": "writing, materials and routines at Instituto ELOS",
+  "trabalho": {
+    "pergunta": "What is your role at ELOS?",
+    "placeholder": "E.g., I handle student support for the Practitioner program"
+  },
+  "pacotes": [
+    "elos",
+    "escrita",
+    "negocios",
+    "pesquisa",
+    "criador"
+  ],
+  "semModulos": [],
+  "claudeMd": "# Working at Instituto ELOS\n\nI'm part of the team at Instituto ELOS, founded by Erick Loureiro. The ELOS tone is warm, close and intentional, never cold or corporate.\n\nIn ELOS writing, don't use these words: transformation, coaching, mindset, beliefs (in the self-help sense), emotional intelligence.\n\nAnd no text that sounds like AI: no catchphrase to close a paragraph, no \"it's not X, it's Y\" in a row, no em dashes (use a comma, a colon or a new sentence), no lists where every line has the same format, no crutches like \"at the end of the day\", \"it's worth noting\" and \"in short\". Write the way people talk, explaining the why all the way through. Before delivering, reread and cut anything that sounds like advertising.\n",
+  "id": "elos",
+  "primeiraVitoria": "Let's do the first real task now: ask me what the most boring or repetitive task of my week at ELOS is. Then do it with me once, from start to finish, and at the end turn what we did into a command I can call again. Save the step by step in a note in my second brain.",
+  "semana": [
+    "Prepare the message or material for a class or client I'm working with this week.",
+    "Summarize a meeting (a transcript or notes I paste) with decisions and next steps.",
+    "Organize a messy work folder, without deleting anything.",
+    "Review a text or script in the ELOS voice, pointing out what sounds artificial.",
+    "Make a simple spreadsheet to track something I keep in my head today.",
+    "Note in my second brain the week's decisions and lessons."
+  ],
+  "wiki": [
+    {
+      "pasta": "people",
+      "oQue": "people on the team you work with"
+    },
+    {
+      "pasta": "products",
+      "oQue": "courses, programs and events you work on"
+    },
+    {
+      "pasta": "topics",
+      "oQue": "subjects that keep coming back in your work"
+    }
+  ]
+}

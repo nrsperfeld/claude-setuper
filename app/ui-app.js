@@ -41,6 +41,8 @@ export function criarUiApp(enviar, pedir, traduzir = (s) => s) {
       tentar = false;
       enviar({ tipo: 'pausa', titulo: limpo(titulo), linhas: (Array.isArray(linhas) ? linhas : [linhas]).map(limpo), figura, acoes: acoes.map((a) => ({ ...a, rotulo: limpo(a.rotulo) })), pular: pular ? limpo(pular) : '', espera, rotulo: rotulo ? limpo(rotulo) : '', opcional: !!opcional });
     },
+    // Fecha o guia de uma pausa que não depende de resposta (o aviso de permissão do Windows, quando o programa terminou).
+    fimDaPausa() { enviar({ tipo: 'fimpausa' }); },
     pulou: () => pulado,
     marcarPulado() { pulado = true; },
     pediuTentar() { const r = tentar; tentar = false; return r; },

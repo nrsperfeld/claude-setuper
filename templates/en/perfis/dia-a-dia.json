@@ -1,0 +1,36 @@
+{
+  "ordem": 1,
+  "nome": "For my everyday work",
+  "hint": "emails, writing, spreadsheets, research",
+  "trabalho": {
+    "pergunta": "What kind of work do you do? Tell me in one sentence.",
+    "placeholder": "E.g., I'm a receptionist at a clinic and handle the schedule and payments"
+  },
+  "pacotes": [
+    "escrita",
+    "negocios",
+    "pesquisa"
+  ],
+  "semModulos": [],
+  "claudeMd": "",
+  "id": "dia-a-dia",
+  "primeiraVitoria": "Let's do the first real task now: tidying up my Downloads folder. Look at what's in there and show me, in a few lines, a plan of folders by type (documents, photos, spreadsheets, installers...). Wait for my OK. Then only create folders and move files, never delete anything, and save the list of what moved in a note, so it can be undone. At the end, show me how it turned out.",
+  "semana": [
+    "Send you a photo or screenshot of a piece of paper (a bill, a receipt, a prescription) so you can turn it into organized text.",
+    "Write that hard message I've been putting off together with me, in my tone.",
+    "Make this week's shopping or to-do list from what I dictate, in order of priority.",
+    "Take a big file (a contract, a manual, a PDF) and explain to me in five lines what matters in it.",
+    "Plan a short outing or trip with times, costs and a backup plan in case it rains.",
+    "Review with me what we did this week and note in my second brain what I liked and didn't like."
+  ],
+  "wiki": [
+    {
+      "pasta": "people",
+      "oQue": "people you work or spend time with, one page per person"
+    },
+    {
+      "pasta": "topics",
+      "oQue": "subjects that keep coming back, like home, health, money, a hobby or work"
+    }
+  ]
+}

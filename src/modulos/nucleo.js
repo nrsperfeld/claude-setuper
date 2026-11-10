@@ -2,6 +2,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { ui } from '../ui.js';
+import { t } from '../i18n.js';
 import { perfil, NIVEL_TEC, NIVEL_IA, IA_ANTIGA, MENOR_DE_IDADE, ehMenor } from '../perfis.js';
 import { montarWiki, verificarWiki, removerTrava } from './wiki.js';
 import { chaveDaApi } from '../cuidados.js';
@@ -51,33 +52,33 @@ function comCofre(ctx) {
 
 export async function instalar(ctx) {
   const d = ctx.claudeDir;
-  const vault = ctx.resp.vault || path.join(ctx.home, 'Documents', 'Segundo Cérebro');
+  const vault = ctx.resp.vault || path.join(ctx.home, 'Documents', ctx.pasta('Segundo Cérebro'));
   ctx.resp.vault = vault;
-  ctx.resp.data = new Date().toLocaleDateString('pt-BR');
-  ctx.resp.comoAbrir = ctx.plataforma === 'darwin' ? 'pelo Maestri (o aplicativo com o canvas)' : 'pelo atalho "Claude" na sua Área de Trabalho';
+  ctx.resp.data = new Date().toLocaleDateString(ctx.idioma === 'en' ? 'en-US' : 'pt-BR');
+  ctx.resp.comoAbrir = t(ctx.plataforma === 'darwin' ? 'pelo Maestri (o aplicativo com o canvas)' : 'pelo atalho "Claude" na sua Área de Trabalho');
   // Versão do "trabalho" segura pra ir dentro de aspas em bash e cmd.
-  ctx.resp.trabalhoSeguro = ctx.seguro(ctx.resp.trabalho, 'o meu trabalho do dia a dia');
-  ctx.resp.autonomiaTexto = {
+  ctx.resp.trabalhoSeguro = ctx.seguro(ctx.resp.trabalho, t('o meu trabalho do dia a dia'));
+  ctx.resp.autonomiaTexto = t({
     cauteloso: 'Pergunte antes de qualquer ação que altere arquivos ou rode comandos. Prefira explicar o que vai fazer e esperar o ok.',
     equilibrado: 'Faça o básico sozinho (ler, escrever, organizar) e pergunte só no que for difícil de desfazer ou que mude a direção do trabalho.',
     confiante: 'Faça o trabalho inteiro sem pedir confirmação, e no fim conte o que fez, em linguagem simples.',
     livre: 'Faça o trabalho inteiro sem pedir confirmação, e no fim conte o que fez, em linguagem simples. Antes de apagar qualquer coisa, faça uma cópia.',
-  }[ctx.resp.autonomia];
+  }[ctx.resp.autonomia] || '');
 
   const p = perfil(ctx, ctx.resp.perfil);
   const menor = ehMenor(ctx.resp.idade);
-  ctx.resp.idadeTexto = String(ctx.resp.idade ?? '').trim() ? `, tenho ${ctx.resp.idade} anos` : '';
+  ctx.resp.idadeTexto = String(ctx.resp.idade ?? '').trim() ? t(', tenho {idade} anos', { idade: ctx.resp.idade }) : '';
   // Quem já usa IA pra código não precisa do aviso de "sem jargão", mesmo que tenha marcado o básico em tecnologia.
-  ctx.resp.nivelTexto = ctx.resp.ia === 'code' ? NIVEL_TEC.avancado : NIVEL_TEC[ctx.resp.tecnologia] || NIVEL_TEC.basico;
-  ctx.resp.iaTexto = NIVEL_IA[IA_ANTIGA[ctx.resp.ia] || ctx.resp.ia] || '';
+  ctx.resp.nivelTexto = t(ctx.resp.ia === 'code' ? NIVEL_TEC.avancado : NIVEL_TEC[ctx.resp.tecnologia] || NIVEL_TEC.basico);
+  ctx.resp.iaTexto = t(NIVEL_IA[IA_ANTIGA[ctx.resp.ia] || ctx.resp.ia] || '');
   const prints = await pastaDePrints(ctx);
   const cardapio = caminhoCardapio(ctx, vault);
   ctx.resp.extras = [
     p.claudeMd,
-    menor ? MENOR_DE_IDADE : '',
-    (ctx.resp.modulos || []).includes('maestri') && ctx.plataforma === 'darwin' ? VARIOS_AGENTES : '',
-    `# Cardápio do Claude\n\nQuando eu perguntar o que dá pra te pedir, ou parecer que não sei por onde começar, abra o Cardápio do Claude em \`${cardapio}\` e sugira 2 ou 3 pedidos que combinem com o momento, não a lista inteira.\n`,
-    prints ? `# Prints de tela\n\nMeus prints de tela ficam em \`${prints}\`. Quando eu falar "olha o print" ou "vê a tela", leia o arquivo mais recente dessa pasta. Se eu arrastar um print e o caminho começar com \`/var/folders/\`, você não vai conseguir ler: pegue o mais recente da pasta de prints.\n` : '',
+    menor ? t(MENOR_DE_IDADE) : '',
+    (ctx.resp.modulos || []).includes('maestri') && ctx.plataforma === 'darwin' ? t(VARIOS_AGENTES) : '',
+    t('# Cardápio do Claude\n\nQuando eu perguntar o que dá pra te pedir, ou parecer que não sei por onde começar, abra o Cardápio do Claude em `{cardapio}` e sugira 2 ou 3 pedidos que combinem com o momento, não a lista inteira.\n', { cardapio }),
+    prints ? t('# Prints de tela\n\nMeus prints de tela ficam em `{prints}`. Quando eu falar "olha o print" ou "vê a tela", leia o arquivo mais recente dessa pasta. Se eu arrastar um print e o caminho começar com `/var/folders/`, você não vai conseguir ler: pegue o mais recente da pasta de prints.\n', { prints }) : '',
   ].filter(Boolean).join('\n');
 
   await ui.tarefa('Ensinando a IA quem você é', 'A IA já sabe quem você é', async () => {
@@ -177,7 +178,7 @@ export function escreverClaudeMd(ctx, arquivo, bloco) {
   }
   if (novo === atual) return;
   const agora = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  ctx.escrever(path.join(ctx.pastaSetuper, 'backups', `CLAUDE.md antes de ${agora}.md`), atual);
+  ctx.escrever(path.join(ctx.pastaSetuper, 'backups', t('CLAUDE.md antes de {agora}.md', { agora })), atual);
   ctx.escrever(arquivo, novo);
 }
 
@@ -204,7 +205,7 @@ async function pastaDePrints(ctx) {
   if (atual) return atual;
   if (ctx.dryRun) return '';
   // Sem perguntar: o Mac joga os prints na Mesa, onde o Claude não acha. Numa pasta fixa ele lê o mais recente.
-  const pasta = path.join(ctx.homeReal, 'Pictures', 'Prints');
+  const pasta = path.join(ctx.homeReal, 'Pictures', ctx.pasta('Prints'));
   fs.mkdirSync(pasta, { recursive: true });
   await ctx.run('defaults', ['write', 'com.apple.screencapture', 'location', pasta], { ignorarErro: true });
   await ctx.run('killall', ['SystemUIServer'], { ignorarErro: true });

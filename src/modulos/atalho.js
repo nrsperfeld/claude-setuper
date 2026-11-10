@@ -26,14 +26,17 @@ export async function instalar(ctx) {
   await ui.tarefa('Criando o atalho da IA na Área de Trabalho', 'Atalho criado', async () => {
     fs.mkdirSync(ctx.desktop(), { recursive: true });
     const vars = { marcador: path.join(ctx.claudeDir, '.setuper-saudou'), apresentacao: apresentacao(ctx), vault, vaultUrl: `obsidian://open?path=${encodeURIComponent(vault)}` };
-    ctx.escrever(atalho, ctx.template(ctx.win ? 'atalho/Claude.cmd' : 'atalho/Claude.sh', vars));
+    const texto = ctx.template(ctx.win ? 'atalho/Claude.cmd' : 'atalho/Claude.sh', vars);
+    // O cmd se perde nos rótulos (goto normal) quando o arquivo tem só LF no fim das linhas.
+    ctx.escrever(atalho, ctx.win ? texto.replace(/\r?\n/g, '\r\n') : texto);
     if (!ctx.dryRun && !ctx.win) fs.chmodSync(atalho, 0o755);
   });
 
-  if (ctx.semApps || ctx.dryRun) return;
+  // No app quem abre a IA é o fim do portal: abrir aqui também deixaria duas janelas.
+  if (ctx.semApps || ctx.dryRun || ctx.app) return;
   if (ctx.win) {
     if (vault) await ctx.abrirUrl(`obsidian://open?path=${encodeURIComponent(vault)}&file=${encodeURIComponent('Comece aqui')}`);
-    await ctx.run('cmd.exe', ['/c', 'start', '""', atalho], { ignorarErro: true });
+    await ctx.run('cmd.exe', ['/c', 'start', '""', atalho], { ignorarErro: true, comJanela: true });
   } else {
     await ctx.run('x-terminal-emulator', ['-e', atalho], { ignorarErro: true });
   }

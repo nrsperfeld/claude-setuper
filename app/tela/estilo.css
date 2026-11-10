@@ -22,10 +22,10 @@ p{margin:0}
 .link{background:none;border:0;padding:0;color:var(--texto2);font:400 13px/18px var(--sans);text-decoration:none;cursor:pointer}.link:hover{color:var(--texto)}
 .botoes{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:26px}
 .rodape{position:absolute;left:24px;right:24px;bottom:18px;display:flex;justify-content:space-between;align-items:center;z-index:3}
-.idioma{position:absolute;right:20px;top:14px;z-index:5;display:flex;gap:6px;align-items:center;color:var(--texto2);font-size:13px}
+.idioma{position:absolute;right:20px;top:14px;z-index:25;display:flex;gap:6px;align-items:center;color:var(--texto2);font-size:13px}
 .proto{position:absolute;right:20px;bottom:50px;z-index:6;font:500 11px/1 var(--sans);color:var(--texto3);border:1px dashed var(--texto3);border-radius:10px;padding:6px 9px;text-decoration:none}
-.campo{width:400px;height:52px;border-radius:14px;border:1px solid var(--ambar);background:var(--sup);color:var(--texto);font:400 20px var(--sans);padding:0 18px;text-align:center;box-shadow:0 0 0 4px rgba(242,166,90,.14)}
-.campo::placeholder{color:var(--texto3)}
+.campo{width:480px;height:52px;border-radius:14px;border:1px solid var(--ambar);background:var(--sup);color:var(--texto);font:400 20px var(--sans);padding:0 18px;text-align:left;box-shadow:0 0 0 4px rgba(242,166,90,.14)}
+.campo::placeholder{color:var(--texto3);font-size:16px}
 .ops{display:grid;gap:8px;width:520px;margin-top:20px;text-align:left}
 .op{display:flex;gap:14px;align-items:center;width:100%;min-height:56px;padding:9px 16px;border-radius:14px;border:1px solid var(--linha);background:var(--sup);color:var(--texto);font:inherit;text-align:left;cursor:pointer}
 .op:hover{background:var(--sup2)}
@@ -189,7 +189,9 @@ body.janela-guia .arrasto{height:26px}
 
 .abre-uma{animation:abre 4.2s cubic-bezier(.7,0,.25,1) both}
 .apaga-uma{animation:apaga 4.2s ease-in both}
-.clarao.clarao-uma{animation:clarao 4.2s ease-in both}
+/* uma vez só: entra no branco e fica, até a janela sair de cima do Maestri */
+.clarao.clarao-uma{background:#fff;animation:entra-no-branco 4.2s ease-in both}
+@keyframes entra-no-branco{0%,48%{opacity:0}90%,100%{opacity:1}}
 .so-leitor{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 pre.log{margin:12px 0 0}
 
@@ -218,5 +220,17 @@ body.janela-setas{overflow:hidden}
 .seta-ponta{fill:var(--ambar);stroke:rgba(0,0,0,.45);stroke-width:2}
 .seta-alvo{fill:none;stroke:var(--ambar);stroke-width:4;transform-box:fill-box;transform-origin:center;animation:pulsa-alvo 1.1s ease-out infinite}
 @keyframes pulsa-alvo{from{transform:scale(.7);opacity:1}to{transform:scale(1.7);opacity:0}}
+.seta-faixa{fill:none;stroke:var(--ambar);stroke-width:5;animation:faixa 1.2s ease-in-out infinite}
+@keyframes faixa{50%{opacity:.35}}
+.seta-rotulo img{display:block;width:64px;height:64px;margin:2px auto 6px}
 .seta-rotulo{position:fixed;transform:translate(-50%,-50%);max-width:280px;padding:10px 18px;border-radius:22px;background:var(--ambar);color:#160E04;font:600 18px/24px var(--sans);text-align:center;box-shadow:0 8px 26px rgba(0,0,0,.45)}
 @media (prefers-reduced-motion:reduce){.seta-linha,.seta-alvo,.alvo::after{animation:none}}
+.idioma span:not(.t3){color:var(--texto);font-weight:600}
+.conversa{display:flex;flex-direction:column;gap:10px;width:600px;max-width:100%;margin-top:24px;text-align:left}
+.balao{max-width:82%;padding:11px 16px;border-radius:18px;font-size:16px;line-height:23px}
+.balao.voce{align-self:flex-end;background:var(--ambar);color:#160E04;border-bottom-right-radius:6px}
+.balao.ia{align-self:flex-start;background:var(--sup2);color:var(--texto);border-bottom-left-radius:6px}
+/* tela baixa: a carta e as telas cheias cabem sem barra de rolagem clara aparecendo */
+.palco::-webkit-scrollbar{width:6px}
+.palco::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:3px}
+@media (max-height:700px){.signo{width:34px;margin-bottom:10px}.corpo-carta{font-size:15px;line-height:22px}.palco{padding-top:40px;padding-bottom:48px}}

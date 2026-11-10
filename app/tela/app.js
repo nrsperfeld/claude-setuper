@@ -13,14 +13,15 @@ const seletorIdioma = document.getElementById('idioma');
 const estado = {
   fase: 'carregando', // carregando | presente | preparo | inicio | demo | confirma | perguntas | instalando | portal | video | fim | falha
   inicio: null, atualizacao: null, auto: null, catalogo: {}, idioma: 'pt', plataforma: 'darwin',
-  passos: [], pesos: [], atual: -1, falhos: new Set(), pendentes: new Set(), comecar: null,
+  passos: [], pesos: [], atual: -1, mostrado: 0, desdePasso: 0, falhos: new Set(), pendentes: new Set(), comecar: null,
   tarefa: '', demora: '', desde: 0, mexeu: 0, tarefaId: null, msgs: [], pausa: null, pedido: null,
   encerramento: '', grupos: [], soConferiu: false, falha: '', exemplos: [], exemplo: 0, feitos: [],
   folha: null, // null | 'detalhes' | 'fechar' | ajuda: 'gerando' | { arquivo, nome, pasta } | { erro }
   detalhes: '',
 };
 
-const t = (texto, vars) => {
+const t = (texto, vars) => { const r = t0(texto, vars); return estado.inicio?.presente ? r.replaceAll('Claude Setuper', 'Segundo Cérebro') : r; };
+const t0 = (texto, vars) => {
   const base = estado.catalogo[texto] ?? texto;
   return vars ? base.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m)) : base;
 };
@@ -45,12 +46,46 @@ const anel = (tam, p, classe = '', meio) => h('div', { class: `anel ${classe}`, 
 const icCerto = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 18 18'); s.setAttribute('class', 'ic'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = '<path d="M4 9.5l3.5 3.5L14 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'; return s; };
 const icFalta = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 18 18'); s.setAttribute('class', 'ic a'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = '<path d="M9 4v6M9 13.5v.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'; return s; };
 
-// ---------- progresso: cada trecho aceso é etapa que terminou de verdade ----------
-function porcentagem() {
+// ---------- progresso ----------
+// Decisão do Nathan: a sensação de progresso pesa mais que o número exato. A porcentagem nunca salta nem volta:
+// sobe devagar enquanto a etapa trabalha, sem passar do fim dela, e quando a etapa acaba antes ela sobe contando.
+const SOBE_POR_SEGUNDO = 2;
+const SOBE_NO_FIM = 14;
+const SEGUNDOS_POR_PESO = 12;
+function destino() {
   const pesos = estado.pesos.length === estado.passos.length && estado.pesos.length ? estado.pesos : estado.passos.map(() => 1);
   const total = pesos.reduce((a, b) => a + b, 0) || 1;
-  const feitas = pesos.slice(0, Math.max(estado.atual, 0)).reduce((a, b) => a + b, 0);
-  return estado.fase === 'fim' || estado.fase === 'portal' ? 100 : Math.round((feitas / total) * 100);
+  const atual = Math.max(estado.atual, 0);
+  const feitas = pesos.slice(0, atual).reduce((a, b) => a + b, 0);
+  const peso = pesos[atual] || 0;
+  // Curva que desacelera: anda sempre um pouco e nunca chega no fim da etapa antes de ela terminar de verdade.
+  const dentro = 1 - Math.exp(-(Date.now() - (estado.desdePasso || Date.now())) / (Math.max(peso, 1) * SEGUNDOS_POR_PESO * 1000));
+  return Math.min(99, ((feitas + peso * 0.97 * dentro) / total) * 100);
+}
+function porcentagem() {
+  return estado.fase === 'fim' || estado.fase === 'portal' ? 100 : Math.floor(estado.mostrado);
+}
+// Na vez da pessoa o número espera por ela; depois retoma de onde estava.
+function andarProgresso(segundos) {
+  if (estado.fase !== 'instalando' || (estado.pausa && !estado.pausa.espera)) return;
+  const antes = Math.floor(estado.mostrado);
+  estado.mostrado = Math.min(Math.max(estado.mostrado, destino()), estado.mostrado + SOBE_POR_SEGUNDO * segundos);
+  if (Math.floor(estado.mostrado) !== antes) pintarProgresso();
+}
+function pintarProgresso() {
+  const a = document.querySelector('.anel[data-progresso]');
+  if (!a) return;
+  a.style.setProperty('--p', String(Math.floor(estado.mostrado)));
+  const m = a.querySelector('.meio');
+  if (m) m.textContent = `${Math.floor(estado.mostrado)}%`;
+}
+// A instalação acabou: o número termina de subir até 100, e só então o portal abre.
+function subirAte100(depois) {
+  const t0 = setInterval(() => {
+    estado.mostrado = Math.min(100, estado.mostrado + SOBE_NO_FIM * 0.1);
+    pintarProgresso();
+    if (estado.mostrado >= 100) { clearInterval(t0); setTimeout(depois, 350); }
+  }, 100);
 }
 
 // ---------- desenho ----------
@@ -111,6 +146,11 @@ function telaInicio() {
   const faixaNova = estado.atualizacao && h('div', { class: 'bloco', css: { display: 'flex', 'align-items': 'center', gap: '16px', width: '560px', 'margin-bottom': '30px' } },
     h('div', { css: { flex: '1' } }, h('h3', {}, t('Tem uma versão nova do Claude Setuper')), h('p', { class: 't2 peq' }, t('Atualizo agora e abro de novo em menos de um minuto.'))),
     botao(t('Atualizar'), () => S.atualizar(), 'btn p'));
+  if (temInstalacao && estado.inicio.tudoPronto) {
+    return [faixaNova, portal('130px'), h('h1', { css: { 'margin-top': '30px' } }, nome ? t('Está tudo instalado, {nome}.', { nome }) : t('Está tudo instalado.')),
+      h('p', { class: 'lead' }, estado.plataforma === 'darwin' ? t('Posso abrir o Maestri de novo. Se a aula ficou pela metade, ela continua de onde parou, e no fim dela ficam os opcionais, como o GitHub e o Chrome.') : t('Posso abrir a IA de novo. Se a aula ficou pela metade, ela continua de onde parou, e no fim dela ficam os opcionais, como o GitHub e o Chrome.')),
+      h('div', { class: 'botoes' }, botao(estado.plataforma === 'darwin' ? t('Abrir o Maestri') : t('Abrir a IA'), () => S.concluir(), 'btn', { 'data-foco': true }), botao(t('Só conferir'), () => comecar('conferir'), 'btn2'))];
+  }
   if (temInstalacao) {
     return [faixaNova, anel('170px', estado.inicio.progresso ?? 0, '', `${estado.inicio.progresso ?? 0}%`),
       h('h1', { css: { 'margin-top': '30px' } }, nome ? t('Que bom te ver de novo, {nome}.', { nome }) : t('Que bom te ver de novo.')),
@@ -120,17 +160,18 @@ function telaInicio() {
   const primeira = estado.inicio?.primeiraAbertura !== false;
   return [faixaNova, portal(faixaNova ? '130px' : '230px', primeira ? 'nasce' : ''), h('div', { css: { height: faixaNova ? '36px' : '50px' } }),
     h('h1', { class: primeira ? 'sobe d1' : '' }, t('Vamos preparar a IA pra trabalhar com você.')),
-    h('p', { class: `lead ${primeira ? 'sobe d2' : ''}` }, t('Daqui 20 minutos você vai ter o setup mais avançado do mercado rodando ao seu favor, com uma IA que lembra de tudo que você decidiu, e trabalha sem fronteiras pra te ajudar. O esforço é quase todo meu, só clica em começar e vem!')),
+    h('p', { class: `lead ${primeira ? 'sobe d2' : ''}` }, t('Daqui 20 minutos a IA está instalada no seu computador, lembrando do que você decidiu e fazendo o trabalho junto com você. O esforço é quase todo meu, só clica em começar e vem!')),
     h('div', { class: `botoes ${primeira ? 'sobe d3' : ''}` }, botao(t('Começar'), () => irPara('demo'), 'btn', { 'data-foco': true }))];
 }
 function telaDemo() {
-  const coluna = (rotulo, conteudo, atraso) => h('div', { class: 'bloco sobe', css: { 'animation-delay': `${atraso}s` } }, h('p', { class: 't3 peq', css: { 'margin-bottom': '6px' } }, rotulo), conteudo);
-  return [h('h2', {}, t('A IA sai do chat e vem pro seu computador.')),
-    h('p', { class: 'lead' }, t('Você pede, ela abre os seus arquivos e leva o trabalho até o fim. No que for importante, ela pede permissão antes de sair fazendo.')),
-    h('div', { css: { display: 'grid', 'grid-template-columns': 'repeat(3,minmax(0,1fr))', gap: '12px', width: '768px', 'max-width': '100%', 'margin-top': '28px', 'text-align': 'left' } },
-      coluna(t('Você pede'), h('p', {}, t('Organiza a minha pasta Downloads em pastas por tipo, sem apagar nada.')), 0),
-      coluna(t('Ela faz'), [t('Pasta Documentos'), t('Pasta Imagens'), t('Pasta Planilhas')].map((x) => h('div', { class: 'linha', css: { padding: '2px 0' } }, icCerto(), h('span', {}, x))), 0.9),
-      coluna(t('E lembra'), h('p', {}, t('Anota no caderno de notas, aqui no seu computador, que você prefere as coisas separadas por tipo. Da próxima vez ela já sabe.')), 1.8)),
+  // Uma conversa de verdade: a pessoa vê o pedido, a IA pedindo permissão, o trabalho feito e o que ela guardou.
+  const fala = (quem, texto, atraso) => h('p', { class: `balao ${quem} sobe`, css: { 'animation-delay': `${atraso}s` } }, texto);
+  return [h('h2', {}, t('Funciona assim: você conversa com ela, e ela faz no seu computador')),
+    h('div', { class: 'conversa' },
+      fala('voce', t('Organiza a minha pasta Downloads em pastas por tipo, sem apagar nada.'), 0.2),
+      fala('ia', t('Posso criar três pastas, Documentos, Imagens e Planilhas, e mover cada arquivo pra sua. Nada vai ser apagado. Pode ser?'), 1.2),
+      fala('voce', t('Pode.'), 2.4),
+      fala('ia', t('Pronto, está tudo separado. Anotei aqui que você gosta das coisas por tipo, então da próxima vez já faço assim.'), 3.2)),
     h('div', { class: 'botoes' }, botao(t('Continuar'), () => irPara('confirma'), 'btn', { 'data-foco': true }))];
 }
 function telaConfirma() {
@@ -146,7 +187,7 @@ function telaConfirma() {
         item('Google Chrome', t('Só se você ainda não tiver'))),
       h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('O que você precisa deixar à mão')),
         item(t('Tomada e internet'), t('Leva uns 20 minutos')),
-        item(t('A senha do computador'), t('Aquela que você digita na tela de bloqueio')),
+        mac ? item(t('A senha do computador'), t('Aquela que você digita na tela de bloqueio')) : item(t('Um Sim para o Windows'), t('Ele pode perguntar se pode instalar: é só clicar em Sim')),
         item(t('Uma conta no Claude'), t('É o site da IA. Precisa de plano pago, Pro ou maior. Se ainda não tem, dá pra criar e assinar quando eu pedir')))),
     h('p', { class: 't3 peq', css: { 'margin-top': '14px', 'max-width': '700px' } }, mac
       ? t('Também deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pra IA conseguir ler. Enquanto eu baixo o que precisa, te faço umas perguntas.')
@@ -221,25 +262,27 @@ function telaPedido(p) {
 // ---------- instalação ----------
 function tempo(ms) {
   const min = Math.floor(ms / 60000);
-  return min < 1 ? t('{n} segundos', { n: Math.floor(ms / 1000) }) : min === 1 ? t('1 minuto') : t('{n} minutos', { n: min });
+  const seg = Math.floor(ms / 1000);
+  return min < 1 ? (seg === 1 ? t('1 segundo') : t('{n} segundos', { n: seg })) : min === 1 ? t('1 minuto') : t('{n} minutos', { n: min });
 }
 function textoRelogio() {
   if (!estado.desde) return '';
   const passou = t('Trabalhando há {tempo}.', { tempo: tempo(Date.now() - estado.desde) });
-  return estado.demora ? `${passou} ${t('Costuma levar {demora}.', { demora: estado.demora.replace(/, é normal$/, '') })}` : passou;
+  return Date.now() - estado.desde < 3000 ? t('Trabalhando.') : estado.demora ? `${passou} ${t('Costuma levar {demora}.', { demora: estado.demora.replace(/, (é normal|which is normal)$/, '') })}` : passou;
 }
 const PARADO = 4 * 60000;
+const progresso = (el) => { el.dataset.progresso = '1'; return el; };
 function telaInstalando() {
   const pz = estado.pausa;
   const p = porcentagem();
   if (pz && !pz.espera) {
-    return [anel('150px', p, 'vez'), h('div', { css: { height: '26px' } }),
+    return [progresso(anel('150px', p, 'vez')), h('div', { css: { height: '26px' } }),
       h('h2', { css: { 'font-size': '24px', 'line-height': '30px' } }, t('Agora é com você')),
       h('p', { class: 'lead' }, t('O passo a passo está na janelinha do canto, que fica na frente de tudo. Quando você terminar, eu sigo sozinho.'))];
   }
   const parado = !pz && estado.mexeu && Date.now() - estado.mexeu >= PARADO;
   const exemplo = estado.exemplos.length ? estado.exemplos[estado.exemplo % estado.exemplos.length] : null;
-  return [anel(parado ? '150px' : '190px', p, '', `${p}%`), h('div', { css: { height: '26px' } }),
+  return [progresso(anel(parado ? '150px' : '190px', p, '', `${p}%`)), h('div', { css: { height: '26px' } }),
     h('h2', { css: { 'font-size': '24px', 'line-height': '30px' } }, pz ? pz.titulo : (estado.tarefa || estado.passos[estado.atual] || t('Preparando'))),
     pz ? (pz.linhas || []).map((l) => h('p', { class: 't2' }, l)) : h('p', { class: 't2', id: 'relogio' }, textoRelogio()),
     pz?.status ? h('p', { class: 't3 peq', css: { 'margin-top': '6px' } }, pz.status) : null,
@@ -255,7 +298,7 @@ function telaInstalando() {
 
 // ---------- fim: o anel fecha, abre, vem o vídeo e depois o Maestri ----------
 const faltas = () => estado.grupos.flatMap((g) => g.itens.filter((i) => !i.ok).map((i) => ({ ...i, grupo: g.nome })));
-const semLogin = () => faltas().some((i) => /^Login no Claude/.test(i.item));
+const semLogin = () => faltas().some((i) => /^Login no Claude/.test(i.chave || i.item));
 function telaPortal() {
   return [h('div', { class: 'abre-uma' }, portalLeve('190px')), h('div', { css: { height: '40px' } }), h('h2', { class: 'apaga-uma' }, estado.comecar?.nome ? t('Pronto, {nome}.', { nome: estado.comecar.nome }) : t('Pronto.'))];
 }
@@ -266,16 +309,19 @@ function abrirPortal() {
   clarao.className = 'clarao clarao-uma';
   S.portal();
   const fim = matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 4200;
-  setTimeout(() => { clarao.hidden = true; estado.video = estado.inicio?.video; if (estado.video) { estado.fase = 'video'; desenhar(); } else concluir(); }, fim);
+  // O branco não volta: fica na tela até o vídeo começar ou até a janela sair de cima do Maestri.
+  setTimeout(() => { estado.video = estado.inicio?.video; if (estado.video) { estado.fase = 'video'; desenhar(); } else concluir(); }, fim + 200);
 }
 function concluir() {
   // Depois do vídeo, a janela sai da frente e o guia começa a aula por cima do Maestri.
   estado.fase = 'fim';
   desenhar();
   S.concluir();
+  setTimeout(() => { clarao.hidden = true; }, 3000); // a janela já saiu; se ela voltar, volta sem o branco
 }
 function telaVideo() {
   const v = h('video', { class: 'abertura', src: estado.video, autoplay: true, playsinline: true, 'aria-label': t('Vídeo de abertura') });
+  v.addEventListener('playing', () => { clarao.hidden = true; }, { once: true });
   v.addEventListener('ended', concluir);
   v.addEventListener('error', concluir);
   const pular = botao(t('Pular'), concluir, 'btn2 p video-pular');
@@ -292,9 +338,9 @@ const DICAS_APP = () => [
   [/^Extensão Claude no Chrome/, t('Falta adicionar a extensão da IA no Chrome. É opcional.')],
   [/^Complementos do Obsidian ligados/, t('Falta clicar em "Trust author and enable plugins" no Obsidian. {resolver}', { resolver: RESOLVER() })],
 ];
-const TECNICO = /^rode:|claude-setuper|https?:\/\//;
+const TECNICO = /^rode:|^winget |claude-setuper|https?:\/\//;
 function dicaApp(i) {
-  const d = DICAS_APP().find(([re]) => re.test(i.item));
+  const d = DICAS_APP().find(([re]) => re.test(i.chave || i.item));
   if (d) return d[1];
   return i.dica && !TECNICO.test(i.dica) ? i.dica : RESOLVER();
 }
@@ -320,7 +366,7 @@ function telaFalha() {
   return [anel('150px', porcentagem(), 'erro'), h('div', { css: { height: '28px' } }),
     h('h2', { css: { 'font-size': '24px', 'line-height': '30px' } }, t('Algo deu errado e eu precisei parar')),
     h('p', { class: 'lead' }, estado.falha),
-    h('p', { class: 't2', css: { 'margin-top': '8px', 'max-width': '560px' } }, t('Confere a internet e tenta de novo: eu continuo de onde parei, e o que já está pronto continua pronto.')),
+    h('p', { class: 't2', css: { 'margin-top': '8px', 'max-width': '560px' } }, estado.falhaInternet ? t('Confere a internet e tenta de novo: eu continuo de onde parei, e o que já está pronto continua pronto.') : t('Quando tentar de novo, eu continuo de onde parei, e o que já está pronto continua pronto.')),
     h('div', { class: 'botoes' }, botao(t('Tentar de novo'), () => comecar('instalar'), 'btn', { 'data-foco': true }), botao(t('Pedir ajuda'), pedirAjuda, 'btn2'))];
 }
 
@@ -344,7 +390,7 @@ function desenharFolha() {
       h('div', { class: 'g-acoes', css: { 'justify-content': 'flex-end' } }, fechar)];
   } else if (f.erro) corpo = [h('p', {}, t('Não consegui preparar a mensagem. Tira um print desta tela e manda pra quem te passou o Claude Setuper.')), h('div', { class: 'g-acoes', css: { 'justify-content': 'flex-end' } }, fechar)];
   else {
-    const onde = f.pasta === 'Desktop' ? t('na sua Mesa') : t('na pasta {pasta}', { pasta: f.pasta });
+    const onde = f.pasta === 'Desktop' ? (estado.plataforma === 'darwin' ? t('na sua Mesa') : t('na sua Área de Trabalho')) : t('na pasta {pasta}', { pasta: f.pasta });
     corpo = [h('h2', { css: { 'font-size': '22px', 'line-height': '28px' } }, t('Falta só você apertar enviar')),
       h('p', { class: 't2' }, t('Abri o WhatsApp com o registro da instalação já escrito, pro suporte te ajudar. Vai lá e aperta enviar.')),
       h('p', { class: 't3 peq', css: { 'margin-top': '10px' } }, t('A mensagem não leva nenhuma senha nem código de login. Se o WhatsApp não abriu, ou se o suporte pedir o registro completo, ele está no arquivo "{nome}" {onde}.', { nome: f.nome, onde })),
@@ -370,15 +416,15 @@ S.aoEvento((ev) => {
     }
     case 'atualizacao': estado.atualizacao = ev.versao; break;
     case 'abertura': if (estado.fase !== 'instalando') estado.fase = 'perguntas'; break;
-    case 'plano': estado.passos = ev.passos; estado.pesos = ev.pesos || []; estado.exemplos = ev.exemplos || []; estado.atual = -1; estado.fase = 'instalando'; break;
-    case 'passo': estado.atual = ev.n - 1; estado.pausa = null; estado.tarefa = ''; estado.desde = estado.mexeu = Date.now(); estado.demora = ''; anotar(`\n── ${ev.n}/${ev.total} ${ev.titulo}\n`); break;
+    case 'plano': estado.passos = ev.passos; estado.pesos = ev.pesos || []; estado.exemplos = ev.exemplos || []; estado.atual = -1; estado.desdePasso = Date.now(); estado.mostrado = Math.max(estado.mostrado, estado.inicio?.progresso || 0); estado.fase = 'instalando'; break;
+    case 'passo': if (ev.n - 1 !== estado.atual) estado.desdePasso = Date.now(); estado.atual = ev.n - 1; estado.pausa = null; estado.tarefa = ''; estado.desde = estado.mexeu = Date.now(); estado.demora = ''; anotar(`\n── ${ev.n}/${ev.total} ${ev.titulo}\n`); break;
     case 'msg':
       anotar(`${ev.texto}\n`);
       if (ev.nivel === 'info') { if (estado.pausa) estado.pausa.status = ev.texto; break; }
       estado.msgs.push(ev);
       estado.pausa = null;
       if (ev.nivel === 'erro' && estado.atual >= 0) estado.falhos.add(estado.atual);
-      if (ev.nivel === 'aviso' && estado.atual >= 0 && estado.fase === 'instalando' && !ev.texto.startsWith('Terminei')) estado.pendentes.add(estado.atual);
+      if (ev.nivel === 'aviso' && estado.atual >= 0 && estado.fase === 'instalando' && !/^(Terminei|I finished)/.test(ev.texto)) estado.pendentes.add(estado.atual);
       break;
     case 'tarefa':
       if (ev.estado === 'fazendo') {
@@ -399,10 +445,13 @@ S.aoEvento((ev) => {
     case 'fim': {
       estado.grupos = ev.grupos; estado.soConferiu = ev.soConferiu; estado.comecar = ev.comecar || null; estado.pausa = null; estado.pedido = null;
       // Sem login ou só conferindo, nada de portal: mostra o que falta.
-      if (!ev.soConferiu && !semLogin() && !ev.semPortal) { abrirPortal(); if (estado.auto) roteiro(ev); return; }
+      if (!ev.soConferiu && !semLogin() && !ev.semPortal) {
+        if (estado.auto) { abrirPortal(); roteiro(ev); } else { desenhar(); subirAte100(abrirPortal); }
+        return;
+      }
       estado.fase = 'fim'; break;
     }
-    case 'falha': estado.fase = 'falha'; estado.falha = ev.texto; break;
+    case 'falha': estado.fase = 'falha'; estado.falha = ev.texto; estado.falhaInternet = ev.internet !== false; break;
   }
   desenhar();
   if (estado.auto) roteiro(ev);
@@ -430,8 +479,8 @@ function roteiro(ev) {
     const p = estado.pedido;
     const msg = p.msg || '';
     let valor = p.padrao;
-    if (msg.includes('chame')) valor = a.nome || 'Teste';
-    else if (msg.includes('anos')) valor = String(a.idade || '52');
+    if (/chame|call you/i.test(msg)) valor = a.nome || 'Teste';
+    else if (/anos|how old/i.test(msg)) valor = String(a.idade || '52');
     if (valor === undefined) valor = '';
     setTimeout(() => { if (estado.pedido?.id === ev.id) { estado.pedido = null; S.responder(ev.id, valor); desenhar(); } }, 1200);
     return;
@@ -441,6 +490,7 @@ function roteiro(ev) {
 
 S.pronto();
 
+setInterval(() => andarProgresso(0.1), 100);
 setInterval(() => {
   if (estado.fase === 'instalando' && !estado.pedido && !estado.pausa) {
     const r = document.getElementById('relogio');

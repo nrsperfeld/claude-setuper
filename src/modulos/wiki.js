@@ -7,6 +7,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { perfil, ehMenor } from '../perfis.js';
 import { GITIGNORE } from './rotinas.js';
+import { t } from '../i18n.js';
 
 const PAGINAS = ['SCHEMA.md', 'index.md', 'log.md', 'overview.md'];
 export const REGRAS = 'Como trabalhar comigo.md';
@@ -21,7 +22,7 @@ export const TRAVAS = ['1. PROJETOS', '2. ÁREAS', '3. RECURSOS', '4. ARQUIVO', 
 export function verificarWiki(ctx, vault) {
   const w = path.join(vault, 'CLAUDE', 'wiki');
   return [
-    { item: 'Wiki do segundo cérebro (índice, registro e regras)', ok: [...PAGINAS, REGRAS].every((f) => ctx.existe(path.join(w, f))) },
+    { item: 'Wiki do segundo cérebro (índice, registro e regras)', ok: [...PAGINAS, REGRAS].every((f) => ctx.existe(path.join(w, ctx.arq(f)))) },
     { item: 'Pasta de entrada pra guardar material (inbox)', ok: ctx.existe(path.join(vault, 'CLAUDE', 'inbox', 'README.md')) },
     { item: 'Trava das suas pastas no cofre', ok: TRAVAS.every((t) => (ctx.lerJson(path.join(vault, '.claude', 'settings.json'), {}).permissions?.deny || []).includes(t)) },
   ];
@@ -31,7 +32,7 @@ export async function montarWiki(ctx, vault) {
   const claude = path.join(vault, 'CLAUDE');
   const w = path.join(claude, 'wiki');
   const p = perfil(ctx, ctx.resp.perfil || ctx.estado.respostas?.perfil);
-  const nome = ctx.resp.nome || ctx.estado.respostas?.nome || 'a pessoa';
+  const nome = ctx.resp.nome || ctx.estado.respostas?.nome || t('a pessoa');
   const menor = ehMenor(ctx.resp.idade || ctx.estado.respostas?.idade);
   const hoje = new Date();
   const dataIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
@@ -41,11 +42,11 @@ export async function montarWiki(ctx, vault) {
     dataIso,
     tiposWiki: (p.wiki || [{ pasta: 'pessoas', oQue: 'gente com quem você trabalha ou convive' }, { pasta: 'assuntos', oQue: 'temas que voltam sempre' }])
       .map((t) => `\`${t.pasta}/\`: ${t.oQue}.`).join('\n'),
-    cuidadoMenor: menor ? ` Como ${nome} tem menos de 18 anos, a wiki não guarda dados pessoais de ninguém: endereço, documento, telefone, foto ou senha.` : '',
+    cuidadoMenor: menor ? t(' Como {nome} tem menos de 18 anos, a wiki não guarda dados pessoais de ninguém: endereço, documento, telefone, foto ou senha.', { nome }) : '',
     estadoInicial: trabalho
-      ? `Na instalação, ${nome} contou: "${trabalho.replace(/"/g, "'")}". Ainda não tem mais nada anotado sobre o momento atual.`
-      : 'Ainda não tem nada anotado sobre o momento atual.',
-    gerenciador: ctx.win ? 'pelo Explorador de Arquivos' : ctx.plataforma === 'darwin' ? 'pelo Finder' : 'pelo gerenciador de arquivos',
+      ? t('Na instalação, {nome} contou: "{trabalho}". Ainda não tem mais nada anotado sobre o momento atual.', { nome, trabalho: trabalho.replace(/"/g, "'") })
+      : t('Ainda não tem nada anotado sobre o momento atual.'),
+    gerenciador: t(ctx.win ? 'pelo Explorador de Arquivos' : ctx.plataforma === 'darwin' ? 'pelo Finder' : 'pelo gerenciador de arquivos'),
   };
 
   for (const f of PAGINAS) ctx.escreverSeFaltar(path.join(w, f), ctx.template(`vault/wiki/${f}`, vars));
@@ -54,7 +55,7 @@ export async function montarWiki(ctx, vault) {
   ctx.escreverSeFaltar(path.join(w, ctx.arq(REGRAS)), ctx.template(`vault/wiki/${REGRAS}`, { ...vars, regras: regrasIniciais(claude, ctx) }));
 
   ctx.escreverSeFaltar(path.join(claude, 'inbox', 'README.md'), ctx.template('vault/inbox-README.md', vars));
-  if (!ctx.dryRun) fs.mkdirSync(path.join(claude, 'inbox', 'processados'), { recursive: true });
+  if (!ctx.dryRun) fs.mkdirSync(path.join(claude, 'inbox', ctx.pasta('processados')), { recursive: true });
   ctx.escreverSeFaltar(path.join(claude, ctx.pasta('fontes'), 'README.md'), ctx.template('vault/README-pasta.md', { pasta: ctx.pasta('fontes'), tag: ctx.tag('fonte') }));
 
   // Mescla: se a pessoa já tinha regras próprias no cofre, ficam todas.
@@ -79,7 +80,7 @@ function regrasIniciais(claude, ctx) {
   // Limite da página (ela entra em toda conversa): o resto a revisão semanal compila.
   let out = '';
   for (const l of linhas) { if (out.length + l.length > 7000) break; out += l + '\n'; }
-  return out.trimEnd() || 'Ainda não tem regra anotada. A primeira correção que você fizer no Claude aparece aqui.';
+  return out.trimEnd() || t('Ainda não tem regra anotada. A primeira correção que você fizer na IA aparece aqui.');
 }
 
 // Histórico local do cofre: a wiki é reescrita, e o git guarda cada versão. Sem remoto (o backup no GitHub é

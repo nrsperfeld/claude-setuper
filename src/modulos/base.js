@@ -41,6 +41,7 @@ export async function instalar(ctx) {
       adiantarDownloads(ctx);
     }
   }
+  if (ctx.win && ctx.app) await garantirWinget(ctx);
   await node(ctx);
   await git(ctx);
   await claudeCode(ctx);
@@ -203,9 +204,37 @@ async function homebrew(ctx) {
   ui.ok('Ferramentas de base instaladas');
 }
 
+// Estes instalam pra todas as contas do computador, e o Windows pede licença numa janela (o UAC).
+const PEDEM_LICENCA = new Set(['Git.Git', 'OpenJS.NodeJS.LTS', 'GitHub.cli', 'Google.Chrome']);
+
 export async function winget(ctx, id) {
+  const avisar = ctx.app && !ctx.dryRun && PEDEM_LICENCA.has(id);
+  if (avisar) {
+    ui.pausa('Se o Windows perguntar, clica em Sim', [
+      'É o próprio Windows pedindo licença pra instalar, e pode aparecer mais de uma vez. Se a janela não vier pra frente, procura um escudo piscando na barra de tarefas.',
+    ], { figura: 'windows-sim', rotulo: 'Permissão do Windows' });
+  }
   await ctx.run('winget', ['install', '-e', '--id', id, '--source', 'winget', '--silent', '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity'], { ignorarErro: true, timeout: 20 * 60 * 1000 });
+  if (avisar) ui.fimDaPausa?.();
   atualizarPathWindows();
+}
+
+// O winget vem no Windows 10 e 11, mas numa máquina nova pode faltar até a Microsoft Store atualizar o "Instalador de Aplicativo".
+async function garantirWinget(ctx) {
+  if (ctx.semApps || ctx.dryRun || (await ctx.existeComando('winget'))) return;
+  await ctx.abrirUrl('ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1');
+  await ui.confirmarFora({
+    rotulo: 'Microsoft Store',
+    passos: [{ titulo: 'Clica em Instalar ou Atualizar, na Microsoft Store', linhas: ['É o "Instalador de Aplicativo", do próprio Windows. Eu uso ele pra instalar o resto. Quando terminar, clica no botão aqui embaixo.'] }],
+    concluir: 'Já terminou',
+  });
+  if (!(await ctx.existeComando('winget'))) throw new Error('o Instalador de Aplicativo da Microsoft ainda não está pronto. Espera a Microsoft Store terminar e clica em Tentar de novo');
+}
+
+// No app ninguém vê o erro do winget (a pessoa disse Não, ou a conta não tem licença): aqui ele vira uma frase e para.
+async function conferirNoWindows(ctx, comando) {
+  if (!ctx.win || !ctx.app || ctx.semApps || ctx.dryRun || (await ctx.existeComando(comando))) return;
+  throw new Error('o Windows não deixou instalar uma parte que a IA precisa. Clica em Tentar de novo e, quando o Windows perguntar, clica em Sim. Se ele pedir uma senha de administrador que você não tem, chama quem cuida deste computador');
 }
 
 // Programas recém-instalados não entram no PATH do processo atual; acrescenta os lugares comuns.
@@ -228,6 +257,7 @@ async function node(ctx) {
     else if (ctx.win) await winget(ctx, 'OpenJS.NodeJS.LTS');
     else await ctx.runVisivel('/bin/bash', ['-c', 'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs']);
   }, { demora: 'uns 2 minutos, é normal' });
+  await conferirNoWindows(ctx, 'node');
   nodeLocalNoPerfil(ctx);
 }
 
@@ -243,6 +273,7 @@ async function git(ctx) {
     else if (ctx.win) await winget(ctx, 'Git.Git');
     else await ctx.runVisivel('/bin/bash', ['-c', 'sudo apt-get install -y git']);
   });
+  await conferirNoWindows(ctx, 'git');
 }
 
 // O Homebrew não entra sozinho no perfil do shell, e o Claude fica em ~/.local/bin, fora do PATH padrão.

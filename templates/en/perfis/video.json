@@ -1,0 +1,40 @@
+{
+  "ordem": 4,
+  "nome": "For video editing",
+  "hint": "clips, scripts, titles, captions",
+  "trabalho": {
+    "pergunta": "What kind of video do you edit, and in which program?",
+    "placeholder": "E.g., Reels and YouTube videos for a podcast, in Premiere"
+  },
+  "pacotes": [
+    "video",
+    "criador",
+    "escrita"
+  ],
+  "semModulos": [],
+  "claudeMd": "# My video work\n\nI edit video. You can use editing terms normally: cut, timeline, B-roll, color, captions, render, hook. When I send a transcript, help me find the best parts for clips, put the video in order and write the title, description and captions. Whenever you can, include timecodes (minute:second) so I can find things quickly on the timeline.\n",
+  "id": "video",
+  "primeiraVitoria": "Let's do the first real task now: my next video. Ask me the topic and who it's for. Then give me 3 title options, the hook for the first 3 seconds and a script of up to 30 seconds, the way I would say it. Save it all in a note in my second brain.",
+  "semana": [
+    "Turn a long video (or its transcript) into ideas for short clips, with the best part of each.",
+    "Write the description and captions for a video I've already recorded.",
+    "Make a list of 10 topics for the coming weeks based on my audience's questions.",
+    "Review a script of mine and cut what isn't needed, without losing the way I talk.",
+    "Plan a series of 3 videos that tell a story in parts.",
+    "Note in my second brain what worked in this week's videos, to use as a reference."
+  ],
+  "wiki": [
+    {
+      "pasta": "channels",
+      "oQue": "one page per channel or client: format, audience, what gets the best results"
+    },
+    {
+      "pasta": "people",
+      "oQue": "people you record, edit or negotiate with"
+    },
+    {
+      "pasta": "topics",
+      "oQue": "subjects that keep coming back, like editing style, music and equipment"
+    }
+  ]
+}

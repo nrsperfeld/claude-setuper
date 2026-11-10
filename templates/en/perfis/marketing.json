@@ -1,0 +1,41 @@
+{
+  "ordem": 3,
+  "nome": "For marketing",
+  "hint": "copy, posts, campaigns, scripts",
+  "trabalho": {
+    "pergunta": "Who do you do marketing for, and what do you make the most?",
+    "placeholder": "E.g., I run the Instagram and ads for a chain of gyms"
+  },
+  "pacotes": [
+    "marketing",
+    "criador",
+    "escrita",
+    "pesquisa"
+  ],
+  "semModulos": [],
+  "claudeMd": "# My marketing work\n\nI work in marketing. Before the first piece for a brand, ask me once who the audience is and what the goal is, and save the answer in `CLAUDE/patterns/`. Next time, use what's saved.\n\nMarketing text that doesn't sound like AI: no \"it's not X, it's Y\" in a row, no closing a paragraph with a catchphrase, no lists where every line has the same format. Write the way someone from the brand would talk to a customer. When I ask for options, give me three that are very different from each other, not three versions of the same idea.\n",
+  "id": "marketing",
+  "primeiraVitoria": "Let's do the first real task now: my next piece of content. Ask me what post, ad or campaign I need to deliver and who it's for. Then write 3 versions that are very different from each other, in my tone, and tell me which one you'd pick and why. Save the versions in a note in my second brain.",
+  "semana": [
+    "Turn a piece of content that worked into 5 new ideas in the same format.",
+    "Write the caption and the first 3 seconds of a video I'm going to record.",
+    "Lay out the post calendar for the next two weeks from my topics.",
+    "Analyze 3 competitors I name and tell me what they do that I don't.",
+    "Rewrite a page or bio of mine so it makes more sense to someone seeing it for the first time.",
+    "Note in my second brain the tone of voice we used this week, so you get it right the first time from now on."
+  ],
+  "wiki": [
+    {
+      "pasta": "clients",
+      "oQue": "one page per brand or client: audience, tone of voice, what worked and what didn't"
+    },
+    {
+      "pasta": "people",
+      "oQue": "people on the team and client contacts"
+    },
+    {
+      "pasta": "topics",
+      "oQue": "subjects that keep coming back, like channels, types of campaigns and references"
+    }
+  ]
+}

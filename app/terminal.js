@@ -1,16 +1,30 @@
 // Terminal invisível: no app não existe Terminal, mas alguns programas precisam de um (logins do Claude,
 // GitHub e Vercel, instalador do Homebrew). Rodamos eles dentro do pty.sh, lemos o que imprimem e
 // levamos pra tela o que importa pra pessoa: o link, o código e as perguntas de "aperte Enter".
-import { spawn } from 'node:child_process';
+// No Windows não existe o script do macOS: os mesmos programas rodam com a saída num cano, sem janela preta.
+// O gh e o Claude aceitam isso nos logins (ver docs/windows-estado.md para o que só um PC físico confirma).
+import { spawn, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { linhaCmd } from './windows.js';
 
 const PTY = path.join(path.dirname(fileURLToPath(import.meta.url)), 'pty.sh');
 const ANSI = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[=>()][0-9A-Za-z]?|\r/g;
 const LINK = /https?:\/\/[^\s"'<>)\]]+/g;
 const CODIGO = /\b([A-Z0-9]{4}-[A-Z0-9]{4})\b/g;
 const ENTER = /press (?:\[?enter\]?|return)|\(y\/n\)|\[y\/n\]/i;
+
+// Como rodar, em cada sistema. Exportado pra testar a linha do Windows sem precisar de um Windows.
+export function comoRodar(plataforma, cmd, args, env) {
+  if (plataforma === 'win32') return { arquivo: 'cmd.exe', args: ['/d', '/s', '/c', linhaCmd(cmd, args)], opcoes: { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, windowsVerbatimArguments: true } };
+  return { arquivo: PTY, args: [cmd, ...args], opcoes: { env: { ...env, TERM: 'xterm-256color' }, stdio: ['pipe', 'pipe', 'pipe'] } };
+}
+// Parar no Windows é parar a árvore: matar só o cmd.exe deixaria o login do gh rodando escondido.
+function parar(p) {
+  if (process.platform === 'win32') execFile('taskkill', ['/PID', String(p.pid), '/T', '/F'], { windowsHide: true }, () => {});
+  else p.kill();
+}
 
 export function criarTerminal(ctx, enviar) {
   return function runVisivel(cmd, args = [], opts = {}) {
@@ -21,7 +35,8 @@ export function criarTerminal(ctx, enviar) {
     // então quem chama diz em opts.link qual é o link do login, e só ele vira botão.
     const login = args.includes('login');
     return new Promise((res, rej) => {
-      const p = spawn(PTY, [cmd, ...args], { env: { ...process.env, TERM: 'xterm-256color', ...opts.env }, stdio: ['pipe', 'pipe', 'pipe'] });
+      const como = comoRodar(process.platform, cmd, args, { ...process.env, ...opts.env });
+      const p = spawn(como.arquivo, como.args, como.opcoes);
       const vistos = new Set();
       let recente = '';
       let desdeEnter = ''; // o que o programa imprimiu depois do último Enter que mandamos
@@ -47,10 +62,10 @@ export function criarTerminal(ctx, enviar) {
         desdeEnter = (desdeEnter + texto).slice(-500);
         if (!enterNaFila && ENTER.test(desdeEnter)) {
           enterNaFila = true;
-          setTimeout(() => { enterNaFila = false; desdeEnter = ''; if (p.stdin.writable) p.stdin.write('\r'); }, 3000);
+          setTimeout(() => { enterNaFila = false; desdeEnter = ''; if (p.stdin.writable) p.stdin.write(process.platform === 'win32' ? '\r\n' : '\r'); }, 3000);
         }
       };
-      opts.sinal?.addEventListener('abort', () => p.kill());
+      opts.sinal?.addEventListener('abort', () => parar(p));
       p.stdout.on('data', ler);
       p.stderr.on('data', ler);
       p.on('exit', (c) => (c === 0 || opts.ignorarErro ? res(c) : rej(new Error(`${cmd} saiu com código ${c}`))));

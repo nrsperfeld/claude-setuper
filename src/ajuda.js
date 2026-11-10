@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { MODULOS, modulosParaPlataforma } from './modulos/index.js';
 import { cuidados } from './cuidados.js';
+import { t } from './i18n.js';
 
 const NOME = 'Claude Setuper - pedido de ajuda.txt';
 // Para onde o botão Pedir ajuda manda o registro, pelo WhatsApp da própria pessoa.
@@ -15,12 +16,12 @@ const LIMITE_WHATSAPP = 3000;
 // A mensagem pronta: quem é, o que falhou na conferência e o fim do registro, que é onde o erro costuma estar.
 export function mensagemWhatsApp(conteudo, limite = LIMITE_WHATSAPP) {
   const linhas = String(conteudo).split('\n');
-  const inicioRegistro = linhas.findIndex((l) => l.startsWith('Fim do registro da instalação'));
-  const fimRegistro = linhas.findIndex((l) => l.startsWith('Fim do registro da atualização'));
+  const inicioRegistro = linhas.findIndex((l) => l.startsWith(t('Fim do registro da instalação:')));
+  const fimRegistro = linhas.findIndex((l) => l.startsWith(t('Fim do registro da atualização semanal:')));
   const cabeca = linhas.slice(0, 6).filter(Boolean);
   const antes = inicioRegistro > 0 ? linhas.slice(6, inicioRegistro) : linhas.slice(6);
   const falhas = antes.filter((l) => l.includes('✗'));
-  const topo = [...cabeca, '', falhas.length ? 'O que falhou:' : 'A conferência não acusou nada.', ...falhas, '', 'Fim do registro:', ''].join('\n');
+  const topo = [...cabeca, '', falhas.length ? t('O que falhou:') : t('A conferência não acusou nada.'), ...falhas, '', t('Fim do registro:'), ''].join('\n');
   const registro = inicioRegistro >= 0 ? linhas.slice(inicioRegistro + 1, fimRegistro > 0 ? fimRegistro : undefined).join('\n').trim() : '';
   const sobra = Math.max(0, limite - topo.length);
   return (topo.slice(0, limite) + registro.slice(-sobra)).trim();
@@ -65,26 +66,26 @@ export async function gerarPedidoDeAjuda(ctx, versao) {
   conferencia.push('  Cuidados', ...cuidados(ctx).map((i) => `    ${i.ok ? '✓' : '✗'} ${i.item}${!i.ok && i.dica ? `  (${i.dica})` : ''}`));
   const r = ctx.estado.respostas || {};
   const linhas = [
-    'Pedido de ajuda do Claude Setuper',
-    `Gerado em ${new Date().toLocaleString('pt-BR')}`,
+    t('Pedido de ajuda do Claude Setuper'),
+    t('Gerado em {data}', { data: new Date().toLocaleString(ctx.idioma === 'en' ? 'en-US' : 'pt-BR') }),
     '',
-    `Versão do Setuper: ${versao}`,
-    `Sistema: ${ctx.plataforma} ${os.release()} (${os.arch()})`,
-    `Pessoa: ${r.nome || '?'} | perfil: ${r.perfil || '?'} | idade: ${r.idade || '?'} | tecnologia: ${r.tecnologia || '?'} | IA: ${r.ia || '?'}`,
+    t('Versão do Setuper: {versao}', { versao }),
+    t('Sistema: {sistema} {versaoSistema} ({arquitetura})', { sistema: ctx.plataforma, versaoSistema: os.release(), arquitetura: os.arch() }),
+    t('Pessoa: {nome} | perfil: {perfil} | idade: {idade} | tecnologia: {tecnologia} | IA: {ia}', { nome: r.nome || '?', perfil: r.perfil || '?', idade: r.idade || '?', tecnologia: r.tecnologia || '?', ia: r.ia || '?' }),
     '',
-    'Conferência:',
+    t('Conferência:'),
     ...conferencia,
     '',
-    'Passos da instalação:',
+    t('Passos da instalação:'),
     ...Object.entries(ctx.estado.modulos || {}).map(([id, s]) => `  ${s.ok ? '✓' : '✗'} ${id} em ${s.em}${s.erro ? `  (${s.erro})` : ''}`),
     '',
-    'Fim do registro da instalação:',
+    t('Fim do registro da instalação:'),
     ultimas(ctx.logPath, 250),
     '',
-    'Fim do registro da atualização semanal:',
+    t('Fim do registro da atualização semanal:'),
     ultimas(path.join(ctx.pastaSetuper, 'sentinela', 'registro.log'), 40),
   ];
-  const destino = path.join(mesa(ctx), NOME);
+  const destino = path.join(mesa(ctx), ctx.arq(NOME));
   fs.writeFileSync(destino, limpar(linhas.join('\n')) + '\n');
   ctx.log('pedido de ajuda gerado em', destino);
   return destino;

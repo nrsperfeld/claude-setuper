@@ -65,7 +65,7 @@ export async function wizard(ctx) {
   const nome = tem('nome') ? pre.nome : await ui.perguntar('Como você quer que a IA te chame?', {
     padrao: salvo.nome,
     placeholder: 'Seu primeiro nome ou apelido',
-    validar: (v) => (!v && !salvo.nome ? 'Só o nome, pode ser o apelido.' : undefined),
+    validar: (v) => (!v && !salvo.nome ? t('Só o nome, pode ser o apelido.') : undefined),
   });
 
   // --perfil no comando já responde essa (útil pra mandar o link pra uma turma inteira).

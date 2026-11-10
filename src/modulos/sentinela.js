@@ -25,7 +25,7 @@ export async function verificar(ctx) {
       ? !!(await ctx.run('schtasks', ['/Query', '/TN', 'Claude Setuper\\manter-atualizado'], { ignorarErro: true, sempre: true }))
       : !!(await ctx.run('launchctl', ['list', ROTULO], { ignorarErro: true, sempre: true }));
   }
-  return [{ item: 'Atualização semanal das ferramentas', ok: agendado, dica: ctx.app ? 'Clique em "Tentar resolver o que falta".' : 'rode: claude-setuper' }];
+  return [{ item: 'Atualização semanal das ferramentas', ok: agendado, dica: ctx.app ? 'Clica em "Resolver o que falta".' : 'rode: claude-setuper' }];
 }
 
 export async function instalar(ctx) {

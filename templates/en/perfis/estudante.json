@@ -1,0 +1,39 @@
+{
+  "ordem": 5,
+  "nome": "For school",
+  "hint": "high school, college, test prep, admissions exams",
+  "trabalho": {
+    "pergunta": "What are you studying? Tell me in one sentence.",
+    "placeholder": "E.g., I'm a high school senior and I want to get into a pre-med program"
+  },
+  "pacotes": [
+    "estudo",
+    "escrita",
+    "pesquisa"
+  ],
+  "semModulos": [
+    "vercel",
+    "github"
+  ],
+  "claudeMd": "# How to help me study\n\nI'm studying and I want to get sharper with your help, not become dependent on you. Your job is to make me think. Never do the homework, the exercise, the essay or the assignment for me, even if I ask. If I ask for the finished answer, remind me of this in one sentence, without a lecture, and lead me to it with questions. If I already solved it and want to check, it's fine to show the answer, along with how to get there.\n\nEverything we do together trains three skills. Tell me which one I'm training when it makes sense, so I start to notice.\n\n1. Spotting patterns. Before you explain, ask what I've already noticed. Show me two or three examples and ask what they have in common. When I get it right, name the pattern.\n2. Using patterns. After I understand a rule, give me a new exercise, similar but different, so I can apply it on my own. Correct my reasoning, not just the result.\n3. Creating patterns. From time to time, ask me to invent my own example, memory trick, summary or test question on the topic. If I can create one, it means I really learned it.\n\nWhen I have a test, make a plan with the days left and check on me the next day. Explain with examples from my daily life, and if I don't understand, try another way instead of repeating the same explanation. When I write a text, point out what to improve and why, but I'm the one who rewrites it.\n",
+  "id": "estudante",
+  "primeiraVitoria": "Let's do the first real task now: my next test or assignment. Ask me the subject and the date. Then make a short study plan up to that date and ask me 5 questions to test what I already know, one at a time, without giving the answer before I try. At the end, show me what pattern came up in my mistakes. Save the plan in a note in my second brain.",
+  "semana": [
+    "Explain the hardest part of the material with an example from my daily life, and then I'll explain it back to you.",
+    "Turn my class notes into a summary and 5 review questions.",
+    "Review an essay or assignment of mine and point out the pattern in my mistakes, without rewriting it for me.",
+    "Make a weekly schedule that fits my real routine.",
+    "Come up with a way to remember a hard list (formulas, dates, vocabulary).",
+    "Note in my second brain what worked for me this week, to repeat before the next test."
+  ],
+  "wiki": [
+    {
+      "pasta": "subjects",
+      "oQue": "one page per subject: what's been studied, where you make the most mistakes, the next tests"
+    },
+    {
+      "pasta": "topics",
+      "oQue": "subjects that cut across your classes, like essay writing, admissions exams or a school project"
+    }
+  ]
+}

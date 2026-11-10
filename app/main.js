@@ -9,7 +9,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { criarUiApp } from './ui-app.js';
 import { criarTerminal } from './terminal.js';
 import { criarAula } from './aula.js';
-import { criarSetas } from './setas.js';
+import { criarSetas, setasDisponiveis } from './setas.js';
+import { INSTALADOR, pathDoWindows, programasWindows, donoDoExecutavel, comandoDoSetuper } from './windows.js';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 // Empacotado, o Setuper vem dentro do app (setuper/); rodando do repositório, é a pasta de cima.
@@ -28,6 +29,7 @@ const PRESENTE = (() => {
   return fs.existsSync(path.join(dir, 'presente.json')) ? path.resolve(dir) : '';
 })();
 const NOME_APP = PRESENTE ? 'Segundo Cérebro' : 'Claude Setuper';
+const NO_WINDOWS = process.platform === 'win32';
 // Qual programa cada ação pede, pra mostrar o ícone dele no guia e apontar a seta pra janela dele.
 const PROGRAMAS = {
   apple: { nome: () => i18n.t('Instalador da Apple'), caminho: '/System/Library/CoreServices/Install Command Line Developer Tools.app', pgrep: 'Install Command Line Developer Tools' },
@@ -36,6 +38,7 @@ const PROGRAMAS = {
   chrome: { nome: () => 'Google Chrome', caminho: '/Applications/Google Chrome.app', dono: /^Google Chrome$/ },
   obsidian: { nome: () => 'Obsidian', caminho: '/Applications/Obsidian.app', dono: /^Obsidian$/ },
   maestri: { nome: () => 'Maestri', caminhos: ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'], dono: /^Maestri$/ },
+  ...(NO_WINDOWS ? programasWindows(process.env, (s) => i18n.t(s)) : {}),
 };
 // Pra onde apontar em cada janela conhecida. x e y são a proporção da janela; o texto diz o que fazer ali.
 const POR_FIGURA = {
@@ -53,7 +56,9 @@ const POR_FIGURA = {
 // O ícone de verdade do programa, lido do próprio app. (app.getFileIcon derruba o Electron 44 no Mac.)
 const rodar = (cmd, args) => new Promise((res) => execFile(cmd, args, { timeout: 8000 }, (erro, saida) => res(erro ? '' : String(saida).trim())));
 async function iconeDoApp(caminho) {
-  if (process.platform !== 'darwin' || !caminho || !fs.existsSync(caminho)) return '';
+  if (!caminho || !fs.existsSync(caminho)) return '';
+  if (NO_WINDOWS) { try { return (await app.getFileIcon(caminho, { size: 'large' })).toDataURL(); } catch { return ''; } }
+  if (process.platform !== 'darwin') return '';
   let nome = await rodar('/usr/bin/plutil', ['-extract', 'CFBundleIconFile', 'raw', path.join(caminho, 'Contents', 'Info.plist')]);
   if (!nome) return '';
   if (!nome.endsWith('.icns')) nome += '.icns';
@@ -64,16 +69,22 @@ async function iconeDoApp(caminho) {
   try { const dados = fs.readFileSync(saida); fs.rmSync(saida, { force: true }); return `data:image/png;base64,${dados.toString('base64')}`; } catch { return ''; }
 }
 const icones = new Map();
-async function dadosDoPrograma(id) {
-  if (icones.has(id)) return icones.get(id);
+const buscando = new Map(); // dois passos do mesmo programa não leem o ícone ao mesmo tempo
+function dadosDoPrograma(id) {
+  if (icones.has(id)) return Promise.resolve(icones.get(id));
+  if (!buscando.has(id)) buscando.set(id, lerDadosDoPrograma(id).finally(() => buscando.delete(id)));
+  return buscando.get(id);
+}
+async function lerDadosDoPrograma(id) {
   const p = PROGRAMAS[id];
-  const dados = { nome: p.nome ? p.nome() : '', icone: '', dono: p.dono, pgrep: p.pgrep };
+  const dados = { nome: p.nome ? p.nome() : '', icone: '', dono: p.dono, pgrep: p.pgrep, caminho: p.caminho || p.caminhos?.find((c) => fs.existsSync(c)) || '' };
   try {
     if (p.navegador) {
       const info = await app.getApplicationInfoForProtocol('https://example.com');
       dados.nome = info.name.replace(/\.app$/, '');
+      dados.caminho = info.path;
       dados.icone = (await iconeDoApp(info.path)) || info.icon?.toDataURL() || '';
-      dados.dono = new RegExp(`^${dados.nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+      dados.dono = NO_WINDOWS ? donoDoExecutavel(info.path) : new RegExp(`^${dados.nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
     } else if (p.proprio) {
       dados.icone = nativeImage.createFromPath(path.join(AQUI, 'tela', 'icone.png')).resize({ width: 104, height: 104 }).toDataURL();
     } else {
@@ -92,22 +103,23 @@ async function completarCena(cena) {
     if (!id) return p;
     const d = await dadosDoPrograma(id);
     const lista = p.alvos || fig?.alvos || [];
-    return { ...p, app: { nome: d.nome, icone: d.icone, dica: i18n.t('Olha pra esta janela: as setas mostram onde') }, setas: lista.map((a) => ({ ...a, rotulo: i18n.t(a.rotulo), dono: d.dono, pgrep: d.pgrep })) };
+    return { ...p, app: { nome: d.nome, icone: d.icone, dica: lista.length && setasDisponiveis() ? i18n.t('As setas na tela mostram onde olhar') : '' }, setas: lista.map((a) => ({ ...a, rotulo: i18n.t(a.rotulo), dono: d.dono, pgrep: d.pgrep, caminho: d.caminho, icone: d.icone })) };
   }));
   return cena;
 }
 function apontarPasso() {
-  if (!setas) return;
+  if (!setas) return undefined;
   const p = cenaGuia?.passos?.[Math.min(passoAtual, (cenaGuia.passos.length || 1) - 1)];
-  setas.mostrar(p?.setas || []);
+  return setas.mostrar(p?.setas || []);
 }
 
-const flagsBase = () => ({ app: true, idioma: i18n.idiomaAtual(), ...(HOME_TESTE ? { home: HOME_TESTE } : {}), ...(PRESENTE ? { presente: PRESENTE } : {}) });
+const flagsBase = () => ({ app: true, idioma: i18n.idiomaAtual(), ...(HOME_TESTE ? { home: HOME_TESTE } : {}), ...(NO_WINDOWS && !HOME_TESTE ? { desktop: app.getPath('desktop') } : {}), ...(PRESENTE ? { presente: PRESENTE } : {}) });
 const TESTE = lerJson(path.join(PASTA, '.teste-auto.json')); // só existe nos testes da VM
 const SO_AULA = process.argv.includes('--aula'); // aberto pelo Maestri pra continuar a aula
 
 // Aberto pelo Finder, o app herda um PATH mínimo; sem isso não acha brew, node, claude, gh.
-process.env.PATH = [...new Set([
+if (NO_WINDOWS) process.env.PATH = pathDoWindows(process.env);
+else process.env.PATH = [...new Set([
   '/opt/homebrew/bin', '/opt/homebrew/sbin', '/usr/local/bin', path.join(os.homedir(), '.local', 'bin'), path.join(os.homedir(), '.local', 'node', 'bin'),
   ...(process.env.PATH || '').split(':').filter(Boolean), '/usr/bin', '/bin', '/usr/sbin', '/sbin',
 ])].join(':');
@@ -170,6 +182,7 @@ function aoEventoDoGuia(ev) {
     if (cenaGuia && !cenaGuia.aula && !cenaGuia.id) esconderGuia();
     return;
   }
+  if (ev.tipo === 'fimpausa' && cenaGuia && !cenaGuia.aula && !cenaGuia.id) return esconderGuia();
   if ((ev.tipo === 'passo' || ev.tipo === 'fim' || ev.tipo === 'falha') && cenaGuia && !cenaGuia.aula) esconderGuia();
 }
 // Print real da janela, se já existir para este idioma.
@@ -186,6 +199,8 @@ function criarGuia() {
     frame: false, resizable: false, minimizable: false, maximizable: false, fullscreenable: false, skipTaskbar: true, show: false,
     alwaysOnTop: true, backgroundColor: '#1B1B25', hasShadow: true, roundedCorners: true, title: NOME_APP,
     ...(process.platform === 'darwin' ? { type: 'panel' } : {}),
+    // No Windows o clique no guia não tira o foco da janela da IA, que é onde a pessoa digita em seguida.
+    ...(NO_WINDOWS ? { focusable: false } : {}),
     webPreferences: { preload: path.join(AQUI, 'preload.cjs'), contextIsolation: true, sandbox: true, backgroundThrottling: false },
   });
   // Fica na frente de tudo, em qualquer mesa e também sobre app em tela cheia.
@@ -199,7 +214,7 @@ function criarGuia() {
 // O que vai pro guia não leva as setas: elas têm expressões regulares e ficam só aqui.
 const semSetas = (cena) => ({ ...cena, passos: cena.passos.map(({ setas: _s, ...p }) => p) });
 function mandarAoGuia(ev) {
-  if (guia && !guia.isDestroyed() && guiaProntoJa) guia.webContents.send('guia', { ...ev, ...(ev.cena ? { cena: semSetas(ev.cena) } : {}), catalogo: i18n.catalogoAtual() });
+  if (guia && !guia.isDestroyed() && guiaProntoJa) guia.webContents.send('guia', { ...ev, ...(ev.cena ? { cena: semSetas(ev.cena) } : {}), catalogo: i18n.catalogoAtual(), nomeApp: NOME_APP });
 }
 async function mostrarGuia(cena) {
   const pedida = cena;
@@ -210,8 +225,10 @@ async function mostrarGuia(cena) {
   if (!TESTE && !cena.aula && !process.argv.includes('--demo-telas')) shell.beep(); // a pessoa pode estar fazendo outra coisa
   criarGuia();
   if (guiaProntoJa) mandarAoGuia({ tipo: 'cena', cena });
-  guia.showInactive();
-  apontarPasso();
+  // O guia só aparece desenhado e já no canto certo: nada de retângulo vazio nem de pulo.
+  await Promise.race([apontarPasso(), new Promise((r) => setTimeout(r, 1200))]);
+  await new Promise((r) => setTimeout(r, guiaProntoJa ? 120 : 500));
+  if (cenaGuia === pedida && guia && !guia.isDestroyed()) guia.showInactive();
 }
 function esconderGuia() {
   cenaGuia = null;
@@ -280,7 +297,7 @@ let jaTentou = false;
 
 async function novoCtx(extra = {}) {
   const { criarCtx } = await importarSetuper('ctx.js');
-  const ctx = criarCtx({ ...flagsBase(), askpass: criarAskpass(), perfil, semApps, ...extra });
+  const ctx = criarCtx({ ...flagsBase(), askpass: NO_WINDOWS ? '' : criarAskpass(), perfil, semApps, ...extra });
   ctx.runVisivel = criarTerminal(ctx, enviar);
   return ctx;
 }
@@ -289,7 +306,7 @@ async function instalarTudo() {
   const { instalar } = await importarSetuper('cli.js');
   const ctx = await novoCtx();
   // "Tentar de novo" na mesma abertura do app: as respostas acabaram de ser dadas, vai direto ao que falta.
-  ctx.repetirDireto = jaTentou;
+  ctx.repetirDireto = true; // quem clicou em continuar já disse que quer as mesmas respostas
   jaTentou = true;
   ctx.log('--- app', VERSAO, perfil);
   const r = await instalar(ctx, { perfil });
@@ -304,16 +321,14 @@ async function instalarComando(ctx) {
   const dest = path.join(PASTA, 'app');
   try {
     await ui.tarefa('Deixando o comando claude-setuper pronto', 'Comando claude-setuper pronto', async () => {
-      if (fs.existsSync(path.join(dest, '.git'))) await ctx.run('git', ['-C', dest, 'pull', '-q', '--ff-only'], { ignorarErro: true });
-      else {
-        fs.rmSync(dest, { recursive: true, force: true });
-        const clonou = await ctx.run('git', ['clone', '-q', '--depth', '1', `https://github.com/${REPO}.git`, dest], { ignorarErro: true }).then(() => fs.existsSync(path.join(dest, 'bin')));
-        // Sem internet pro GitHub: usa a cópia que vem dentro do app (sem o "atualizar", que precisa do git).
-        if (!clonou) fs.cpSync(SETUPER, dest, { recursive: true });
-      }
+      // O comando é sempre a cópia que veio dentro deste app: a mesma versão e o mesmo idioma do que foi instalado.
+      fs.rmSync(dest, { recursive: true, force: true });
+      fs.cpSync(SETUPER, dest, { recursive: true });
       if (!fs.existsSync(path.join(dest, 'node_modules'))) await ctx.run('npm', ['install', '--silent', '--no-audit', '--no-fund', '--omit=dev'], { cwd: dest, ignorarErro: true });
       const bin = path.join(HOME, '.local', 'bin');
       fs.mkdirSync(bin, { recursive: true });
+      // No Windows link simbólico pede administrador; um .cmd faz o mesmo papel.
+      if (NO_WINDOWS) { fs.writeFileSync(path.join(bin, 'claude-setuper.cmd'), comandoDoSetuper()); return; }
       const link = path.join(bin, 'claude-setuper');
       fs.rmSync(link, { force: true });
       fs.symlinkSync(path.join(dest, 'bin', 'claude-setuper.js'), link);
@@ -350,7 +365,7 @@ async function conferencia() {
   for (const m of lista) {
     let itens;
     try { itens = await m.verificar(ctx); } catch (e) { itens = [{ item: m.nome, ok: false, dica: e.message }]; }
-    if (itens.length) grupos.push({ nome: m.nomeCurto || m.nome, itens: itens.map((i) => ({ item: i.item, ok: !!i.ok, dica: i.dica || '' })) });
+    if (itens.length) grupos.push({ nome: i18n.traduzir(m.nomeCurto || m.nome), itens: itens.map((i) => ({ chave: i.item, item: i18n.traduzir(i.item), ok: !!i.ok, dica: i18n.traduzir(i.dica || '') })) });
   }
   return grupos;
 }
@@ -368,6 +383,7 @@ async function versaoNova() {
 
 // Baixa o app novo, troca este e reabre. Só faz sentido no app empacotado.
 function atualizarApp() {
+  if (NO_WINDOWS) return atualizarNoWindows();
   const appPath = path.resolve(process.execPath, '..', '..', '..');
   if (!appPath.endsWith('.app')) return;
   const script = `set -e
@@ -383,7 +399,33 @@ open "${appPath}"`;
   app.quit();
 }
 
+// No Windows quem troca o app é o próprio instalador: roda em silêncio, espera este fechar e abre o novo.
+async function atualizarNoWindows() {
+  try {
+    const r = await fetch(`https://github.com/${REPO}/releases/latest/download/${INSTALADOR}`, { signal: AbortSignal.timeout(10 * 60000) });
+    if (!r.ok) throw new Error(`download ${r.status}`);
+    const destino = path.join(os.tmpdir(), INSTALADOR);
+    fs.writeFileSync(destino, Buffer.from(await r.arrayBuffer()));
+    spawn(destino, ['/S'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    app.quit();
+  } catch (e) {
+    fs.appendFileSync(path.join(PASTA, 'registro.log'), `[atualizar] ${e.message}\n`);
+    shell.openExternal(`https://github.com/${REPO}/releases/latest`);
+  }
+}
+
+// No Windows o fluxo termina no atalho da IA que o módulo atalho deixou na Área de Trabalho.
+async function abrirAtalhoDaIA() {
+  const { criarCtx } = await importarSetuper('ctx.js');
+  const erro = await shell.openPath(path.join(criarCtx(flagsBase()).desktop(), 'Claude.cmd'));
+  if (erro) {
+    fs.appendFileSync(path.join(PASTA, 'registro.log'), `[abrir a IA] ${erro}\n`);
+    spawn('cmd.exe', ['/c', 'start "Claude" cmd /k claude'], { detached: true, stdio: 'ignore', cwd: HOME, windowsVerbatimArguments: true }).unref();
+  }
+}
+
 function abrirClaude() {
+  if (NO_WINDOWS) return abrirAtalhoDaIA().catch((e) => fs.appendFileSync(path.join(PASTA, 'registro.log'), `[abrir a IA] ${e.message}\n`));
   const maestri = ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'].find((p) => fs.existsSync(p));
   if (maestri) spawn('open', [maestri], { detached: true, stdio: 'ignore' }).unref();
   else if (process.platform === 'darwin') spawn('osascript', ['-e', 'tell application "Terminal" to do script "claude"', '-e', 'tell application "Terminal" to activate'], { detached: true, stdio: 'ignore' }).unref();
@@ -393,9 +435,28 @@ function montarMenu() {
   const t = i18n.t;
   const paraTela = (acao) => () => janela?.webContents.send('menu', acao);
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
-    { role: 'editMenu' },
-    { role: 'windowMenu' },
+    ...(process.platform === 'darwin' ? [{ label: NOME_APP, submenu: [
+      { role: 'about', label: t('Sobre {app}', { app: NOME_APP }) },
+      { type: 'separator' },
+      { role: 'hide', label: t('Ocultar {app}', { app: NOME_APP }) },
+      { role: 'hideOthers', label: t('Ocultar os outros') },
+      { role: 'unhide', label: t('Mostrar todos') },
+      { type: 'separator' },
+      { role: 'quit', label: t('Sair de {app}', { app: NOME_APP }) },
+    ] }] : []),
+    { label: t('Editar'), submenu: [
+      { role: 'undo', label: t('Desfazer') },
+      { role: 'redo', label: t('Refazer') },
+      { type: 'separator' },
+      { role: 'cut', label: t('Recortar') },
+      { role: 'copy', label: t('Copiar') },
+      { role: 'paste', label: t('Colar') },
+      { role: 'selectAll', label: t('Selecionar tudo') },
+    ] },
+    { label: t('Janela'), submenu: [
+      { role: 'minimize', label: t('Minimizar') },
+      { role: 'close', label: t('Fechar') },
+    ] },
     { role: 'help', label: t('Ajuda'), submenu: [
       { label: t('Ver o que já foi feito'), click: paraTela('detalhes') },
       { label: t('Pedir ajuda'), click: paraTela('ajuda') },
@@ -407,9 +468,13 @@ function montarMenu() {
 function criarJanela() {
   janela = new BrowserWindow({
     width: 960, height: 640, minWidth: 820, minHeight: 600,
-    title: NOME_APP, titleBarStyle: 'hiddenInset', backgroundColor: '#08080D', show: false,
+    title: NOME_APP, backgroundColor: '#08080D', show: false,
+    // hiddenInset é só do Mac: no Windows ele tiraria os botões de fechar e minimizar, sem pôr nada no lugar.
+    // Notebook com tela pequena e escala de 125%: a janela não pode nascer maior que a área útil.
+    ...(NO_WINDOWS ? { useContentSize: true, autoHideMenuBar: true, height: Math.min(640, screen.getPrimaryDisplay().workArea.height - 40), minHeight: Math.min(600, screen.getPrimaryDisplay().workArea.height - 40) } : { titleBarStyle: 'hiddenInset' }),
     webPreferences: { preload: path.join(AQUI, 'preload.cjs'), contextIsolation: true, sandbox: true, backgroundThrottling: false },
   });
+  janela.on('page-title-updated', (e) => e.preventDefault()); // o título é o nome do app, inclusive no presente
   janela.loadFile(path.join(AQUI, 'tela', 'index.html'));
   janela.once('ready-to-show', () => { if (!SO_AULA) janela.show(); });
   // Erros da tela vão pro registro, junto com o resto.
@@ -437,7 +502,7 @@ async function mandarInicio() {
     tipo: 'inicio', versao: VERSAO, temInstalacao: !!estadoSalvo?.respostas, nome: estadoSalvo?.respostas?.nome || '', auto: TESTE || null,
     presente: await dadosDoPresente(), idioma: i18n.idiomaAtual(), catalogo: i18n.catalogoAtual(), plataforma: process.platform,
     video: fs.existsSync(video) ? `video/abertura-${i18n.idiomaAtual()}.mp4` : '', progresso: Math.min(99, Math.round((feitos / total) * 100)),
-    primeiraAbertura: !estadoSalvo,
+    primeiraAbertura: !estadoSalvo, tudoPronto: !!estadoSalvo?.terminou && Object.values(estadoSalvo?.modulos || {}).every((m) => m.ok),
   });
 }
 
@@ -453,7 +518,7 @@ ipcMain.on('pronto', async () => {
 ipcMain.on('trocar-idioma', async (_e, id) => {
   escolherIdioma(id);
   const { ui } = await importarSetuper('ui.js');
-  Object.assign(ui, criarUiApp(enviar, pedir, i18n.t));
+  Object.assign(ui, criarUiApp(enviar, pedir, i18n.traduzir));
   montarMenu();
   await mandarInicio();
 });
@@ -474,16 +539,32 @@ async function dadosDoPresente() {
   }
 }
 
+// O erro técnico fica no registro; na tela vai o que aconteceu, em português comum.
+function falhaEmLinguagemComum(e) {
+  const m = String(e.message || e).split('\n')[0];
+  const internet = /ENOTFOUND|ECONN|ETIMEDOUT|EAI_AGAIN|internet|network|baixar/i.test(m);
+  if (/ENOSPC/.test(m)) return { texto: i18n.t('O disco do computador encheu. Libera um pouco de espaço e tenta de novo.'), internet: false };
+  if (/EACCES|EPERM/.test(m)) return { texto: i18n.t('O computador não me deixou gravar numa pasta. Clica em Pedir ajuda que quem te ajuda vê o motivo.'), internet: false };
+  if (internet && /\bE[A-Z]{4,}\b/.test(m)) return { texto: i18n.t('A internet caiu no meio de um download.'), internet: true };
+  if (/\bE[A-Z]{4,}\b|[/\\]\w+[/\\]/.test(m)) return { texto: i18n.t('Uma parte da instalação não terminou. Clica em Tentar de novo, e se voltar a acontecer, em Pedir ajuda.'), internet: false };
+  return { texto: m, internet };
+}
 ipcMain.on('iniciar', async (_e, modo) => {
   if (rodando) return;
   rodando = true;
   try {
-    if (modo === 'instalar') await instalarTudo();
+    if (modo === 'instalar') {
+      await instalarTudo();
+      const arq = path.join(PASTA, 'estado.json');
+      fs.writeFileSync(arq, JSON.stringify({ ...lerJson(arq), terminou: true }, null, 2));
+    }
     enviar({ tipo: 'tarefa', id: 0, estado: 'fazendo', texto: i18n.t('Conferindo se ficou tudo no lugar') });
     enviar({ tipo: 'fim', grupos: await conferencia(), soConferiu: modo !== 'instalar', comecar: paraComecar() });
   } catch (e) {
     fs.appendFileSync(path.join(PASTA, 'registro.log'), `[app] ${e.stack || e.message}\n`);
-    enviar({ tipo: 'falha', texto: String(e.message || e).split('\n')[0] });
+    const { texto, internet } = falhaEmLinguagemComum(e);
+    enviar({ tipo: 'falha', texto, internet });
+    if (janela && !janela.isDestroyed() && !TESTE) { janela.show(); janela.focus(); shell.beep(); }
   } finally {
     rodando = false;
   }
@@ -495,11 +576,15 @@ ipcMain.on('abrir-link', (_e, url, programa) => {
   // programa: 'obsidian' abre o próprio app (recém-instalado, o link obsidian:// ainda pode não funcionar).
   if (programa === 'obsidian' && /^obsidian:\/\//.test(url)) {
     if (process.platform === 'darwin') return execFile('open', ['-a', '/Applications/Obsidian.app'], (erro) => erro && shell.openExternal(url));
-    return shell.openExternal(url);
+    const exe = NO_WINDOWS && PROGRAMAS.obsidian.caminhos.find((c) => fs.existsSync(c));
+    return exe ? shell.openPath(exe) : shell.openExternal(url);
   }
   if (!/^https?:\/\//.test(url)) return;
   if (programa === 'chrome' && process.platform === 'darwin') return execFile('open', ['-a', '/Applications/Google Chrome.app', url], (erro) => erro && shell.openExternal(url));
-  if (programa === 'chrome' && process.platform === 'win32') return execFile('cmd.exe', ['/c', 'start', '""', 'chrome', url], (erro) => erro && shell.openExternal(url));
+  if (programa === 'chrome' && NO_WINDOWS) {
+    const exe = PROGRAMAS.chrome.caminhos.find((c) => fs.existsSync(c));
+    if (exe) return execFile(exe, [url], { windowsHide: true }, () => {});
+  }
   shell.openExternal(url);
 });
 ipcMain.on('pular', async () => (await importarSetuper('ui.js')).ui.marcarPulado?.());
@@ -509,7 +594,39 @@ ipcMain.on('atualizar', () => atualizarApp());
 ipcMain.on('mostrar-registro', () => shell.openPath(path.join(PASTA, 'registro.log')));
 ipcMain.on('fechar', () => app.quit());
 // O portal e o vídeo ficam na frente do Maestri, que já abriu atrás.
-ipcMain.on('portal', () => { if (janela && !TESTE) { janela.setAlwaysOnTop(true, 'floating'); janela.show(); } });
+ipcMain.on('portal', () => {
+  if (!janela || TESTE) return;
+  janela.setAlwaysOnTop(true, 'floating');
+  janela.show();
+  if (!fs.existsSync(path.join(AQUI, 'tela', 'video', `abertura-${i18n.idiomaAtual()}.mp4`))) abrirBranco();
+});
+// O branco toma a tela inteira, junto com o clarão da janela: é isso que dá a sensação de entrar.
+let branco = null;
+function abrirBranco() {
+  branco = new BrowserWindow({
+    ...screen.getPrimaryDisplay().bounds, frame: false, backgroundColor: '#FFFFFF', hasShadow: false, resizable: false, movable: false, focusable: false, skipTaskbar: true, show: false, enableLargerThanScreen: true,
+    ...(process.platform === 'darwin' ? { type: 'panel' } : {}),
+  });
+  branco.setIgnoreMouseEvents(true);
+  branco.setAlwaysOnTop(true, 'screen-saver');
+  branco.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
+  branco.setOpacity(0);
+  branco.showInactive();
+  branco.on('closed', () => { branco = null; });
+  setTimeout(() => esmaecer(branco, 0, 1, 1700), 2000);
+}
+function esmaecer(j, de, para, ms) {
+  return new Promise((res) => {
+    const passos = Math.max(1, Math.round(ms / 30));
+    let i = 0;
+    const r = setInterval(() => {
+      i += 1;
+      if (!j || j.isDestroyed()) { clearInterval(r); return res(); }
+      j.setOpacity(de + (para - de) * (i / passos));
+      if (i >= passos) { clearInterval(r); res(); }
+    }, 30);
+  });
+}
 ipcMain.on('concluir', () => comecarAula());
 ipcMain.on('guia-pronto', () => { guiaProntoJa = true; if (cenaGuia) mandarAoGuia({ tipo: 'cena', cena: cenaGuia }); });
 ipcMain.on('guia-altura', (_e, altura) => {
@@ -519,7 +636,12 @@ ipcMain.on('guia-altura', (_e, altura) => {
 });
 ipcMain.on('guia-passo', (_e, i) => { passoAtual = i; apontarPasso(); });
 ipcMain.on('guia-acao', async (_e, acao) => { if (acao === 'tentar') (await importarSetuper('ui.js')).ui.marcarTentar?.(); });
-ipcMain.on('aula', (_e, acao) => aula?.acao(acao));
+ipcMain.on('aula', (_e, acao) => {
+  aula?.acao(acao);
+  // O clique no guia não pode tirar o foco: a próxima coisa que a pessoa digita é na janela da IA.
+  const maestri = ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'].find((p) => fs.existsSync(p));
+  if (maestri && !TESTE) execFile('/usr/bin/open', ['-a', maestri], () => {});
+});
 ipcMain.on('ligar-opcional', (_e, id) => ligarOpcional(id));
 // Pedir ajuda: gera o arquivo do `claude-setuper pedir-ajuda`, na Mesa, e abre o WhatsApp com o registro já escrito.
 ipcMain.handle('pedir-ajuda', async () => {
@@ -545,9 +667,20 @@ ipcMain.handle('print', async (_e, nome) => {
 });
 
 // ---------- a aula por cima do Maestri ----------
-function comecarAula() {
-  if (janela && !janela.isDestroyed()) { janela.setAlwaysOnTop(false); janela.hide(); }
+// O fim do portal: a janela está toda branca por cima de tudo. O Maestri vem pra frente atrás dela, e o branco se desfaz em cima dele.
+async function sairPeloBranco() {
   abrirClaude();
+  if (!janela || janela.isDestroyed()) return;
+  await new Promise((r) => setTimeout(r, TESTE ? 0 : 900));
+  if (branco) { janela.hide(); await esmaecer(branco, 1, 0, 600); branco?.close(); }
+  else if (!TESTE) await esmaecer(janela, 1, 0, 450);
+  if (janela.isDestroyed()) return;
+  janela.setAlwaysOnTop(false);
+  janela.hide();
+  janela.setOpacity(1);
+}
+async function comecarAula() {
+  await sairPeloBranco();
   if (!aula) {
     aula = criarAula({
       claudeDir: CLAUDE_DIR, pasta: PASTA, t: i18n.t, mac: process.platform === 'darwin', respostas: respostasSalvas,
@@ -587,7 +720,10 @@ async function demoTelas() {
   fs.mkdirSync(dir, { recursive: true });
   const print = async (nome, alvo = janela) => {
     await new Promise((r) => setTimeout(r, 900));
-    fs.writeFileSync(path.join(dir, `${nome}.png`), (await alvo.webContents.capturePage()).toPNG());
+    // O guia agora só aparece quando está pronto; janela escondida não devolve a captura.
+    for (let i = 0; i < 30 && !alvo.isVisible(); i += 1) await new Promise((r) => setTimeout(r, 100));
+    const foto = await Promise.race([alvo.webContents.capturePage(), new Promise((r) => setTimeout(r, 4000))]);
+    if (foto) fs.writeFileSync(path.join(dir, `${nome}.png`), foto.toPNG());
   };
   const js = (c) => janela.webContents.executeJavaScript(c);
   const passos = ['Preparar o computador', 'Configurar a IA', 'Ajuste automático', 'Segundo cérebro', 'Google Chrome', 'Comandos prontos', 'Apps conectados', 'Rotinas', 'Manter atualizado', 'Janela da IA'];
@@ -658,6 +794,9 @@ async function demoTelas() {
 }
 
 // Testando com --home, os dados do Electron também ficam na casa de teste.
+// A janela transparente das setas não pode parar de pintar por o sistema achar que ela está coberta.
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
 if (HOME_TESTE) app.setPath('userData', path.join(HOME_TESTE, 'Library', 'Application Support', NOME_APP));
 if (PRESENTE) app.setName(NOME_APP);
 
@@ -670,9 +809,10 @@ else {
   app.whenReady().then(async () => {
     nativeTheme.themeSource = 'dark'; // o app é sempre escuro, a abertura depende disso
     i18n = await importarSetuper('i18n.js');
+    if (PRESENTE) i18n.definirNomeApp(NOME_APP);
     escolherIdioma(idiomaInicial());
     const { ui } = await importarSetuper('ui.js');
-    Object.assign(ui, criarUiApp(enviar, pedir, i18n.t));
+    Object.assign(ui, criarUiApp(enviar, pedir, i18n.traduzir));
     montarMenu();
     criarVidro();
     criarJanela();

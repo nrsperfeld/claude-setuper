@@ -80,7 +80,7 @@ export async function instalar(ctx) {
     ctx.escreverSeFaltar(path.join(vault, '.gitignore'), GITIGNORE);
     await ctx.run('git', ['add', '-A'], { cwd: vault });
     await ctx.run('git', ['-c', 'user.name=Claude Setuper', '-c', 'user.email=setuper@localhost', 'commit', '-q', '-m', 'Primeiro backup do segundo cérebro'], { cwd: vault, ignorarErro: true });
-    await ctx.run('gh', ['repo', 'create', 'segundo-cerebro', '--private', '--source', vault, '--push'], { cwd: vault, ignorarErro: true });
+    await ctx.run('gh', ['repo', 'create', ctx.pasta('segundo-cerebro'), '--private', '--source', vault, '--push'], { cwd: vault, ignorarErro: true });
   });
 }
 

@@ -7,10 +7,12 @@ import { modulosParaPlataforma } from './modulos/index.js';
 export async function atualizar(ctx) {
   ui.abertura('Claude Setuper · atualizar', 'Puxando a versão nova e reaplicando o que você já tem');
   const emClone = fs.existsSync(path.join(ctx.raiz, '.git'));
-  await ui.tarefa('Baixando a versão nova', 'Versão nova baixada', async () => {
-    if (emClone) await ctx.run('git', ['-C', ctx.raiz, 'pull', '-q', '--ff-only'], { ignorarErro: true });
-    else await ctx.run('npm', ['install', '-g', 'claude-setuper@latest'], { ignorarErro: true });
-  });
+  // Fora de um clone, quem traz a versão nova é o próprio app, ao abrir.
+  if (emClone) {
+    await ui.tarefa('Baixando a versão nova', 'Versão nova baixada', async () => {
+      await ctx.run('git', ['-C', ctx.raiz, 'pull', '-q', '--ff-only'], { ignorarErro: true });
+    });
+  }
 
   const ids = Object.keys(ctx.estado.modulos || {});
   if (!ids.length) return ui.encerramento('Nada instalado ainda. Rode: claude-setuper');
