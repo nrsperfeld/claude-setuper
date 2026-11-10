@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude Setuper — instalador de uma linha.
-#   curl -fsSL https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.sh | bash
+#   curl -fsSL https://nrsperfeld.github.io/claude-setuper/i | bash   (docs/i é cópia deste arquivo, servida pela página)
 # Garante o mínimo (Xcode CLT, Homebrew, Node), baixa o Setuper e entrega pro wizard em português.
 set -e
 

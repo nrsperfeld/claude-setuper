@@ -11,8 +11,9 @@ PY=$(bash presente/python.sh)
 T=$(mktemp -d "$AQUI/.cache/dmg-XXXXXX")
 "$PY" dmg/fundo.py "$IDIOMA" "$T"
 [ "$IDIOMA" = en ] && APLICATIVOS=Applications || APLICATIVOS=Aplicativos
+[ "$IDIOMA" = en ] && AJUSTES="System Settings" || AJUSTES="Ajustes do Sistema"
 DMG="$SAIDA/Claude-Setuper-mac-$ARQ-$IDIOMA.dmg"
 [ -e "$DMG" ] && mv "$DMG" "$T/anterior.dmg"
-"$PY" -m dmgbuild -s dmg/dmg.py -D app="$APP" -D fundo="$T/fundo.png" -D icone="$APP/Contents/Resources/electron.icns" -D aplicativos="$APLICATIVOS" "Claude Setuper" "$DMG"
+"$PY" -m dmgbuild -s dmg/dmg.py -D app="$APP" -D fundo="$T/fundo.png" -D icone="$APP/Contents/Resources/electron.icns" -D aplicativos="$APLICATIVOS" -D ajustes="$AJUSTES" "Claude Setuper" "$DMG"
 hdiutil verify "$DMG" >/dev/null
 echo "pronto: $DMG ($(du -h "$DMG" | cut -f1))"

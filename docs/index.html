@@ -26,6 +26,12 @@
   .bloco h2 { font-size:15px; margin:0 0 2px; font-weight:600; }
   .bloco p { margin:0; color:var(--texto2); font-size:14px; }
   h3 { font-size:20px; font-weight:600; margin:44px 0 6px; }
+  .terminal { margin:30px auto 0; max-width:700px; text-align:left; background:var(--sup); border:1px solid var(--linha); border-radius:16px; padding:18px 20px; }
+  .terminal h2 { font-size:17px; margin:0 0 4px; font-weight:600; }
+  .terminal p { margin:0 0 12px; color:var(--texto2); font-size:14px; }
+  .linha { display:flex; gap:8px; align-items:stretch; }
+  .linha code { flex:1; min-width:0; overflow-x:auto; white-space:nowrap; background:#0B0B11; border:1px solid var(--linha); border-radius:10px; padding:11px 12px; font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--texto); }
+  .linha .btn { min-height:0; padding:0 18px; border:0; font:inherit; font-weight:600; cursor:pointer; }
   .idioma { position:absolute; right:20px; top:14px; color:var(--texto2); font-size:13px; }
   .idioma button { background:none; border:0; color:inherit; font:inherit; cursor:pointer; padding:4px; }
   .idioma button[aria-pressed=true] { color:var(--texto); font-weight:600; }
@@ -38,8 +44,13 @@
   <img class="icone" src="icone.png" alt="">
   <h1 data-t="titulo"></h1>
   <p class="lead" data-t="lead"></p>
+  <div class="terminal" id="terminal">
+    <h2 data-t="term"></h2>
+    <p data-t="termt"></p>
+    <div class="linha"><code id="linha">curl -fsSL https://nrsperfeld.github.io/claude-setuper/i | bash</code><button type="button" class="btn principal" id="copiar"></button></div>
+  </div>
   <div class="botoes">
-    <a class="btn principal" id="mac" href="#"></a>
+    <a class="btn" id="mac" href="#"></a>
     <a class="btn" id="win" href="Claude%20Setuper.bat" download></a>
   </div>
   <p class="peq"><span data-t="intel"></span> <a id="intel" href="#"></a></p>
@@ -58,8 +69,8 @@
 <script>
   const REL = 'https://github.com/nrsperfeld/claude-setuper/releases/latest/download/';
   const TX = {
-    pt: { titulo: 'O modelo mais avançado de IA pra te acompanhar, com tudo instalado em menos de 20 minutos.', lead: 'Você baixa, abre e segue o passo a passo. Não precisa entender de tecnologia.', mac: 'Baixar pra Mac', win: 'Baixar pra Windows', intel: 'Tem um Mac mais antigo, com processador Intel?', intelL: 'Baixar a versão pra Intel', p1: '1. Baixa', p1t: 'Um arquivo só, com tudo que precisa pra começar.', p2: '2. Abre', p2t: 'No Mac, arrasta pra pasta Aplicativos. No Windows, dois cliques.', p3: '3. Deixa à mão', p3t: 'Uma conta no Claude, que é a IA que vai ser instalada, com plano pago (Pro ou maior). Dá pra criar durante a instalação.', aviso: 'Na primeira vez, o computador vai mostrar um aviso', avisot: 'O programa ainda é novo, então o sistema pede uma confirmação sua. São poucos cliques, e isso acontece uma vez só.', mact: 'No Mac', macp: 'Abre o app e fecha o aviso. Depois abre Ajustes do Sistema, Privacidade e Segurança, desce até o fim e clica em Abrir Mesmo Assim.', wint: 'No Windows', winp: 'Na tela azul, clica em Mais informações e depois em Executar assim mesmo.' },
-    en: { titulo: 'The most advanced AI by your side, with everything installed in under 20 minutes.', lead: 'Download it, open it and follow the steps. You don’t need to know anything about technology.', mac: 'Download for Mac', win: 'Download for Windows', intel: 'Have an older Mac with an Intel processor?', intelL: 'Download the Intel version', p1: '1. Download', p1t: 'One file with everything you need to get started.', p2: '2. Open', p2t: 'On a Mac, drag it to Applications. On Windows, double-click it.', p3: '3. Have this handy', p3t: 'A Claude account, the AI you’re installing, on a paid plan (Pro or higher). You can create it during setup.', aviso: 'The first time, your computer will show a warning', avisot: 'The app is still new, so your system asks you to confirm. It takes a few clicks and only happens once.', mact: 'On a Mac', macp: 'Open the app and close the warning. Then open System Settings, Privacy & Security, scroll to the bottom and click Open Anyway.', wint: 'On Windows', winp: 'On the blue screen, click More info and then Run anyway.' },
+    pt: { titulo: 'O modelo mais avançado de IA pra te acompanhar, com tudo instalado em menos de 20 minutos.', lead: 'Você baixa, abre e segue o passo a passo. Não precisa entender de tecnologia.', term: 'No Mac, o jeito mais rápido é pelo Terminal', termt: 'Assim não aparece aviso nenhum. Aperta ⌘ + espaço, escreve Terminal e aperta Enter. Depois clica em Copiar, clica dentro da janela do Terminal, aperta ⌘ + V e Enter.', copiar: 'Copiar', copiado: 'Copiado', mac: 'Baixar o arquivo pra Mac', win: 'Baixar pra Windows', intel: 'Tem um Mac mais antigo, com processador Intel?', intelL: 'Baixar a versão pra Intel', p1: '1. Baixa', p1t: 'Um arquivo só, com tudo que precisa pra começar.', p2: '2. Abre', p2t: 'No Mac, arrasta pra pasta Aplicativos. No Windows, dois cliques.', p3: '3. Deixa à mão', p3t: 'Uma conta no Claude, que é a IA que vai ser instalada, com plano pago (Pro ou maior). Dá pra criar durante a instalação.', aviso: 'Na primeira vez, o computador vai mostrar um aviso', avisot: 'O programa ainda é novo, então o sistema pede uma confirmação sua. São poucos cliques, e isso acontece uma vez só.', mact: 'No Mac, se você baixou o arquivo', macp: 'Abre o app e fecha o aviso. Depois abre Ajustes do Sistema, Privacidade e Segurança, desce até o fim e clica em Abrir Mesmo Assim.', wint: 'No Windows', winp: 'Na tela azul, clica em Mais informações e depois em Executar assim mesmo.' },
+    en: { titulo: 'The most advanced AI by your side, with everything installed in under 20 minutes.', lead: 'Download it, open it and follow the steps. You don’t need to know anything about technology.', term: 'On a Mac, the fastest way is through Terminal', termt: 'This way no warning shows up. Press ⌘ + Space, type Terminal and press Enter. Then click Copy, click inside the Terminal window, press ⌘ + V and Enter.', copiar: 'Copy', copiado: 'Copied', mac: 'Download the Mac file', win: 'Download for Windows', intel: 'Have an older Mac with an Intel processor?', intelL: 'Download the Intel version', p1: '1. Download', p1t: 'One file with everything you need to get started.', p2: '2. Open', p2t: 'On a Mac, drag it to Applications. On Windows, double-click it.', p3: '3. Have this handy', p3t: 'A Claude account, the AI you’re installing, on a paid plan (Pro or higher). You can create it during setup.', aviso: 'The first time, your computer will show a warning', avisot: 'The app is still new, so your system asks you to confirm. It takes a few clicks and only happens once.', mact: 'On a Mac, if you downloaded the file', macp: 'Open the app and close the warning. Then open System Settings, Privacy & Security, scroll to the bottom and click Open Anyway.', wint: 'On Windows', winp: 'On the blue screen, click More info and then Run anyway.' },
   };
   const silicon = () => {
     try { const g = document.createElement('canvas').getContext('webgl'); const d = g.getExtension('WEBGL_debug_renderer_info'); return !/intel/i.test(g.getParameter(d.UNMASKED_RENDERER_WEBGL)); } catch { return true; }
@@ -69,15 +80,23 @@
     document.documentElement.lang = l === 'en' ? 'en' : 'pt-BR';
     document.querySelectorAll('[data-t]').forEach((e) => { e.textContent = t[e.dataset.t]; });
     document.querySelectorAll('[data-l]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.l === l)));
-    const mac = document.getElementById('mac'), win = document.getElementById('win'), intel = document.getElementById('intel');
+    const mac = document.getElementById('mac'), win = document.getElementById('win'), intel = document.getElementById('intel'), copiar = document.getElementById('copiar');
     mac.textContent = t.mac; win.textContent = t.win; intel.textContent = t.intelL;
+    copiar.textContent = t.copiar; copiar.dataset.ok = t.copiado;
     mac.href = `${REL}Claude-Setuper-mac-${silicon() ? 'arm64' : 'x64'}-${l}.dmg`;
     intel.href = `${REL}Claude-Setuper-mac-x64-${l}.dmg`;
     // Destaca o botão do sistema de quem está visitando.
     const windows = /windows/i.test(navigator.userAgent);
-    mac.classList.toggle('principal', !windows); win.classList.toggle('principal', windows);
+    // No Windows a linha do Terminal não serve: some, e o botão do Windows vira o principal.
+    document.getElementById('terminal').hidden = windows;
+    win.classList.toggle('principal', windows);
     if (windows) win.parentNode.prepend(win);
   }
+  document.getElementById('copiar').addEventListener('click', async (e) => {
+    const b = e.currentTarget, antes = b.textContent;
+    try { await navigator.clipboard.writeText(document.getElementById('linha').textContent); b.textContent = b.dataset.ok; setTimeout(() => { b.textContent = antes; }, 2500); }
+    catch { getSelection().selectAllChildren(document.getElementById('linha')); }
+  });
   document.querySelectorAll('[data-l]').forEach((b) => b.addEventListener('click', () => aplicar(b.dataset.l)));
   aplicar((navigator.language || 'pt').toLowerCase().startsWith('pt') ? 'pt' : 'en');
 </script>
