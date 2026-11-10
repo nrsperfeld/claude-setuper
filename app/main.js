@@ -529,7 +529,7 @@ async function dadosDoPresente() {
   try {
     const { lerPresente } = await importarSetuper('presente.js');
     const p = lerPresente(PRESENTE);
-    if (!p) return null;
+    if (!p || p.invalido) return null;
     let signo = '';
     if (p.signo) signo = `data:${p.signo.endsWith('.svg') ? 'image/svg+xml' : 'image/png'};base64,${fs.readFileSync(p.signo).toString('base64')}`;
     return { nome: p.nome, rotulo: p.rotulo, artigo: p.artigo, recado: p.recado, signo };

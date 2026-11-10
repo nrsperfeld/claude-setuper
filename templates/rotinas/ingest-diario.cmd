@@ -21,7 +21,7 @@ for %%f in ("%IN%\processando\*") do set "TEM=1"
 if not defined TEM exit /b 0
 
 echo --- %date% %time% >> "%DIR%\ingest-diario.log"
-claude -p --model sonnet --permission-mode acceptEdits --tools "Read,Write,Edit,Glob,Grep" < "%DIR%\prompt-ingest.md" >> "%DIR%\ingest-diario.log" 2>&1
+call claude -p --model sonnet --permission-mode acceptEdits --tools "Read,Write,Edit,Glob,Grep" < "%DIR%\prompt-ingest.md" >> "%DIR%\ingest-diario.log" 2>&1
 rem Deu errado (sem internet, sem login): os arquivos ficam em processando e entram na leitura de amanhã.
 if errorlevel 1 exit /b 0
 for %%f in ("%IN%\processando\*") do call :mover "%%~ff" "%IN%\processados"

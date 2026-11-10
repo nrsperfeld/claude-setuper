@@ -19,6 +19,11 @@ const ROTINAS = [
 ];
 const PROMPTS = ['prompt-revisao.md', 'prompt-ingest.md'];
 const ext = (ctx) => (ctx.win ? '.cmd' : '.sh');
+// O nome do cofre vem da pessoa: entra nos scripts escapado pra cada formato, nunca como código.
+// .sh: dentro de aspas duplas. .cmd: dentro de set "X=...", onde só o % expande. .plist: XML.
+const escaparSh = (s) => String(s).replace(/[\\$`"]/g, '\\$&');
+const escaparCmd = (s) => String(s).replace(/%/g, '%%');
+const escaparXml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function dirLaunch(ctx) {
   return path.join(ctx.home, 'Library', 'LaunchAgents');
@@ -39,7 +44,8 @@ export async function instalar(ctx) {
     for (const p of PROMPTS) ctx.copiarTemplate(`rotinas/${p}`, path.join(dir, p), { vault });
     for (const r of ROTINAS) {
       const script = path.join(dir, r.script + ext(ctx));
-      let txt = ctx.template(`rotinas/${r.script}${ext(ctx)}`, { vault, logs: dir, hoje: '' });
+      const esc = ctx.win ? escaparCmd : escaparSh;
+      let txt = ctx.template(`rotinas/${r.script}${ext(ctx)}`, { vault: esc(vault), logs: esc(dir), hoje: '' });
       // O cmd se perde nos rótulos (call :mover) quando o arquivo tem só LF no fim das linhas.
       if (ctx.win) txt = txt.replace(/\r?\n/g, '\r\n');
       ctx.escrever(script, txt);
@@ -53,7 +59,7 @@ export async function instalar(ctx) {
         await ctx.run('schtasks', args, { ignorarErro: true });
       } else if (ctx.plataforma === 'darwin') {
         const plist = path.join(dirLaunch(ctx), `com.claude-setuper.${r.id}.plist`);
-        ctx.escrever(plist, ctx.template('rotinas/launchd.plist', { id: r.id, script, dia: r.cron.dia ?? '', hora: r.cron.hora, logs: dir, comDia: r.cron.dia != null ? `<key>Weekday</key><integer>${r.cron.dia}</integer>` : '' }));
+        ctx.escrever(plist, ctx.template('rotinas/launchd.plist', { id: r.id, script: escaparXml(script), dia: r.cron.dia ?? '', hora: r.cron.hora, logs: escaparXml(dir), comDia: r.cron.dia != null ? `<key>Weekday</key><integer>${r.cron.dia}</integer>` : '' }));
         if (!ctx.dryRun && !ctx.semApps) {
           await ctx.run('launchctl', ['unload', plist], { ignorarErro: true });
           await ctx.run('launchctl', ['load', plist], { ignorarErro: true });

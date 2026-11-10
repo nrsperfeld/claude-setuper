@@ -24,7 +24,8 @@ export function lerPresente(dir, { templates } = {}) {
   try {
     dados = JSON.parse(fs.readFileSync(arquivo, 'utf8').replace(/^﻿/, ''));
   } catch (e) {
-    return { dir: raiz, problemas: [`presente.json não abre: ${e.message}`], respostas: {} };
+    // Sem o JSON não há vault nem recado: quem chama desliga o presente e pergunta tudo (o build recusa).
+    return { dir: raiz, invalido: true, problemas: [`presente.json não abre: ${e.message}`], respostas: {} };
   }
   const problemas = [];
   const perfisValidos = templates ? fs.readdirSync(path.join(templates, 'perfis')).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, '')) : null;
@@ -63,8 +64,12 @@ export function lerPresente(dir, { templates } = {}) {
     else problemas.push('respostas.modulos: "tudo" ou uma lista de passos, por exemplo ["obsidian", "maestri"]');
   }
 
-  const vault = String(dados.vault || 'Segundo Cérebro').trim();
-  if (!vault || /[/\\:]/.test(vault) || vault.startsWith('.')) problemas.push('vault: só o nome da pasta, sem barra, por exemplo "Segundo Cérebro"');
+  // Nome inválido não sai daqui: o cofre fica sempre numa pasta dentro de Documentos.
+  let vault = String(dados.vault || 'Segundo Cérebro').trim();
+  if (!vault || /[/\\:\u0000-\u001f]/.test(vault) || vault.startsWith('.')) {
+    problemas.push('vault: só o nome da pasta, sem barra, por exemplo "Segundo Cérebro"');
+    vault = 'Segundo Cérebro';
+  }
 
   const recado = dados.recado || {};
   if (!recado.texto) problemas.push('recado.texto: falta o recado da tela de abertura');
@@ -84,7 +89,7 @@ export function lerPresente(dir, { templates } = {}) {
     nome,
     artigo,
     rotulo: `Segundo Cérebro ${artigo} ${nome}`,
-    vault: vault || 'Segundo Cérebro',
+    vault,
     recado: { titulo: String(recado.titulo || '').trim(), texto: String(recado.texto || '').trim(), assinatura: String(recado.assinatura || '').trim() },
     paraComecar,
     signo,

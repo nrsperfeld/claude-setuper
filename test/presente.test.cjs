@@ -84,10 +84,15 @@ test('presente.json com problema: aponta cada um e não aproveita o valor errado
   assert.strictEqual(p.respostas.perfil, undefined);
   assert.strictEqual(p.respostas.idade, undefined);
   assert.strictEqual(p.respostas.tecnologia, 'basico');
+  // Nome de cofre inválido não chega na instalação: volta o padrão, sempre dentro de Documentos.
+  assert.strictEqual(p.vault, 'Segundo Cérebro');
+  assert.strictEqual(lerPresente(pastaPresente({ ...PRESENTE, vault: '..' })).vault, 'Segundo Cérebro');
   // JSON que não abre também é problema, não um erro que derruba a instalação.
   const quebrado = fs.mkdtempSync(path.join(os.tmpdir(), 'quebrado-'));
   fs.writeFileSync(path.join(quebrado, 'presente.json'), '{ nome: ');
   assert.match(lerPresente(quebrado).problemas[0], /não abre/);
+  // e a instalação segue sem presente, perguntando tudo, em vez de quebrar sem cofre.
+  assert.strictEqual((await ctxCom(quebrado)).presente, null);
 });
 
 test('o contexto acha o presente pela opção ou pela variável CLAUDE_SETUPER_PRESENTE', async () => {

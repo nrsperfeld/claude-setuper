@@ -251,6 +251,7 @@ export function criarCtx(flags = {}) {
   try {
     ctx.presente = lerPresente(dirPresente, { templates: ctx.templates });
     if (ctx.presente?.problemas.length) ctx.log('aviso', 'presente.json com problema:', ctx.presente.problemas.join(' | '));
+    if (ctx.presente?.invalido) ctx.presente = null;
   } catch (e) {
     ctx.log('aviso', 'presente não abriu', dirPresente, e.message);
     ctx.presente = null;
