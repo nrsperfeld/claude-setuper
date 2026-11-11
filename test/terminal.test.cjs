@@ -41,3 +41,29 @@ test('login do gh com internet rápida termina e só o link do login vira botão
   assert.deepStrictEqual(codigos, ['ABCD-1234']);
   fs.rmSync(pasta, { recursive: true, force: true });
 });
+
+// Imita o `claude auth login` 2.1: link, "Paste code here if prompted >" e espera o código pela entrada.
+const CLAUDE_FALSO = `#!/bin/bash
+echo "Opening browser to sign in…"
+echo "If the browser didn't open, visit: https://claude.com/cai/oauth/authorize?code=true&state=abc"
+printf "Paste code here if prompted > "
+read -r codigo
+[ "$codigo" = "BOM123456#estado" ] && echo "Login successful." && exit 0
+echo "Login failed: That code wasn't accepted."
+exit 1
+`;
+
+test('login do Claude: o código colado na tela chega no programa, que termina sozinho', { skip: process.platform !== 'darwin', timeout: 30000 }, async () => {
+  const { criarTerminal } = await carregar();
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'setuper-terminal-'));
+  const claude = path.join(pasta, 'claude');
+  fs.writeFileSync(claude, CLAUDE_FALSO, { mode: 0o755 });
+  const runVisivel = criarTerminal({ log() {}, logPath: path.join(pasta, 'registro.log') }, () => {});
+  const parar = new AbortController();
+  const travou = setTimeout(() => parar.abort(), 20000);
+  const codigo = await runVisivel(claude, ['auth', 'login'], { ignorarErro: true, sinal: parar.signal, aoIniciar: (escrever) => setTimeout(() => escrever('BOM123456#estado'), 1500) });
+  clearTimeout(travou);
+  assert.ok(!parar.signal.aborted, 'o código não chegou no login');
+  assert.strictEqual(codigo, 0);
+  fs.rmSync(pasta, { recursive: true, force: true });
+});

@@ -3,7 +3,7 @@ const G = window.setuper;
 const raiz = document.getElementById('guia');
 let cat = {};
 let nomeApp = 'Claude Setuper';
-let cena = null; // { rotulo, passos: [{ titulo, linhas, figura, print }], i, acoes, pular, concluir, nao, id, codigo, link, status, aula, opcoes }
+let cena = null; // { rotulo, passos: [{ titulo, linhas, figura, print }], i, acoes, pular, concluir, nao, id, codigo, link, status, aula, opcoes, colar }
 const t = (texto, vars) => {
   const base = cat[texto] ?? texto;
   return (vars ? base.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m)) : base).replaceAll('Claude Setuper', nomeApp);
@@ -56,6 +56,10 @@ function desenhar() {
   else if (p.linhas?.length) kids.push(h('ol', { class: 'g-lista' }, p.linhas.map((l) => h('li', {}, l))));
   if (cena.codigo) kids.push(h('div', { class: 'g-cod' }, h('span', {}, cena.codigo), botao(t('Copiar'), (e) => { G.copiar(cena.codigo); e.target.textContent = t('Copiado'); })));
   if (p.opcoes?.length) kids.push(h('div', {}, p.opcoes.map((o) => h('div', { class: 'g-opc' }, h('div', {}, h('b', {}, o.titulo), h('p', { class: 't2 peq' }, o.sub)), botao(o.feito ? t('Ligado') : t('Ligar'), () => G.ligarOpcional(o.id), 'btn2 p')))));
+  // Login do Claude que terminou na página "Authentication code": um clique leva o código copiado pro login.
+  if (cena.colar) kids.push(h('div', { class: 'g-colar' }, h('b', {}, t('O navegador mostrou um código?')),
+    h('p', { class: 'g-txt' }, t('Se apareceu uma página escrita Authentication code, clica no botão de copiar que tem nela e depois aqui embaixo. Eu termino o login sozinho.')),
+    botao(t('Colar o código copiado'), () => G.colarCodigo(), 'btn2 p')));
   if (cena.status || p.status) kids.push(h('p', { class: 'g-status' }, cena.status || p.status));
   const acoes = [];
   if (cena.link) acoes.push(botao(t('Abrir a página'), () => G.abrirLink(cena.link), 'btn2 p'));
@@ -79,6 +83,7 @@ G.aoGuia((ev) => {
   if (ev.tipo === 'cena') cena = { i: 0, ...ev.cena };
   else if (ev.tipo === 'link' && cena) cena.link = ev.url;
   else if (ev.tipo === 'codigo' && cena) cena.codigo = ev.codigo;
+  else if (ev.tipo === 'colar-codigo' && cena) cena.colar = ev.ativo;
   else if (ev.tipo === 'status' && cena) cena.status = ev.texto;
   desenhar();
 });

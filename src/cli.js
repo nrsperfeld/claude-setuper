@@ -67,8 +67,8 @@ export async function main(argv) {
 export async function instalar(ctx, flags) {
   ui.abertura('Claude Setuper', `${t('versão {versao}', { versao: VERSAO })}${ctx.dryRun ? t('  (modo de teste, nada vai ser alterado)') : ''}`);
 
-  // No app, as perguntas acontecem enquanto o computador baixa e instala o que não depende delas.
-  if (ctx.app) await (await import('./modulos/base.js')).adiantarPreparo(ctx);
+  // No app, a IA vai baixando enquanto a pessoa responde. Nada que abra janela ou peça senha: isso fica pro primeiro passo.
+  if (ctx.app) (await import('./modulos/base.js')).adiantarPreparo(ctx);
   await wizard(ctx);
   const ids = flags.modulos ? flags.modulos.split(',') : ctx.resp.modulos;
   let lista = modulosParaPlataforma(ids, ctx.plataforma);

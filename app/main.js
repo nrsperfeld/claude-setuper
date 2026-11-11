@@ -33,6 +33,7 @@ const NO_WINDOWS = process.platform === 'win32';
 // Qual programa cada ação pede, pra mostrar o ícone dele no guia e apontar a seta pra janela dele.
 const PROGRAMAS = {
   apple: { nome: () => i18n.t('Instalador da Apple'), caminho: '/System/Library/CoreServices/Install Command Line Developer Tools.app', pgrep: 'Install Command Line Developer Tools' },
+  // A janela de senha é do osascript, que não tem ícone na barra de ícones: sem achar a janela, a seta não aponta pra lá.
   senha: { nome: () => i18n.t('Janela de senha'), proprio: true, dono: /^osascript$/ },
   navegador: { navegador: true },
   chrome: { nome: () => 'Google Chrome', caminho: '/Applications/Google Chrome.app', dono: /^Google Chrome$/ },
@@ -77,7 +78,7 @@ function dadosDoPrograma(id) {
 }
 async function lerDadosDoPrograma(id) {
   const p = PROGRAMAS[id];
-  const dados = { nome: p.nome ? p.nome() : '', icone: '', dono: p.dono, pgrep: p.pgrep, caminho: p.caminho || p.caminhos?.find((c) => fs.existsSync(c)) || '' };
+  const dados = { nome: p.nome ? p.nome() : '', icone: '', dono: p.dono, pgrep: p.pgrep, caminho: p.caminho || p.caminhos?.find((c) => fs.existsSync(c)) || '', semDock: !!p.proprio };
   try {
     if (p.navegador) {
       const info = await app.getApplicationInfoForProtocol('https://example.com');
@@ -103,7 +104,7 @@ async function completarCena(cena) {
     if (!id) return p;
     const d = await dadosDoPrograma(id);
     const lista = p.alvos || fig?.alvos || [];
-    return { ...p, app: { nome: d.nome, icone: d.icone, dica: lista.length && setasDisponiveis() ? i18n.t('As setas na tela mostram onde olhar') : '' }, setas: lista.map((a) => ({ ...a, rotulo: i18n.t(a.rotulo), dono: d.dono, pgrep: d.pgrep, caminho: d.caminho, icone: d.icone })) };
+    return { ...p, app: { nome: d.nome, icone: d.icone, dica: lista.length && setasDisponiveis() ? i18n.t('As setas na tela mostram onde olhar') : '' }, setas: lista.map((a) => ({ ...a, rotulo: i18n.t(a.rotulo), dono: d.dono, pgrep: d.pgrep, caminho: d.caminho, icone: d.icone, semDock: d.semDock })) };
   }));
   return cena;
 }
@@ -172,6 +173,11 @@ function aoEventoDoGuia(ev) {
     if (ev.espera) return esconderGuia();
     return mostrarGuia({ rotulo: ev.rotulo || i18n.t('Sua vez'), contagem: ev.opcional ? i18n.t('Opcional') : '', passos: [{ titulo: ev.titulo, linhas: ev.linhas, figura: ev.figura, print: printDe(ev.figura) }], acoes: ev.acoes, pular: ev.pular });
   }
+  if (ev.tipo === 'colar-codigo') {
+    if (!cenaGuia) return;
+    cenaGuia.colar = ev.ativo;
+    return mandarAoGuia(ev);
+  }
   if (ev.tipo === 'link' || ev.tipo === 'codigo') {
     if (!cenaGuia) return;
     if (ev.tipo === 'link') cenaGuia.link = ev.url; else cenaGuia.codigo = ev.codigo;
@@ -216,12 +222,19 @@ const semSetas = (cena) => ({ ...cena, passos: cena.passos.map(({ setas: _s, ...
 function mandarAoGuia(ev) {
   if (guia && !guia.isDestroyed() && guiaProntoJa) guia.webContents.send('guia', { ...ev, ...(ev.cena ? { cena: semSetas(ev.cena) } : {}), catalogo: i18n.catalogoAtual(), nomeApp: NOME_APP });
 }
+// Pergunta aberta na janela principal (as do guia não contam).
+const perguntaNaTela = () => [...pendentes.keys()].some((id) => id !== cenaGuia?.id);
+let guiaAdiado = false;
 async function mostrarGuia(cena) {
   const pedida = cena;
   cenaGuia = cena;
   passoAtual = 0;
   await completarCena(cena);
   if (cenaGuia !== pedida) return; // outra cena já entrou no lugar
+  // O guia fica na frente de tudo. Com uma pergunta aberta na janela principal, ele espera a resposta em vez de
+  // aparecer por cima dela (feedback do Nathan, 10/11/2026: o cartão da senha tapava o questionário).
+  guiaAdiado = !cena.id && !cena.aula && perguntaNaTela();
+  if (guiaAdiado) return;
   if (!TESTE && !cena.aula && !process.argv.includes('--demo-telas')) shell.beep(); // a pessoa pode estar fazendo outra coisa
   criarGuia();
   if (guiaProntoJa) mandarAoGuia({ tipo: 'cena', cena });
@@ -232,6 +245,7 @@ async function mostrarGuia(cena) {
 }
 function esconderGuia() {
   cenaGuia = null;
+  guiaAdiado = false;
   setas?.esconder();
   if (guia && !guia.isDestroyed()) guia.hide();
   if (minimizamos && janela && !janela.isDestroyed() && !aula) { minimizamos = false; janela.restore(); }
@@ -270,20 +284,29 @@ function responderPedido(id, valor) {
   enviar({ tipo: 'fimpedido', id });
   if (emOpcional) { janela?.hide(); if (aula) aula.redesenhar(); }
   r(valor);
+  if (guiaAdiado && cenaGuia && !perguntaNaTela()) mostrarGuia(cenaGuia);
 }
 
 // Janela nativa pedindo a senha do computador, usada pelo sudo do instalador do Homebrew (SUDO_ASKPASS).
+// Enquanto a janela está aberta, existe o arquivo pedir-senha.sh.aberta (marcaDaSenha, em src/modulos/base.js):
+// é por ele que o app sabe a hora de mostrar o cartão da senha, e de tirar.
 function criarAskpass() {
   fs.mkdirSync(PASTA, { recursive: true });
   const arquivo = path.join(PASTA, 'pedir-senha.sh');
+  const marca = `${arquivo}.aberta`;
+  fs.rmSync(marca, { force: true }); // sobra de uma janela que não fechou direito (app fechado no meio)
   const teste = path.join(PASTA, '.teste-auto.json');
   const texto = i18n.t('O {app} precisa da senha do seu computador pra instalar as ferramentas de base. É a senha que você digita na tela de bloqueio, pra desbloquear o computador (não é a do e-mail nem a do iCloud). Ela não fica guardada em lugar nenhum.', { app: NOME_APP }).replace(/"/g, '');
   fs.writeFileSync(arquivo, `#!/bin/sh
 # Pede a senha do computador numa janela. Criado pelo Claude Setuper (app).
 if [ -f "${teste}" ]; then sed -n 's/.*"senha" *: *"\\([^"]*\\)".*/\\1/p' "${teste}"; exit 0; fi
-exec /usr/bin/osascript \\
+: > "${marca}"
+/usr/bin/osascript \\
   -e 'display dialog "${texto}" default answer "" with hidden answer with title "${NOME_APP}" with icon note buttons {"${i18n.t('Cancelar')}", "OK"} default button "OK"' \\
   -e 'text returned of result'
+r=$?
+rm -f "${marca}"
+exit $r
 `, { mode: 0o700 });
   fs.chmodSync(arquivo, 0o700);
   return arquivo;
@@ -588,6 +611,8 @@ ipcMain.on('abrir-link', (_e, url, programa) => {
   shell.openExternal(url);
 });
 ipcMain.on('pular', async () => (await importarSetuper('ui.js')).ui.marcarPulado?.());
+// O código do login do Claude: digitado na janela principal ou, pelo botão do guia, o que estiver copiado.
+ipcMain.on('codigo-login', async (_e, texto) => (await importarSetuper('ui.js')).ui.colarCodigo?.(typeof texto === 'string' ? texto : clipboard.readText()));
 ipcMain.on('copiar', (_e, texto) => clipboard.writeText(String(texto)));
 ipcMain.on('abrir-claude', () => abrirClaude());
 ipcMain.on('atualizar', () => atualizarApp());
@@ -737,12 +762,6 @@ async function demoTelas() {
   await js("[...document.querySelectorAll('.btn')].at(-1).click()");
   await print('03-confirma');
   const { ui } = await importarSetuper('ui.js');
-  enviar({ tipo: 'tarefa', id: 1, estado: 'fazendo', texto: i18n.t('Instalando a IA') });
-  const fora = ui.confirmarFora({ rotulo: 'Ferramentas da Apple', passos: [{ titulo: 'Clica em Instalar, na janela da Apple', linhas: ['Ela é do próprio Mac, pode confiar.'], figura: 'apple-ferramentas' }, { titulo: 'Clica em Concordo', linhas: ['Depois é só esperar: a Apple leva de 3 a 10 minutos, e enquanto isso eu te faço umas perguntas.'], figura: 'apple-contrato' }], concluir: 'Já cliquei', nao: 'Não apareceu' });
-  await print('04-apple-principal');
-  await print('04-apple-guia', guia);
-  for (const [id] of pendentes) responderPedido(id, true);
-  await fora;
   const p1 = ui.perguntar('Como você quer que a IA te chame?', { placeholder: 'Seu primeiro nome ou apelido' });
   await print('05-pergunta-nome');
   for (const [id] of pendentes) responderPedido(id, 'Marina');
@@ -752,6 +771,11 @@ async function demoTelas() {
   for (const [id] of pendentes) responderPedido(id, 'a');
   await p2;
   enviar({ tipo: 'plano', passos: passos.map(i18n.t), pesos, exemplos: exemplosDoPerfil({ perfil: 'dia-a-dia' }) });
+  // As ferramentas da Apple vêm depois das perguntas, no primeiro passo.
+  enviar({ tipo: 'passo', n: 1, total: passos.length, titulo: passos[0] });
+  ui.pausa('Clica em Instalar, na janela da Apple', ['Depois aparece o contrato: clica em Concordo.', 'Demora entre 3 e 10 minutos. Eu fico esperando aqui.'], { figura: 'apple-ferramentas', rotulo: 'Ferramentas da Apple' });
+  await print('04-apple-principal');
+  await print('04-apple-guia', guia);
   enviar({ tipo: 'passo', n: 2, total: passos.length, titulo: passos[1] });
   enviar({ tipo: 'tarefa', id: 2, estado: 'fazendo', texto: i18n.t('Instalando a IA'), demora: 'de 2 a 5 minutos' });
   await print('07-instalando');
@@ -766,6 +790,12 @@ async function demoTelas() {
   await new Promise((r) => setTimeout(r, 1500));
   await print('09-github-guia', guia);
   if (setas.vidro()) await print('09-github-setas', setas.vidro());
+  // Login do Claude que terminou na página "Authentication code": o campo pra colar o código, na janela e no guia.
+  ui.pausa('Entra na sua conta do Claude', ['Claude é o nome da IA que estou instalando. Abri a página no navegador: se ainda não tem conta, dá pra criar ali mesmo. Ela precisa de plano pago (Pro ou maior), e a própria página mostra como assinar. Quando disser que deu certo, eu sigo sozinho.'], { pular: 'Entrar depois', figura: 'claude-login', rotulo: 'Conta do Claude' });
+  ui.esperarCodigo(() => {});
+  await print('09-login-codigo-principal');
+  await print('09-login-codigo-guia', guia);
+  ui.esperarCodigo(null);
   enviar({ tipo: 'passo', n: 5, total: passos.length, titulo: passos[4] });
   enviar({ tipo: 'tarefa', id: 90, estado: 'fazendo', texto: i18n.t('Instalando o Google Chrome'), demora: 'de 2 a 10 minutos', atras: 5 * 60000 });
   await js('desenhar()');

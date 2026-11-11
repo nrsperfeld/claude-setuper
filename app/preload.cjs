@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('setuper', {
   responder: (id, valor) => ipcRenderer.send('resposta', { id, valor }),
   abrirLink: (url, app) => ipcRenderer.send('abrir-link', url, app),
   pular: () => ipcRenderer.send('pular'),
+  // o código do login do Claude: o texto digitado, ou sem texto pra usar o que estiver copiado
+  colarCodigo: (texto) => ipcRenderer.send('codigo-login', texto),
   copiar: (texto) => ipcRenderer.send('copiar', texto),
   abrirClaude: () => ipcRenderer.send('abrir-claude'),
   atualizar: () => ipcRenderer.send('atualizar'),

@@ -102,6 +102,7 @@ function desenhar() {
   const mesma = tela === ultimaTela;
   const rolagem = palco.scrollTop;
   const digitado = palco.querySelector('input')?.value;
+  const comFoco = palco.querySelector('input') === document.activeElement;
   const marcas = [...palco.querySelectorAll('.ops')].map((o) => o.scrollTop);
   palco.className = estado.pedido ? 'palco' : 'palco';
   palco.replaceChildren(...[conteudo].flat(3).filter((x) => x != null && x !== false));
@@ -109,6 +110,7 @@ function desenhar() {
     palco.scrollTop = rolagem;
     const campo = palco.querySelector('input');
     if (campo && digitado != null) campo.value = digitado;
+    if (campo && comFoco) campo.focus();
     [...palco.querySelectorAll('.ops')].forEach((o, i) => { o.scrollTop = marcas[i] || 0; });
   } else {
     ultimaTela = tela;
@@ -270,15 +272,28 @@ function textoRelogio() {
   const passou = t('Trabalhando há {tempo}.', { tempo: tempo(Date.now() - estado.desde) });
   return Date.now() - estado.desde < 3000 ? t('Trabalhando.') : estado.demora ? `${passou} ${t('Costuma levar {demora}.', { demora: estado.demora.replace(/, (é normal|which is normal)$/, '') })}` : passou;
 }
+// Login do Claude que terminou na página "Authentication code": a pessoa cola o código aqui e o login continua.
+function campoDoCodigo(pz) {
+  const campo = h('input', { class: 'campo', type: 'text', placeholder: t('Cola o código aqui'), 'aria-label': t('Código do login do Claude'), autocomplete: 'off', spellcheck: 'false', css: { width: '100%' } });
+  const mandar = () => { if (campo.value.trim()) { S.colarCodigo(campo.value.trim()); campo.value = ''; } };
+  campo.addEventListener('keydown', (e) => { if (e.key === 'Enter') mandar(); });
+  return h('div', { class: 'bloco', css: { width: '560px', 'max-width': '100%', 'margin-top': '20px' } },
+    h('h3', {}, t('O navegador mostrou um código?')),
+    h('p', { class: 't2 peq', css: { margin: '4px 0 12px' } }, t('Se apareceu uma página escrita Authentication code, clica no botão de copiar que tem nela, volta aqui e cola o código no campo abaixo. Depois disso eu termino o login sozinho.')),
+    campo,
+    h('div', { class: 'g-acoes' }, botao(t('Continuar o login'), mandar, 'btn p')),
+    pz.status ? h('p', { class: 't3 peq', role: 'status', css: { 'margin-top': '8px' } }, pz.status) : null);
+}
 const PARADO = 4 * 60000;
 const progresso = (el) => { el.dataset.progresso = '1'; return el; };
 function telaInstalando() {
   const pz = estado.pausa;
   const p = porcentagem();
   if (pz && !pz.espera) {
-    return [progresso(anel('150px', p, 'vez')), h('div', { css: { height: '26px' } }),
+    return [progresso(anel(pz.colar ? '110px' : '150px', p, 'vez')), h('div', { css: { height: pz.colar ? '18px' : '26px' } }),
       h('h2', { css: { 'font-size': '24px', 'line-height': '30px' } }, t('Agora é com você')),
-      h('p', { class: 'lead' }, t('O passo a passo está na janelinha do canto, que fica na frente de tudo. Quando você terminar, eu sigo sozinho.'))];
+      h('p', { class: 'lead' }, t('O passo a passo está na janelinha do canto, que fica na frente de tudo. Quando você terminar, eu sigo sozinho.')),
+      pz.colar ? campoDoCodigo(pz) : null];
   }
   const parado = !pz && estado.mexeu && Date.now() - estado.mexeu >= PARADO;
   const exemplo = estado.exemplos.length ? estado.exemplos[estado.exemplo % estado.exemplos.length] : null;
@@ -435,7 +450,8 @@ S.aoEvento((ev) => {
         if (ev.atras) { estado.desde -= ev.atras; estado.mexeu -= ev.atras; }
       } else { estado.msgs.push({ nivel: ev.estado === 'feito' ? 'ok' : 'erro', texto: ev.texto }); estado.tarefa = ''; anotar(`${ev.texto}\n`); }
       break;
-    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, espera: !!ev.espera, status: '' }; anotar(`> ${ev.titulo}\n`); break;
+    case 'pausa': estado.pausa = { titulo: ev.titulo, linhas: ev.linhas, espera: !!ev.espera, status: '', colar: false }; anotar(`> ${ev.titulo}\n`); break;
+    case 'colar-codigo': if (estado.pausa) estado.pausa.colar = ev.ativo; break;
     case 'pausa-fora': estado.pausa = { titulo: ev.titulo, linhas: [], espera: false, status: '' }; estado.fase = 'instalando'; break;
     case 'fimpausa': estado.pausa = null; break;
     case 'fimpedido': if (estado.pedido?.id === ev.id) estado.pedido = null; break;
