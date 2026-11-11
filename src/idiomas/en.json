@@ -819,5 +819,16 @@
   "É o \"Instalador de Aplicativo\", do próprio Windows. Eu uso ele pra instalar o resto. Quando terminar, clica no botão aqui embaixo.": "It's \"App Installer\", part of Windows itself. I use it to install everything else. When it's done, click the button below.",
   "Já terminou": "It's done",
   "o Instalador de Aplicativo da Microsoft ainda não está pronto. Espera a Microsoft Store terminar e clica em Tentar de novo": "Microsoft's App Installer isn't ready yet. Wait for the Microsoft Store to finish and click Try again",
-  "o Windows não deixou instalar uma parte que a IA precisa. Clica em Tentar de novo e, quando o Windows perguntar, clica em Sim. Se ele pedir uma senha de administrador que você não tem, chama quem cuida deste computador": "Windows didn't allow a part the AI needs to be installed. Click Try again and, when Windows asks, click Yes. If it asks for an administrator password you don't have, call whoever looks after this computer"
+  "o Windows não deixou instalar uma parte que a IA precisa. Clica em Tentar de novo e, quando o Windows perguntar, clica em Sim. Se ele pedir uma senha de administrador que você não tem, chama quem cuida deste computador": "Windows didn't allow a part the AI needs to be installed. Click Try again and, when Windows asks, click Yes. If it asks for an administrator password you don't have, call whoever looks after this computer",
+  "O navegador mostrou um código?": "Did your browser show a code?",
+  "Se apareceu uma página escrita Authentication code, clica no botão de copiar que tem nela e depois aqui embaixo. Eu termino o login sozinho.": "If a page called Authentication code showed up, click the copy button on it and then the button below. I'll finish logging in myself.",
+  "Colar o código copiado": "Paste the copied code",
+  "Código do login do Claude": "Claude login code",
+  "Se apareceu uma página escrita Authentication code, clica no botão de copiar que tem nela, volta aqui e cola o código no campo abaixo. Depois disso eu termino o login sozinho.": "If a page called Authentication code showed up, click the copy button on it, come back here and paste the code in the field below. After that I'll finish logging in myself.",
+  "Continuar o login": "Continue logging in",
+  "Ainda não achei o código. Na página do Claude, clica no botão de copiar o código e tenta de novo.": "I couldn't find the code yet. On the Claude page, click the button that copies the code and try again.",
+  "Recebi o código. Estou conferindo com o Claude, leva uns segundos.": "Got the code. I'm checking it with Claude, it takes a few seconds.",
+  "Esse código não serviu. Ele vale uma vez só e vence rápido. Abri a página do Claude de novo: entra outra vez e copia o código novo.": "That code didn't work. It only works once and expires quickly. I opened the Claude page again: sign in once more and copy the new code.",
+  "Se a página mostrar um código, copia, volta aqui, cola e aperta Enter.": "If the page shows a code, copy it, come back here, paste it and press Enter.",
+  "de 3 a 10 minutos": "3 to 10 minutes"
 }

@@ -66,6 +66,8 @@ export function criarTerminal(ctx, enviar) {
         }
       };
       opts.sinal?.addEventListener('abort', () => parar(p));
+      // Quem chama pode digitar no programa: o código do login do Claude, colado pela pessoa na tela do app.
+      opts.aoIniciar?.((texto) => { if (p.stdin.writable) p.stdin.write(`${texto}${process.platform === 'win32' ? '\r\n' : '\r'}`); });
       p.stdout.on('data', ler);
       p.stderr.on('data', ler);
       p.on('exit', (c) => (c === 0 || opts.ignorarErro ? res(c) : rej(new Error(`${cmd} saiu com código ${c}`))));

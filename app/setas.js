@@ -96,6 +96,20 @@ function listarJanelas(screen) {
 const pidDe = (padrao) => new Promise((res) => process.platform !== 'darwin' ? res([]) : execFile('/usr/bin/pgrep', ['-f', padrao], { timeout: 3000 }, (erro, saida) => res(erro ? [] : saida.split('\n').filter(Boolean).map(Number))));
 const dentro = (b, x, y) => x >= b.X && x <= b.X + b.Width && y >= b.Y && y <= b.Y + b.Height;
 
+// A seta pra barra de ícones é curta e fica no canto do guia, em vez de atravessar a tela por cima do que estiver aberto
+// (feedback do Nathan, 10/11/2026: "podia ficar mais no canto, mais discreta"). b: a tela; g: o guia, se estiver aberto.
+export function setaDoDock(s, b, g) {
+  const embaixo = s.y > b.y + b.height / 2 && Math.abs(s.x - (b.x + b.width / 2)) < b.width / 4;
+  if (embaixo) {
+    // O sistema não diz onde está cada ícone: a seta desce na coluna do guia (no canto) até a barra, que acende inteira.
+    const x = Math.max(b.x + 160, Math.min(b.x + b.width - 160, g ? g.x + g.width / 2 : b.x + b.width - 220));
+    return { ...s, x, de: { x, y: s.y - 210 } }; // a tela sobe a ponta pra cima da barra: sobra uma seta de uns 100 px
+  }
+  const daEsquerda = s.x < b.x + b.width / 2;
+  const y = Math.max(b.y + 140, Math.min(b.y + b.height - 140, g ? g.y + Math.min(g.height, 200) / 2 : s.y));
+  return { ...s, y, de: { x: s.x + (daEsquerda ? 130 : -130), y } };
+}
+
 export const setasDisponiveis = (plataforma = process.platform, env = process.env) => plataforma === 'darwin' || (plataforma === 'win32' && env.CLAUDE_SETUPER_SETAS_WIN === '1');
 
 export function criarSetas({ BrowserWindow, screen, aqui, t, janelaGuia, moverGuia, aoSerCoberto }) {
@@ -143,10 +157,13 @@ export function criarSetas({ BrowserWindow, screen, aqui, t, janelaGuia, moverGu
       const pids = a.pgrep ? await pidDe(a.pgrep) : [];
       const eDele = (j) => pids.includes(j.p) || (a.dono && a.dono.test(j.d));
       const j = fora.find(eDele);
+      // Janela sem ícone na barra (a da senha): enquanto ela não aparece, nenhuma seta. O guia já diz o que fazer.
+      if (!j && a.semDock) continue;
       if (!j) { saida.push({ ...dock(screen.getPrimaryDisplay()), rotulo: process.platform === 'win32' ? t('Não achou a janela? Procura este ícone na barra de tarefas') : t('Não achou a janela? Procura este ícone na barra de ícones do Mac'), icone: a.icone, dock: true }); continue; }
       const x = j.b.X + j.b.Width * (a.x ?? 0.5);
       const y = j.b.Y + j.b.Height * (a.y ?? 0.5);
       const atras = fora.slice(0, fora.indexOf(j)).some((o) => !eDele(o) && dentro(o.b, x, y));
+      if (atras && a.semDock) continue;
       if (atras) {
         // Janela atrás das outras: a gente mesmo traz pra frente. Só se ela voltar pra trás é que a seta vai pra barra de ícones.
         if (process.platform === 'darwin' && a.caminho && !trazidos.has(a.caminho)) {
@@ -177,7 +194,7 @@ export function criarSetas({ BrowserWindow, screen, aqui, t, janelaGuia, moverGu
     let g = janelaGuia()?.getBounds();
     if (g && saida.some((s) => !s.dock && s.x > g.x - 30 && s.x < g.x + g.width + 30 && s.y > g.y - 30 && s.y < g.y + g.height + 30)) { moverGuia(); g = janelaGuia()?.getBounds(); }
     const de = g && g.x >= b.x && g.x < b.x + b.width ? { x: g.x + (g.x > b.x + b.width / 2 ? 0 : g.width), y: g.y + Math.min(g.height, 200) / 2 } : { x: b.x + b.width / 2, y: b.y + 30 };
-    const pacote = { guia: g ? { x: g.x - b.x, y: g.y - b.y, w: g.width, h: g.height } : null, setas: saida.map((s) => ({ x: s.x - b.x, y: s.y - b.y, rotulo: s.rotulo, icone: s.icone || '', dock: !!s.dock, de: { x: de.x - b.x, y: de.y - b.y } })) };
+    const pacote = { guia: g ? { x: g.x - b.x, y: g.y - b.y, w: g.width, h: g.height } : null, setas: saida.map((s) => (s.dock ? setaDoDock(s, b, g) : s)).map((s) => ({ x: s.x - b.x, y: s.y - b.y, rotulo: s.rotulo, icone: s.icone || '', dock: !!s.dock, de: { x: (s.de || de).x - b.x, y: (s.de || de).y - b.y } })) };
     const chave = JSON.stringify(pacote);
     // Mostra antes de mandar o desenho: janela escondida não pinta.
     if (!vidro.isVisible()) vidro.showInactive();

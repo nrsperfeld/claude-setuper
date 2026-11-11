@@ -13,6 +13,7 @@ export function criarUiApp(enviar, pedir, traduzir = (s) => s) {
   let tarefas = 0;
   let andamentoAtual = null;
   let pulado = false;
+  let aoCodigo = null; // o login do Claude esperando o código que a pessoa cola na tela
   const msg = (nivel) => (texto) => enviar({ tipo: 'msg', nivel, texto: limpo(texto) });
 
   return {
@@ -44,6 +45,12 @@ export function criarUiApp(enviar, pedir, traduzir = (s) => s) {
     // Fecha o guia de uma pausa que não depende de resposta (o aviso de permissão do Windows, quando o programa terminou).
     fimDaPausa() { enviar({ tipo: 'fimpausa' }); },
     pulou: () => pulado,
+    // Login com código: enquanto `receber` existe, a tela mostra onde colar o código que o navegador deu.
+    esperarCodigo(receber) {
+      aoCodigo = receber || null;
+      enviar({ tipo: 'colar-codigo', ativo: !!aoCodigo });
+    },
+    colarCodigo(texto) { aoCodigo?.(String(texto ?? '')); },
     marcarPulado() { pulado = true; },
     pediuTentar() { const r = tentar; tentar = false; return r; },
     marcarTentar() { tentar = true; },
