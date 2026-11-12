@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node bin/claude-setuper.js",
     "doctor": "node bin/claude-setuper.js doctor",
+    "verificar": "node bin/claude-setuper.js verificar",
     "test": "node --test \"test/*.test.cjs\""
   },
   "dependencies": {

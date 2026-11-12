@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { ui, c } from './ui.js';
 import { t } from './i18n.js';
-import { MODULOS } from './modulos/index.js';
+import { MODULOS, SEMPRE, comSempre } from './modulos/index.js';
 import { PACOTES } from './modulos/pacotes.js';
 import { catalogo } from './modulos/mcps.js';
 import { perfis, perfil as acharPerfil, IA_ANTIGA, ehMenor } from './perfis.js';
@@ -24,9 +24,11 @@ export async function wizard(ctx) {
   const pre = respostasDoPresente(ctx);
   const tem = (k) => pre[k] !== undefined;
   const vaultPresente = ctx.presente ? { vault: path.join(ctx.home, 'Documents', ctx.presente.vault) } : {};
-  const modulosDoPerfil = (p) => MODULOS.filter((m) => m.padrao && doSistema(m) && !p.semModulos.includes(m.id)).map((m) => m.id);
+  // GitHub e a IA no Chrome não são escolha: entram em qualquer perfil, presente ou lista marcada à mão.
+  const fixo = (m) => m.obrigatorio || SEMPRE.includes(m.id);
+  const modulosDoPerfil = (p) => MODULOS.filter((m) => doSistema(m) && (SEMPRE.includes(m.id) || (m.padrao && !p.semModulos.includes(m.id)))).map((m) => m.id);
   const modulosDoPresente = (p) => (pre.modulos === 'tudo' ? modulosDoPerfil(p)
-    : [...new Set([...MODULOS.filter((m) => m.obrigatorio).map((m) => m.id), ...pre.modulos])].filter((id) => MODULOS.some((m) => m.id === id && doSistema(m))));
+    : comSempre([...MODULOS.filter((m) => m.obrigatorio).map((m) => m.id), ...pre.modulos]).filter((id) => MODULOS.some((m) => m.id === id && doSistema(m))));
 
   if (ctx.sim) {
     const usuario = os.userInfo().username.replace(/[._-]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
@@ -38,6 +40,10 @@ export async function wizard(ctx) {
       pacotes: p.pacotes, mcps: [], ...vaultPresente, ...salvo, ...preSemModulos, perfil: p.id,
       ...(tem('modulos') ? { modulos: modulosDoPresente(p) } : {}),
     };
+    ctx.resp.modulos = comSempre(ctx.resp.modulos);
+    // Guardadas como as do caminho com perguntas: a conferência (claude-setuper verificar) instala com elas.
+    ctx.estado.respostas = ctx.resp;
+    ctx.salvarEstado();
     return ctx.resp;
   }
 
@@ -49,7 +55,8 @@ export async function wizard(ctx) {
       explicacao: 'Assim eu vou direto ao que ficou faltando, sem repetir o que já está pronto.',
     });
     if (mesmas) {
-      ctx.resp = { ...vaultPresente, ...salvo };
+      // Respostas de uma versão anterior podem não ter o GitHub e o Chrome: agora eles entram sempre.
+      ctx.resp = { ...vaultPresente, ...salvo, modulos: comSempre(salvo.modulos) };
       ctx.reaproveitou = true;
       return ctx.resp;
     }
@@ -133,17 +140,17 @@ export async function wizard(ctx) {
   const tudo = tem('modulos') || await ui.confirmar('Posso instalar tudo o que faz sentido pro seu perfil?', true, {
     sim: 'Sim, pode instalar tudo (recomendado)', nao: 'Quero escolher o que vai ser instalado',
     explicacao: ctx.app ? 'É a lista que eu te mostrei antes de começar. Se preferir, escolhe item por item.' : ctx.plataforma === 'darwin'
-      ? 'Vou instalar a IA (ela se chama Claude), o Obsidian (onde ficam as suas notas), o Maestri (a janela onde você conversa com ela) e o Google Chrome, se ainda não tiver. Também deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pro Claude conseguir ler. Nada que você já tem é apagado.'
-      : 'Vou instalar a IA (ela se chama Claude), o Obsidian (onde ficam as suas notas) e o Google Chrome, se ainda não tiver, e deixo um atalho dela na Área de Trabalho. Também deixo agendados um backup das notas e uma atualização por semana. Nada que você já tem é apagado.',
+      ? 'Vou instalar a IA (ela se chama Claude), o Obsidian (onde ficam as suas notas), o Maestri (a janela onde você conversa com ela) e o Google Chrome, se ainda não tiver. Também ligo o GitHub, que guarda uma cópia do seu trabalho, e deixo agendados um backup das notas e uma atualização por semana, e passo os seus prints de tela pra pasta Imagens > Prints, pro Claude conseguir ler. Nada que você já tem é apagado.'
+      : 'Vou instalar a IA (ela se chama Claude), o Obsidian (onde ficam as suas notas) e o Google Chrome, se ainda não tiver, e deixo um atalho dela na Área de Trabalho. Também ligo o GitHub, que guarda uma cópia do seu trabalho, e deixo agendados um backup das notas e uma atualização por semana. Nada que você já tem é apagado.',
   });
   const avancado = !tudo;
   if (avancado) {
     modulos = await ui.escolherVarios(
       'O que você quer instalar?',
-      MODULOS.filter((m) => !m.obrigatorio && doSistema(m)).map((m) => ({ value: m.id, label: m.nome, hint: m.descricao })),
-      { padrao: modulos.filter((id) => !MODULOS.find((m) => m.id === id)?.obrigatorio) },
+      MODULOS.filter((m) => !fixo(m) && doSistema(m)).map((m) => ({ value: m.id, label: m.nome, hint: m.descricao })),
+      { padrao: modulos.filter((id) => !fixo(MODULOS.find((m) => m.id === id) || {})), explicacao: 'A base, o GitHub e a IA no Chrome entram sempre. O resto é você quem escolhe.' },
     );
-    modulos = [...MODULOS.filter((m) => m.obrigatorio).map((m) => m.id), ...modulos];
+    modulos = comSempre([...MODULOS.filter((m) => m.obrigatorio).map((m) => m.id), ...modulos]);
   }
 
   ctx.resp = { nome, perfil: p.id, idade, tecnologia, ia, trabalho, autonomia, modulos, pacotes, mcps, ...vaultPresente };

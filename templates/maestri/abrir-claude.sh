@@ -6,6 +6,8 @@ MARCADOR="{{marcador}}"
 [ -f "{{aulaAtiva}}" ] && open -a "{{nomeApp}}" --args --aula >/dev/null 2>&1
 if [ ! -f "$MARCADOR" ]; then
   touch "$MARCADOR"
+  # Na primeira vez, uma segunda janela confere a instalação enquanto a IA se apresenta.
+  [ -f "{{conferencia}}" ] && /bin/bash "{{conferencia}}" --janela >/dev/null 2>&1 &
   exec claude "{{apresentacao}}"
 else
   exec claude

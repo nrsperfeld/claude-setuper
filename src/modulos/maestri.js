@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { ui } from '../ui.js';
 import { apresentacao } from '../perfis.js';
 import { t } from '../i18n.js';
+import { escreverConferencia } from '../segundaJanela.js';
 
 const NOMES_PAINEL = ['Minha IA', 'My AI', 'Meu Claude'];
 
@@ -50,7 +51,8 @@ export async function instalar(ctx) {
     montarWorkspace(ctx);
   });
 
-  if (ctx.semApps || ctx.dryRun) return;
+  // Na conferência a pessoa está conversando com a IA dentro do Maestri: fechar e abrir de novo cortava a conversa.
+  if (ctx.semApps || ctx.dryRun || ctx.conferindo) return;
   const rodando = await ctx.run('pgrep', ['-x', 'Maestri'], { ignorarErro: true, sempre: true });
   if (rodando) {
     await ctx.run('osascript', ['-e', 'tell application "Maestri" to quit'], { ignorarErro: true });
@@ -84,9 +86,9 @@ export function montarWorkspace(ctx) {
   const dir = path.join(raiz, 'workspaces', wid);
   for (const sub of ['files', 'notes', 'snapshots', 'terminals']) fs.mkdirSync(path.join(dir, sub), { recursive: true });
 
-  // Script que abre o Claude e, só na primeira vez, manda a apresentação.
+  // Script que abre o Claude e, só na primeira vez, manda a apresentação e abre a segunda janela, a da conferência.
   const abrir = path.join(ctx.pastaSetuper, 'abrir-claude.sh');
-  ctx.escrever(abrir, ctx.template('maestri/abrir-claude.sh', { marcador: path.join(ctx.claudeDir, '.setuper-saudou'), apresentacao: apresentacao(ctx), aulaAtiva: path.join(ctx.claudeDir, 'setuper-aula-ativa'), nomeApp: ctx.presente ? 'Segundo Cérebro' : 'Claude Setuper' }));
+  ctx.escrever(abrir, ctx.template('maestri/abrir-claude.sh', { conferencia: escreverConferencia(ctx), marcador: path.join(ctx.claudeDir, '.setuper-saudou'), apresentacao: apresentacao(ctx), aulaAtiva: path.join(ctx.claudeDir, 'setuper-aula-ativa'), nomeApp: ctx.presente ? 'Segundo Cérebro' : 'Claude Setuper' }));
   if (!ctx.dryRun) fs.chmodSync(abrir, 0o755);
 
   const agora = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');

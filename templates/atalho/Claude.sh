@@ -5,6 +5,8 @@ MARCADOR="{{marcador}}"
 cd "$HOME"
 if [ ! -f "$MARCADOR" ]; then
   touch "$MARCADOR"
+  # Na primeira vez, uma segunda janela confere a instalação enquanto a IA se apresenta.
+  [ -f "{{conferencia}}" ] && /bin/bash "{{conferencia}}" --janela >/dev/null 2>&1 &
   claude "{{apresentacao}}"
 else
   claude

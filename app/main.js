@@ -332,13 +332,19 @@ async function instalarTudo() {
   ctx.repetirDireto = true; // quem clicou em continuar já disse que quer as mesmas respostas
   jaTentou = true;
   ctx.log('--- app', VERSAO, perfil);
-  const r = await instalar(ctx, { perfil });
-  if (r?.parou) throw new Error(`${r.parou}: ${r.motivo}`);
-  if (!semApps) await instalarComando(ctx);
+  try {
+    const r = await instalar(ctx, { perfil });
+    if (r?.parou) throw new Error(`${r.parou}: ${r.motivo}`);
+    if (!semApps) await instalarComando(ctx);
+  } finally {
+    // Só agora a segunda janela (a conferência que abre junto com a apresentação da IA) pode rodar:
+    // é o comando que acabou de ser copiado que ela usa.
+    (await importarSetuper('segundaJanela.js')).soltar(ctx);
+  }
   return ctx;
 }
 
-// O comando claude-setuper (doctor, atualizar) continua existindo pra quem ajuda a pessoa pelo Terminal.
+// O comando claude-setuper (doctor, verificar, atualizar) continua existindo pra quem ajuda a pessoa pelo Terminal.
 async function instalarComando(ctx) {
   const { ui } = await importarSetuper('ui.js');
   const dest = path.join(PASTA, 'app');
@@ -380,12 +386,10 @@ function paraComecar() {
 // Mesma conferência do "claude-setuper doctor", devolvida em dados pra tela.
 async function conferencia() {
   const { criarCtx } = await importarSetuper('ctx.js');
-  const { MODULOS, modulosParaPlataforma } = await importarSetuper('modulos/index.js');
+  const { modulosInstalados } = await importarSetuper('modulos/index.js');
   const ctx = criarCtx(flagsBase());
-  const ids = Object.keys(ctx.estado.modulos || {});
-  const lista = modulosParaPlataforma(ids.length ? ids : MODULOS.filter((m) => m.padrao).map((m) => m.id), ctx.plataforma);
   const grupos = [];
-  for (const m of lista) {
+  for (const m of modulosInstalados(ctx)) {
     let itens;
     try { itens = await m.verificar(ctx); } catch (e) { itens = [{ item: m.nome, ok: false, dica: e.message }]; }
     if (itens.length) grupos.push({ nome: i18n.traduzir(m.nomeCurto || m.nome), itens: itens.map((i) => ({ chave: i.item, item: i18n.traduzir(i.item), ok: !!i.ok, dica: i18n.traduzir(i.dica || '') })) });
@@ -712,7 +716,22 @@ async function comecarAula() {
       mostrar: (cena) => mostrarGuia(cena), esconder: esconderGuia, aoTerminar: () => app.quit(),
     });
   }
+  await marcarLigados();
   aula.iniciar();
+}
+// GitHub e Chrome agora entram na instalação. No fim da aula eles só aparecem pra ligar se ficaram pendentes.
+async function marcarLigados() {
+  try {
+    const { criarCtx } = await importarSetuper('ctx.js');
+    const { modulo } = await importarSetuper('modulos/index.js');
+    const ctx = criarCtx(flagsBase());
+    for (const id of ['github', 'chrome']) {
+      const itens = await modulo(id).verificar(ctx);
+      if (itens.length && itens.every((i) => i.ok)) aula.marcarFeito(id);
+    }
+  } catch (e) {
+    fs.appendFileSync(path.join(PASTA, 'registro.log'), `[aula] ${e.stack || e.message}\n`);
+  }
 }
 // As opções do fim da aula rodam o mesmo módulo do Terminal, com o guia e as perguntas do app.
 async function ligarOpcional(id) {

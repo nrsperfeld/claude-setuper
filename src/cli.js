@@ -1,8 +1,10 @@
 import { criarCtx } from './ctx.js';
 import { ui, c } from './ui.js';
 import { wizard } from './wizard.js';
-import { MODULOS, modulosParaPlataforma } from './modulos/index.js';
+import { MODULOS, modulosParaPlataforma, comSempre } from './modulos/index.js';
 import { doctor } from './doctor.js';
+import { verificar, SAIDA_REABRIR } from './verificar.js';
+import { travar } from './segundaJanela.js';
 import { remover } from './remover.js';
 import { exportar } from './exportar.js';
 import { atualizar } from './atualizar.js';
@@ -12,9 +14,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const OPCIONAIS_APP = ['github', 'vercel'];
+// O GitHub saiu daqui: ele entra sempre, no caminho principal (decisão do Nathan, 12/11/2026).
+export const OPCIONAIS_APP = ['vercel'];
 // Quanto cada etapa pesa no anel. Provisório: os valores finais vêm das instalações medidas na VM.
-const PESOS = { base: 45, nucleo: 2, effortless: 2, obsidian: 10, chrome: 10, pacotes: 2, mcps: 2, rotinas: 2, sentinela: 2, maestri: 10, atalho: 1 };
+const PESOS = { base: 45, nucleo: 2, effortless: 2, obsidian: 10, github: 10, chrome: 10, pacotes: 2, mcps: 2, rotinas: 2, sentinela: 2, maestri: 10, atalho: 1 };
 
 export const VERSAO = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')).version;
 
@@ -23,6 +26,7 @@ Claude Setuper ${VERSAO}
 
   claude-setuper                 instala (ou continua de onde parou)
   claude-setuper doctor          confere se está tudo funcionando
+  claude-setuper verificar       confere e já instala ou conserta o que estiver faltando
   claude-setuper atualizar       puxa a versão nova sem perder o que você editou
   claude-setuper remover         desfaz a instalação (pergunta antes de cada coisa)
   claude-setuper exportar        gera um perfil a partir do setup atual
@@ -30,7 +34,7 @@ Claude Setuper ${VERSAO}
 
 Opções:
   --perfil <id>     já escolhe o público (dia-a-dia, empresario, marketing, video, estudante, elos)
-  --modulos a,b,c   só esses módulos (${MODULOS.map((m) => m.id).join(', ')})
+  --modulos a,b,c   só esses módulos (${MODULOS.map((m) => m.id).join(', ')}); sem essa opção, github e chrome entram sempre
   --sim             aceita os defaults sem perguntar
   --dry-run         mostra o que faria sem mexer em nada
   --home <pasta>    usa outra pasta como "casa" (pra testes)
@@ -51,6 +55,11 @@ export async function main(argv) {
       return instalar(ctx, flags);
     case 'doctor':
       return doctor(ctx);
+    case 'verificar': {
+      const r = await verificar(ctx, { segundaJanela: !!flags.segundaJanela });
+      if (r.reabrir) process.exitCode = SAIDA_REABRIR;
+      return r;
+    }
     case 'atualizar':
       return atualizar(ctx);
     case 'remover':
@@ -64,18 +73,30 @@ export async function main(argv) {
   }
 }
 
+// Enquanto a instalação roda, a segunda janela (a da conferência) espera: assim as duas não instalam a mesma coisa
+// ao mesmo tempo. No app quem solta a trava é o main.js, depois de deixar o comando claude-setuper no lugar.
 export async function instalar(ctx, flags) {
+  const soltar = travar(ctx);
+  try {
+    return await rodarInstalacao(ctx, flags);
+  } finally {
+    if (!ctx.app) soltar();
+  }
+}
+
+async function rodarInstalacao(ctx, flags) {
   ui.abertura('Claude Setuper', `${t('versão {versao}', { versao: VERSAO })}${ctx.dryRun ? t('  (modo de teste, nada vai ser alterado)') : ''}`);
 
   // No app, a IA vai baixando enquanto a pessoa responde. Nada que abra janela ou peça senha: isso fica pro primeiro passo.
   if (ctx.app) (await import('./modulos/base.js')).adiantarPreparo(ctx);
   await wizard(ctx);
-  const ids = flags.modulos ? flags.modulos.split(',') : ctx.resp.modulos;
+  // --modulos é a lista exata (teste e suporte). No caminho normal, GitHub e Chrome entram sempre.
+  const ids = flags.modulos ? flags.modulos.split(',') : comSempre(ctx.resp.modulos);
   let lista = modulosParaPlataforma(ids, ctx.plataforma);
   const pulados = ids.filter((id) => !lista.some((m) => m.id === id));
   // Com as mesmas respostas de antes, roda só o que ficou faltando (um login, um clique), em vez de tudo de novo.
   if (ctx.reaproveitou && !flags.modulos) lista = await soOQueFalta(ctx, lista);
-  // No app, GitHub e Vercel ficam fora do caminho principal: viram opcionais no fim da aula.
+  // No app, a Vercel fica fora do caminho principal: vira opcional no fim da aula.
   if (ctx.app && !flags.modulos) lista = lista.filter((m) => !OPCIONAIS_APP.includes(m.id));
   ui.plano?.(lista.map((m) => m.nomeCurto || m.nome), lista.map((m) => PESOS[m.id] || 1)); // o app mostra o progresso real
   if (pulados.length) ui.info(`No seu sistema estes não se aplicam e vou pular: ${pulados.join(', ')}`);
@@ -110,7 +131,7 @@ export async function instalar(ctx, flags) {
   ui.linha();
   if (falhas.length) {
     ui.aviso(`Terminei, mas ${falhas.length === 1 ? 'uma parte ficou' : `${falhas.length} partes ficaram`} pendente${falhas.length > 1 ? 's' : ''}: ${falhas.map((m) => m.nomeCurto || m.nome).join(', ')}.`);
-    if (!ctx.app) ui.info(`Rode ${c.bold('claude-setuper doctor')} pra ver o que falta, ou rode o instalador de novo que ele continua de onde parou.`);
+    if (!ctx.app) ui.info(`Rode ${c.bold('claude-setuper verificar')} que eu confiro e termino o que falta, ou rode o instalador de novo que ele continua de onde parou.`);
   }
   if (ctx.assistido) gravarRelatorio(ctx, falhas);
 
@@ -170,6 +191,7 @@ function parse(argv) {
     else if (a === '--sim' || a === '-y') flags.sim = true;
     else if (a === '--sem-apps') flags.semApps = true;
     else if (a === '--assistido') flags.assistido = true;
+    else if (a === '--segunda-janela') flags.segundaJanela = true; // só o script da segunda janela usa
     else if (a === '--help' || a === '-h') flags.help = true;
     else if (a === '--home') flags.home = argv[++i];
     else if (a === '--plataforma') flags.plataforma = argv[++i];

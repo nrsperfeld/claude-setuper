@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { ui } from '../ui.js';
 import { apresentacao } from '../perfis.js';
+import { escreverConferencia, caminhoDaConferencia } from '../segundaJanela.js';
 
 export const id = 'atalho';
 export const nome = 'Atalho da IA na Área de Trabalho';
@@ -25,7 +26,7 @@ export async function instalar(ctx) {
   const vault = ctx.resp.vault || ctx.estado.respostas?.vault || '';
   await ui.tarefa('Criando o atalho da IA na Área de Trabalho', 'Atalho criado', async () => {
     fs.mkdirSync(ctx.desktop(), { recursive: true });
-    const vars = { marcador: path.join(ctx.claudeDir, '.setuper-saudou'), apresentacao: apresentacao(ctx), vault, vaultUrl: `obsidian://open?path=${encodeURIComponent(vault)}` };
+    const vars = { conferencia: escreverConferencia(ctx), marcador: path.join(ctx.claudeDir, '.setuper-saudou'), apresentacao: apresentacao(ctx), vault, vaultUrl: `obsidian://open?path=${encodeURIComponent(vault)}` };
     const texto = ctx.template(ctx.win ? 'atalho/Claude.cmd' : 'atalho/Claude.sh', vars);
     // O cmd se perde nos rótulos (goto normal) quando o arquivo tem só LF no fim das linhas.
     ctx.escrever(atalho, ctx.win ? texto.replace(/\r?\n/g, '\r\n') : texto);
@@ -33,7 +34,8 @@ export async function instalar(ctx) {
   });
 
   // No app quem abre a IA é o fim do portal: abrir aqui também deixaria duas janelas.
-  if (ctx.semApps || ctx.dryRun || ctx.app) return;
+  // E na conferência a IA já está aberta.
+  if (ctx.semApps || ctx.dryRun || ctx.app || ctx.conferindo) return;
   if (ctx.win) {
     if (vault) await ctx.abrirUrl(`obsidian://open?path=${encodeURIComponent(vault)}&file=${encodeURIComponent('Comece aqui')}`);
     await ctx.run('cmd.exe', ['/c', 'start', '""', atalho], { ignorarErro: true, comJanela: true });
@@ -45,4 +47,5 @@ export async function instalar(ctx) {
 
 export async function remover(ctx) {
   fs.rmSync(caminhoAtalho(ctx), { force: true });
+  fs.rmSync(caminhoDaConferencia(ctx), { force: true });
 }
