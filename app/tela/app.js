@@ -161,8 +161,8 @@ function telaInicio() {
   }
   const primeira = estado.inicio?.primeiraAbertura !== false;
   return [faixaNova, portal(faixaNova ? '130px' : '230px', primeira ? 'nasce' : ''), h('div', { css: { height: faixaNova ? '36px' : '50px' } }),
-    h('h1', { class: primeira ? 'sobe d1' : '' }, t('Vamos preparar a IA pra trabalhar com você.')),
-    h('p', { class: `lead ${primeira ? 'sobe d2' : ''}` }, t('Daqui 20 minutos a IA está instalada no seu computador, lembrando do que você decidiu e fazendo o trabalho junto com você. O esforço é quase todo meu, só clica em começar e vem!')),
+    h('h1', { class: primeira ? 'sobe d1' : '' }, t('Você não precisa de um curso sobre IA')),
+    h('p', { class: `lead ${primeira ? 'sobe d2' : ''}` }, t('Tudo que você aprendeu na vida, aprendeu fazendo. Você só precisa da ferramenta certa pra começar hoje!')),
     h('div', { class: `botoes ${primeira ? 'sobe d3' : ''}` }, botao(t('Começar'), () => irPara('demo'), 'btn', { 'data-foco': true }))];
 }
 function telaDemo() {

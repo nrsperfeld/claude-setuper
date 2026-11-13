@@ -165,9 +165,17 @@ src/modulos/mcps.js:63
   pt: "{nome}: fica pra depois, precisa da sua conta do GitHub conectada. {depois}"
   en: "{nome}: this waits until later, because it needs your GitHub account connected. {depois}"
 
-src/modulos/mcps.js:73
-  pt: "Faz isso em {nomes}. Escolhe a sua conta do Google e, quando ele perguntar se o Claude pode acessar, clica em Permitir. Faltou algum? Você volta nessa mesma página."
-  en: "Do this for {nomes}. Choose your Google account and, when it asks if Claude, your AI, can have access, click Allow. Missed one? You can come back to this same page."
+src/modulos/mcps.js (ligarConectores)
+  pt: "Abri a página de conectores do Claude, a sua IA. Procura nela: {nomes}. Se o site pedir login, entra com a mesma conta do Claude."
+  en: "I opened the connectors page of Claude, your AI. Look for these on it: {nomes}. If the site asks you to log in, use the same Claude account."
+
+src/modulos/mcps.js (ligarConectores)
+  pt: "{nomes}: conectado. Na próxima vez que a IA abrir, ela já enxerga."
+  en: "{nomes}: connected. Next time your AI opens, it can already see them."
+
+src/modulos/mcps.js (ligarConectores)
+  pt: "{nomes}: ficou pra depois. No fim da aula tem um botão pra ligar."
+  en: "{nomes}: left for later. There is a button to connect them at the end of the lesson."
 
 src/modulos/mcps.js:76
   pt: "Vou abrir a página de conectores do Claude pra ligar {nomes}"

@@ -12,6 +12,9 @@ import { t, traduzir } from './i18n.js';
 // a janela (que nasce minimizada) se abre de novo na frente pra pessoa acompanhar o conserto.
 export const SAIDA_REABRIR = 3;
 
+// Pendências que só a pessoa resolve: entrar numa conta, adicionar a extensão, dar o clique de confiança.
+const DEPENDE_DA_PESSOA = /^Login no Claude|^Contas? conectadas?|^git sabe|^Extensão Claude no Chrome|^Complementos do Obsidian ligados|^Login na Vercel/;
+
 export async function verificar(ctx, { modulos = modulosInstalados(ctx), segundaJanela = false } = {}) {
   ui.abertura('Claude Setuper · conferência', segundaJanela
     ? 'Conferindo se ficou tudo instalado e funcionando. Pode continuar conversando com a IA na outra janela.'
@@ -26,14 +29,23 @@ export async function verificar(ctx, { modulos = modulosInstalados(ctx), segunda
   ctx.conferindo = true;
 
   const comFalta = [];
+  const daPessoa = [];
   for (const m of modulos) {
     const itens = await conferir(ctx, m);
-    if (mostrarItens(ctx, m.id, m.nome, itens, 'verificar')) comFalta.push(m);
+    if (!mostrarItens(ctx, m.id, m.nome, itens, 'verificar')) continue;
+    // A segunda janela abre sozinha, no meio da aula. O que a pessoa deixou pra depois (um login, a extensão, o clique
+    // do Obsidian) ela não refaz: mexer nisso ali era desfazer a escolha da pessoa e disputar a tela com a aula.
+    if (segundaJanela && itens.filter((i) => !i.ok).every((i) => DEPENDE_DA_PESSOA.test(i.item))) daPessoa.push(m);
+    else comFalta.push(m);
   }
   // Os cuidados só aparecem: quem decide o que fazer com eles é a pessoa (ou quem ajuda ela).
   const avisos = mostrarItens(ctx, 'cuidados', t('Cuidados'), cuidados(ctx), 'verificar');
   console.log();
 
+  if (!comFalta.length && daPessoa.length) {
+    ui.encerramento(t('Está tudo instalado. Ficou pendente só o que depende de você: {nomes}. Quando quiser terminar, abre o Claude Setuper de novo. Pode fechar esta janela.', { nomes: daPessoa.map((m) => traduzir(m.nomeCurto || m.nome)).join(', ') }));
+    return { faltando: 0, consertados: [], pendentes: daPessoa.map((m) => m.id) };
+  }
   if (!comFalta.length) {
     ui.encerramento(c.green(t(avisos ? 'Está tudo instalado e funcionando. Só dá uma olhada nos cuidados aí em cima.' : 'Está tudo instalado e funcionando. Pode fechar esta janela.')));
     return { faltando: 0, consertados: [], pendentes: [] };
@@ -65,6 +77,11 @@ export async function verificar(ctx, { modulos = modulosInstalados(ctx), segunda
       else ui.erro(`${m.nome}: não deu certo agora (${motivo}).`);
     }
     ctx.salvarEstado();
+  }
+
+  // Com o GitHub ligado agora, o backup das notas passa a poder ser ligado também (o app faz o mesmo no botão Ligar).
+  if (comFalta.some((m) => m.id === 'github') && modulos.some((m) => m.id === 'rotinas') && ctx.estado.modulos.github?.ok) {
+    try { await modulos.find((m) => m.id === 'rotinas').instalar(ctx); } catch (e) { ctx.log('FALHA verificar', 'rotinas', e.stack || e.message); }
   }
 
   // Confere de novo só o que foi mexido.

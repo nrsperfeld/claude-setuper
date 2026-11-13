@@ -70,22 +70,27 @@ async function xcodeCLT(ctx) {
   ui.pausa('Clica em Instalar, na janela da Apple', [
     'Depois aparece o contrato: clica em Concordo.',
     'Demora entre 3 e 10 minutos. Eu fico esperando aqui.',
-  ], { figura: 'apple-ferramentas', rotulo: 'Ferramentas da Apple' });
+  ], { figura: 'apple-ferramentas', rotulo: 'Ferramentas da Apple', acoes: [{ rotulo: 'Já cliquei', reabrir: 'tentar' }] });
   await ctx.run('xcode-select', ['--install'], { ignorarErro: true });
   trazerJanelaApple(ctx);
   // Se a pessoa fechar a janela da Apple sem instalar, ela volta a aparecer, em vez de eu esperar meia hora por nada.
   // Enquanto isso, o cartão diz o que está acontecendo e há quanto tempo, pra ninguém achar que travou.
   let semJanela = 0;
-  let viuJanela = false;
+  let clicou = false;
+  const PASTA_CLT = '/Library/Developer/CommandLineTools';
+  const jaTinhaPasta = fs.existsSync(PASTA_CLT); // sobra de instalação antiga não conta como sinal
   let ultimoAviso = '';
   const inicio = Date.now();
   const ok = await ctx.esperar(async () => {
     if (await cltPronto(ctx)) return true;
     const janela = !!(await ctx.run('pgrep', ['-f', 'Install Command Line Developer Tools'], { ignorarErro: true, sempre: true }));
     semJanela = janela ? 0 : semJanela + 1;
-    if (janela && !viuJanela) {
-      // A pessoa já clicou em Instalar: troca o cartão de pedido pelo de espera.
-      viuJanela = true;
+    // A janela da Apple existe desde que abre, antes de qualquer clique: ela aberta não quer dizer que a pessoa já
+    // clicou em Instalar. O cartão só vira "é só esperar" quando a pessoa diz que clicou ou quando a pasta das
+    // ferramentas aparece no disco. Antes ele virava sozinho em 5 segundos, o guia sumia e a pessoa ficava esperando
+    // uma instalação que ainda dependia do clique dela.
+    if (!clicou && (ui.pediuTentar() || (!jaTinhaPasta && fs.existsSync(PASTA_CLT)))) {
+      clicou = true;
       ui.pausa('As ferramentas da Apple estão instalando', [
         'Leva de 3 a 10 minutos. Você não precisa fazer nada, é só esperar.',
         'A janela da Apple mostra uma barrinha andando. Quando ela terminar, pode clicar em Concluído.',
@@ -98,8 +103,10 @@ async function xcodeCLT(ctx) {
     }
     const min = Math.floor((Date.now() - inicio) / 60000);
     const quanto = min < 1 ? 'menos de 1 minuto' : min === 1 ? '1 minuto' : `${min} minutos`;
-    const aviso = janela
+    const aviso = clicou
       ? `Esperando a Apple terminar de instalar. Já faz ${quanto}, costuma levar de 3 a 10 minutos.`
+      : janela
+        ? `Esperando o clique em Instalar e em Concordo, na janela da Apple. Depois disso leva de 3 a 10 minutos. Já faz ${quanto}.`
       : `Esperando a janela da Apple. Se ela não estiver na frente, procure nas outras janelas abertas. Já faz ${quanto}.`;
     if (aviso !== ultimoAviso) { ultimoAviso = aviso; ui.info(aviso); }
     return false;

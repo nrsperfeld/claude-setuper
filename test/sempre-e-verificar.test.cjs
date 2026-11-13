@@ -216,6 +216,33 @@ test('verificar na segunda janela do Windows: com coisa faltando, pede pra janel
   assert.match(fs.readFileSync(path.join(RAIZ, 'templates', 'verificar', 'verificar.cmd'), 'utf8'), /if errorlevel 3 if not errorlevel 4 goto reabrir/);
 });
 
+test('verificar na segunda janela: o que a pessoa deixou pra depois (login, extensão) não é refeito no meio da aula', async () => {
+  const { verificar } = await src('verificar.js');
+  const pendente = (id, item) => {
+    const m = moduloDeMentira(id, { falta: true });
+    m.verificar = async () => [{ item: 'instalado', ok: true }, { item, ok: false, dica: 'dica' }];
+    return m;
+  };
+  for (const plataforma of ['darwin', 'win32']) {
+    const ctx = await ctxInstalado({ plataforma });
+    const github = pendente('github', 'Conta conectada');
+    const chrome = pendente('chrome', 'Extensão Claude no Chrome');
+    const r = await calado(() => verificar(ctx, { modulos: [github, chrome], segundaJanela: true }));
+    assert.deepStrictEqual([github.instalacoes, chrome.instalacoes, r.reabrir, r.faltando], [0, 0, undefined, 0], plataforma);
+    assert.deepStrictEqual(r.pendentes, ['github', 'chrome']);
+  }
+  // Pedido à mão (claude-setuper verificar), a pessoa quer resolver agora: aí o passo roda.
+  const ctx = await ctxInstalado();
+  const github = pendente('github', 'Conta conectada');
+  await calado(() => verificar(ctx, { modulos: [github] }));
+  assert.strictEqual(github.instalacoes, 1);
+  // Na segunda janela, o que quebrou de verdade (não depende da pessoa) continua sendo consertado.
+  const quebrado = moduloDeMentira('obsidian', { falta: true });
+  const ctx2 = await ctxInstalado();
+  await calado(() => verificar(ctx2, { modulos: [quebrado, pendente('github', 'Conta conectada')], segundaJanela: true }));
+  assert.strictEqual(quebrado.instalacoes, 1);
+});
+
 test('a conferência e o doctor olham GitHub e Chrome mesmo em instalação antiga que não tinha os dois', async () => {
   const { modulosInstalados } = await src('modulos/index.js');
   const ids = (estado, plataforma = 'darwin') => modulosInstalados({ estado, plataforma }).map((m) => m.id);

@@ -52,7 +52,7 @@ globalThis.__electron_falso = {
   clipboard: { writeText() {} }, dialog: { showMessageBoxSync: () => 0 }, nativeTheme: {},
   nativeImage: { createFromPath: () => ({ resize: () => ({ toDataURL: () => 'data:image/png;base64,PROPRIO' }) }) },
   Menu: { buildFromTemplate: (t) => t, setApplicationMenu() {} },
-  screen: { getPrimaryDisplay: () => tela, getDisplayNearestPoint: () => tela, screenToDipRect: (_j, r) => r },
+  screen: { getPrimaryDisplay: () => tela, getDisplayNearestPoint: () => tela, getDisplayMatching: () => tela, getAllDisplays: () => [tela], screenToDipRect: (_j, r) => r },
 };
 const NOMES = Object.keys(globalThis.__electron_falso);
 registerHooks({
