@@ -3,6 +3,7 @@ const G = window.setuper;
 const raiz = document.getElementById('guia');
 let cat = {};
 let nomeApp = 'Claude Setuper';
+let encolhido = false; // a pessoa encolheu o guia pra enxergar o que está atrás; passo novo abre de novo
 let cena = null; // { rotulo, passos: [{ titulo, linhas, figura, print }], i, acoes, pular, concluir, nao, id, codigo, link, status, aula, opcoes, colar }
 const t = (texto, vars) => {
   const base = cat[texto] ?? texto;
@@ -46,7 +47,15 @@ function desenhar() {
   if (!cena) return raiz.replaceChildren();
   const p = cena.passos[cena.i] || cena.passos[0];
   const n = cena.passos.length;
-  const kids = [h('div', { class: 'g-topo' }, h('span', { class: 'g-ponto' }), h('span', {}, cena.rotulo || t('Sua vez')), h('span', {}, cena.contagem || (n > 1 ? t('{i} de {n}', { i: cena.i + 1, n }) : '')))];
+  const kids = [h('div', { class: 'g-topo' }, h('span', { class: 'g-ponto' }), h('span', {}, cena.rotulo || t('Sua vez')), h('span', { class: 'g-cont' }, cena.contagem || (n > 1 ? t('{i} de {n}', { i: cena.i + 1, n }) : '')),
+    h('button', { class: 'g-min', type: 'button', onclick: () => { encolhido = !encolhido; desenhar(); } }, encolhido ? t('Mostrar tudo') : t('Encolher')))];
+  raiz.classList.toggle('encolhido', encolhido);
+  // Encolhido fica só o nome do passo: a pessoa enxerga a tela inteira e abre de novo quando quiser.
+  if (encolhido) {
+    kids.push(h('p', { class: 'g-tit' }, p.titulo));
+    raiz.replaceChildren(...kids);
+    return G.ajustarGuia(altura());
+  }
   // O programa que a pessoa tem que olhar, com o ícone de verdade dele.
   if (p.app) kids.push(h('div', { class: 'g-app' }, p.app.icone ? h('img', { src: p.app.icone, alt: '' }) : h('span', { class: 'g-letra', 'aria-hidden': 'true' }, (p.app.nome || '?')[0]), h('div', {}, h('b', {}, p.app.nome), h('small', {}, p.app.dica))));
   if (p.tela) kids.push(h('div', { class: 'g-tela' }, p.tela ? h('span', {}, p.tela) : null, p.teclas?.length ? h('div', { class: 'g-teclas' }, p.teclas.map((x) => h('span', { class: 'tecla' }, x))) : null));
@@ -73,14 +82,22 @@ function desenhar() {
   if (cena.aula && cena.volta) acoes.push(botao(t('Voltar'), () => G.aula('voltar'), 'link'));
   if (acoes.length) kids.push(h('div', { class: 'g-acoes' }, acoes));
   raiz.replaceChildren(...kids);
-  G.ajustarGuia(raiz.scrollHeight);
+  G.ajustarGuia(altura());
+}
+// A altura do que está escrito, sem contar o espaço que sobra na janela: é assim que ela encolhe quando o passo é curto.
+function altura() {
+  raiz.style.minHeight = '0';
+  const a = raiz.scrollHeight;
+  raiz.style.minHeight = '';
+  return a;
 }
 const temProximo = () => cena.passos.length > 1 && cena.i < cena.passos.length - 1;
 
 G.aoGuia((ev) => {
   if (ev.catalogo) cat = ev.catalogo;
   if (ev.nomeApp) nomeApp = ev.nomeApp;
-  if (ev.tipo === 'cena') cena = { i: 0, ...ev.cena };
+  if (ev.compacto != null) document.body.classList.toggle('compacto', !!ev.compacto);
+  if (ev.tipo === 'cena') { cena = { i: 0, ...ev.cena }; encolhido = false; }
   else if (ev.tipo === 'link' && cena) cena.link = ev.url;
   else if (ev.tipo === 'codigo' && cena) cena.codigo = ev.codigo;
   else if (ev.tipo === 'colar-codigo' && cena) cena.colar = ev.ativo;
