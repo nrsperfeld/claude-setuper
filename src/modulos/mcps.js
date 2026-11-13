@@ -34,10 +34,24 @@ export async function instalar(ctx) {
   if (!escolhidos.length) return ui.info(ctx.app ? 'Nenhuma ferramenta escolhida agora. Dá pra ligar depois abrindo o Claude Setuper de novo.' : 'Nenhuma ferramenta escolhida agora. Dá pra ligar depois com: claude-setuper --modulos mcps');
   if (ctx.semApps || ctx.dryRun) return;
   const cat = catalogo(ctx);
-  // No app os conectores (Gmail, Agenda...) ficam pro fim da aula; o Terminal segue ligando aqui.
-  if (!ctx.app || ctx.opcional) await ligarConectores(ctx, cat.filter((m) => m.conector && escolhidos.includes(m.id)));
-  if (ctx.opcional) return;
-  if (!escolhidos.some((mid) => cat.find((x) => x.id === mid && !x.conector))) return;
+  // Conserto pela segunda janela, no meio de uma conversa: não abre página nenhuma pedindo conexão.
+  const conectores = ctx.conferindo ? [] : conectoresEscolhidos(ctx);
+  // Aberto pelo botão Ligar do fim da aula, só os conectores interessam.
+  if (ctx.opcional) return ligarConectores(ctx, conectores);
+  if (escolhidos.some((mid) => cat.find((x) => x.id === mid && !x.conector))) await ligarFerramentas(ctx, cat, escolhidos);
+  // Quem marcou Gmail, Drive ou Agenda nas perguntas liga agora, com a página aberta e o passo a passo. Antes, no app,
+  // isso ficava escondido num botão do fim da aula, e a pessoa terminava a instalação sem nada conectado
+  // (feedback do Nathan, 13/11/2026: precisou abrir o site e conectar sozinho).
+  await ligarConectores(ctx, conectores);
+}
+
+// Os conectores do claude.ai que a pessoa marcou nas perguntas.
+export function conectoresEscolhidos(ctx) {
+  const escolhidos = ctx.resp?.mcps || ctx.estado.respostas?.mcps || [];
+  return catalogo(ctx).filter((m) => m.conector && escolhidos.includes(m.id));
+}
+
+async function ligarFerramentas(ctx, cat, escolhidos) {
   const ja = await instalados(ctx);
   const comLogin = [];
   const semToken = [];
@@ -66,12 +80,29 @@ export async function instalar(ctx) {
 
 // Gmail, Drive e Agenda são conectores do claude.ai: liga uma vez no site, com a conta do Google,
 // e eles aparecem sozinhos no Claude Code de quem entrou com a mesma conta do Claude.
+const PAGINA_DOS_CONECTORES = 'https://claude.ai/settings/connectors';
 async function ligarConectores(ctx, conectores) {
   if (!conectores.length) return;
+  // Já ligou estes mesmos numa rodada anterior: não pergunta de novo (o botão do fim da aula sempre abre).
+  const antes = ctx.estado.conectores;
+  if (!ctx.opcional && antes?.ligados && conectores.every((m) => (antes.ids || []).includes(m.id))) return;
   const nomes = conectores.map((m) => m.nome).join(', ').replace(/, ([^,]*)$/, t(' e $1'));
+  const guardar = (ligados) => { ctx.estado.conectores = { ids: conectores.map((m) => m.id), ligados, em: new Date().toISOString() }; ctx.salvarEstado(); };
   if (ctx.app) {
-    await ctx.abrirUrl('https://claude.ai/settings/connectors');
-    await ui.confirmarFora({ rotulo: 'Gmail e Agenda', passos: [{ titulo: 'Clica em Conectar em cada um', linhas: [`Faz isso em ${nomes}. Escolhe a sua conta do Google e, quando ele perguntar se o Claude, a sua IA, pode acessar, clica em Permitir. Faltou algum? Você volta nessa mesma página.`], figura: 'conectores' }], concluir: 'Terminei', nao: 'Deixar pra depois' });
+    await ctx.abrirUrl(PAGINA_DOS_CONECTORES);
+    const fez = await ui.confirmarFora({
+      rotulo: 'Suas ferramentas',
+      passos: [{ titulo: 'Conecta a IA nas ferramentas que você marcou', figura: 'conectores', linhas: [
+        `Abri a página de conectores do Claude, a sua IA. Procura nela: ${nomes}. Se o site pedir login, entra com a mesma conta do Claude.`,
+        'Clica em Conectar em cada um e escolhe a sua conta do Google.',
+        'Quando o Google perguntar se o Claude pode acessar, clica em Permitir.',
+      ] }],
+      acoes: [{ rotulo: 'Abrir a página de novo', url: PAGINA_DOS_CONECTORES }],
+      concluir: 'Terminei', nao: 'Deixar pra depois',
+    });
+    guardar(!!fez);
+    if (fez) ui.ok(`${nomes}: conectado. Na próxima vez que a IA abrir, ela já enxerga.`);
+    else if (!ctx.opcional) ui.aviso(`${nomes}: ficou pra depois. No fim da aula tem um botão pra ligar.`);
     return;
   }
   ui.pausa(`Vou abrir a página de conectores do Claude pra ligar ${nomes}`, [
@@ -80,9 +111,11 @@ async function ligarConectores(ctx, conectores) {
     'O Google pergunta se o Claude pode acessar. Clica em Permitir.',
     'Depois volta pra cá. Da próxima vez que abrir a IA, eles já estão lá.',
   ]);
-  await ctx.abrirUrl('https://claude.ai/settings/connectors');
-  if (!ctx.sim) await ui.confirmar(`Terminou de ligar ${nomes}?`, true);
-  ui.ok(`${nomes}: ligado no claude.ai. Se faltar algum, é só voltar em claude.ai > Configurações > Conectores.`);
+  await ctx.abrirUrl(PAGINA_DOS_CONECTORES);
+  const fez = ctx.sim ? true : await ui.confirmar(`Terminou de ligar ${nomes}?`, true);
+  guardar(!!fez);
+  if (fez) ui.ok(`${nomes}: ligado no claude.ai. Se faltar algum, é só voltar em claude.ai > Configurações > Conectores.`);
+  else ui.aviso(`${nomes}: ficou pra depois. É só voltar em claude.ai > Configurações > Conectores.`);
 }
 
 export async function remover(ctx) {

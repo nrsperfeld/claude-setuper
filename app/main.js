@@ -41,18 +41,20 @@ const PROGRAMAS = {
   maestri: { nome: () => 'Maestri', caminhos: ['/Applications/Maestri.app', '/Applications/Setapp/Maestri.app'], dono: /^Maestri$/ },
   ...(NO_WINDOWS ? programasWindows(process.env, (s) => i18n.t(s)) : {}),
 };
-// Pra onde apontar em cada janela conhecida. x e y são a proporção da janela; o texto diz o que fazer ali.
+// Pra onde apontar em cada janela conhecida. x e y são a proporção da janela, e só valem pra janela de tamanho fixo
+// (a da Apple e a da senha); o texto diz o que fazer ali.
 const POR_FIGURA = {
   'apple-ferramentas': { programa: 'apple', alvos: [{ x: 0.86, y: 0.84, rotulo: 'Clica em Instalar' }] },
   'apple-contrato': { programa: 'apple', alvos: [{ x: 0.9, y: 0.92, rotulo: 'Clica em Concordo' }] },
   senha: { programa: 'senha', alvos: [{ x: 0.5, y: 0.62, rotulo: 'Digita a senha aqui' }] },
-  'claude-login': { programa: 'navegador', alvos: [{ x: 0.5, y: 0.45, rotulo: 'Entra na sua conta aqui' }] },
-  'obsidian-confiar': { programa: 'obsidian', alvos: [{ x: 0.5, y: 0.56, rotulo: 'Clica em Trust author and enable plugins' }] },
-  'chrome-extensao': { programa: 'chrome', alvos: [{ x: 0.8, y: 0.3, rotulo: 'Clica em Usar no Chrome' }] },
-  'github-criar': { programa: 'navegador', alvos: [{ x: 0.5, y: 0.42, rotulo: 'Cria a sua conta aqui' }] },
-  'github-codigo': { programa: 'navegador', alvos: [{ x: 0.5, y: 0.42, rotulo: 'Cola o código aqui' }] },
-  vercel: { programa: 'navegador', alvos: [{ x: 0.5, y: 0.42, rotulo: 'Entra aqui' }] },
-  conectores: { programa: 'navegador', alvos: [{ x: 0.5, y: 0.42, rotulo: 'Clica em Conectar aqui' }] },
+  // Daqui pra baixo a janela muda de tamanho e o botão muda de lugar com ela: a moldura marca a janela, o recado diz o que fazer.
+  'claude-login': { programa: 'navegador', alvos: [{ janela: true, rotulo: 'É nesta janela: entra na sua conta' }] },
+  'obsidian-confiar': { programa: 'obsidian', alvos: [{ janela: true, rotulo: 'Nesta janela, clica em Trust author and enable plugins' }] },
+  'chrome-extensao': { programa: 'chrome', alvos: [{ janela: true, rotulo: 'Nesta janela, clica em Usar no Chrome' }] },
+  'github-criar': { programa: 'navegador', alvos: [{ janela: true, rotulo: 'Nesta janela, cria a sua conta' }] },
+  'github-codigo': { programa: 'navegador', alvos: [{ janela: true, rotulo: 'Nesta janela, cola o código' }] },
+  vercel: { programa: 'navegador', alvos: [{ janela: true, rotulo: 'É nesta janela: entra na sua conta' }] },
+  conectores: { programa: 'navegador', alvos: [{ janela: true, rotulo: 'Nesta janela, clica em Conectar em cada um' }] },
 };
 // O ícone de verdade do programa, lido do próprio app. (app.getFileIcon derruba o Electron 44 no Mac.)
 const rodar = (cmd, args) => new Promise((res) => execFile(cmd, args, { timeout: 8000 }, (erro, saida) => res(erro ? '' : String(saida).trim())));
@@ -104,7 +106,7 @@ async function completarCena(cena) {
     if (!id) return p;
     const d = await dadosDoPrograma(id);
     const lista = p.alvos || fig?.alvos || [];
-    return { ...p, app: { nome: d.nome, icone: d.icone, dica: lista.length && setasDisponiveis() ? i18n.t('As setas na tela mostram onde olhar') : '' }, setas: lista.map((a) => ({ ...a, rotulo: i18n.t(a.rotulo), dono: d.dono, pgrep: d.pgrep, caminho: d.caminho, icone: d.icone, semDock: d.semDock })) };
+    return { ...p, app: { nome: d.nome, icone: d.icone, dica: lista.length && setasDisponiveis() ? i18n.t('As marcas na tela mostram onde olhar') : '' }, setas: lista.map((a) => ({ ...a, rotulo: i18n.t(a.rotulo), dono: d.dono, pgrep: d.pgrep, caminho: d.caminho, icone: d.icone, semDock: d.semDock })) };
   }));
   return cena;
 }
@@ -197,11 +199,19 @@ function printDe(figura) {
   const p = path.join(AQUI, 'tela', 'prints', i18n.idiomaAtual(), `${figura}.png`);
   return fs.existsSync(p) ? pathToFileURL(p).href : '';
 }
+// Em tela pequena (quase todo notebook) o guia fica mais estreito e sem o desenho da janela, e nunca passa de uma
+// parte da altura: o que não couber rola dentro dele. Ele estava ficando tão grande que tapava o lugar onde a pessoa
+// tinha que clicar (feedback do Nathan, 13/11/2026).
+const areaDoGuia = () => (guia && !guia.isDestroyed() ? screen.getDisplayMatching(guia.getBounds()) : screen.getPrimaryDisplay()).workArea;
+// CLAUDE_SETUPER_GUIA_COMPACTO=1 força o modo compacto numa tela grande, pra conferir o visual sem um notebook pequeno.
+const guiaCompacto = (a = areaDoGuia()) => process.env.CLAUDE_SETUPER_GUIA_COMPACTO === '1' || a.height < 900 || a.width < 1500;
+const larguraDoGuia = (a = areaDoGuia()) => (guiaCompacto(a) ? 300 : 340);
+const alturaMaxDoGuia = (a = areaDoGuia()) => Math.min(a.height - 48, Math.max(300, Math.round(a.height * (guiaCompacto(a) ? 0.58 : 0.72))));
 function criarGuia() {
   if (guia && !guia.isDestroyed()) return guia;
   const area = screen.getPrimaryDisplay().workArea;
   guia = new BrowserWindow({
-    width: 340, height: 420, x: area.x + area.width - 340 - 24, y: area.y + 24,
+    width: larguraDoGuia(area), height: Math.min(420, alturaMaxDoGuia(area)), x: area.x + area.width - larguraDoGuia(area) - 24, y: area.y + 24,
     frame: false, resizable: false, minimizable: false, maximizable: false, fullscreenable: false, skipTaskbar: true, show: false,
     alwaysOnTop: true, backgroundColor: '#1B1B25', hasShadow: true, roundedCorners: true, title: NOME_APP,
     ...(process.platform === 'darwin' ? { type: 'panel' } : {}),
@@ -220,7 +230,7 @@ function criarGuia() {
 // O que vai pro guia não leva as setas: elas têm expressões regulares e ficam só aqui.
 const semSetas = (cena) => ({ ...cena, passos: cena.passos.map(({ setas: _s, ...p }) => p) });
 function mandarAoGuia(ev) {
-  if (guia && !guia.isDestroyed() && guiaProntoJa) guia.webContents.send('guia', { ...ev, ...(ev.cena ? { cena: semSetas(ev.cena) } : {}), catalogo: i18n.catalogoAtual(), nomeApp: NOME_APP });
+  if (guia && !guia.isDestroyed() && guiaProntoJa) guia.webContents.send('guia', { ...ev, ...(ev.cena ? { cena: semSetas(ev.cena) } : {}), catalogo: i18n.catalogoAtual(), nomeApp: NOME_APP, compacto: guiaCompacto() });
 }
 // Pergunta aberta na janela principal (as do guia não contam).
 const perguntaNaTela = () => [...pendentes.keys()].some((id) => id !== cenaGuia?.id);
@@ -254,7 +264,8 @@ function criarVidro() {
   setas = criarSetas({
     BrowserWindow, screen, aqui: AQUI, t: i18n.t, janelaGuia: () => (guia && !guia.isDestroyed() ? guia : null),
     // Troca o guia de canto quando ele está em cima do que a pessoa tem que clicar.
-    moverGuia: () => { const a = screen.getPrimaryDisplay().workArea; const b = guia.getBounds(); guia.setPosition(b.x > a.x + a.width / 2 ? a.x + 24 : a.x + a.width - b.width - 24, b.y); },
+    // Sem posição, troca de lado; com posição (o canto que tapa menos a janela do passo), vai pra ela.
+    moverGuia: (pos) => { const a = areaDoGuia(); const b = guia.getBounds(); if (pos) guia.setPosition(pos.x, pos.y); else guia.setPosition(b.x > a.x + a.width / 2 ? a.x + 24 : a.x + a.width - b.width - 24, b.y); },
     // A nossa janela não fica na frente do que a pessoa tem que clicar, a não ser que esteja respondendo uma pergunta.
     aoSerCoberto: () => { if (janela && !janela.isDestroyed() && janela.isVisible() && ![...pendentes.keys()].some((id) => id !== cenaGuia?.id)) { minimizamos = true; janela.minimize(); } },
   });
@@ -266,7 +277,7 @@ function pedir(pergunta) {
     pendentes.set(id, resolver);
     if (pergunta.tipo === 'fora') {
       // Ação fora do app: fica no guia até a pessoa responder, e a janela principal diz pra olhar pra ele.
-      mostrarGuia({ id, rotulo: pergunta.rotulo || i18n.t('Sua vez'), passos: pergunta.passos.map((p) => ({ ...p, print: printDe(p.figura) })), concluir: pergunta.concluir, nao: pergunta.nao });
+      mostrarGuia({ id, rotulo: pergunta.rotulo || i18n.t('Sua vez'), passos: pergunta.passos.map((p) => ({ ...p, print: printDe(p.figura) })), acoes: pergunta.acoes, concluir: pergunta.concluir, nao: pergunta.nao });
       enviar({ tipo: 'pausa-fora', titulo: pergunta.passos[0]?.titulo || '' });
       // Nos testes da VM ninguém clica: responde sozinho, como a pessoa faria.
       if (TESTE) setTimeout(() => responderPedido(id, true), 3000);
@@ -332,13 +343,19 @@ async function instalarTudo() {
   ctx.repetirDireto = true; // quem clicou em continuar já disse que quer as mesmas respostas
   jaTentou = true;
   ctx.log('--- app', VERSAO, perfil);
-  const r = await instalar(ctx, { perfil });
-  if (r?.parou) throw new Error(`${r.parou}: ${r.motivo}`);
-  if (!semApps) await instalarComando(ctx);
+  try {
+    const r = await instalar(ctx, { perfil });
+    if (r?.parou) throw new Error(`${r.parou}: ${r.motivo}`);
+    if (!semApps) await instalarComando(ctx);
+  } finally {
+    // Só agora a segunda janela (a conferência que abre junto com a apresentação da IA) pode rodar:
+    // é o comando que acabou de ser copiado que ela usa.
+    (await importarSetuper('segundaJanela.js')).soltar(ctx);
+  }
   return ctx;
 }
 
-// O comando claude-setuper (doctor, atualizar) continua existindo pra quem ajuda a pessoa pelo Terminal.
+// O comando claude-setuper (doctor, verificar, atualizar) continua existindo pra quem ajuda a pessoa pelo Terminal.
 async function instalarComando(ctx) {
   const { ui } = await importarSetuper('ui.js');
   const dest = path.join(PASTA, 'app');
@@ -380,12 +397,10 @@ function paraComecar() {
 // Mesma conferência do "claude-setuper doctor", devolvida em dados pra tela.
 async function conferencia() {
   const { criarCtx } = await importarSetuper('ctx.js');
-  const { MODULOS, modulosParaPlataforma } = await importarSetuper('modulos/index.js');
+  const { modulosInstalados } = await importarSetuper('modulos/index.js');
   const ctx = criarCtx(flagsBase());
-  const ids = Object.keys(ctx.estado.modulos || {});
-  const lista = modulosParaPlataforma(ids.length ? ids : MODULOS.filter((m) => m.padrao).map((m) => m.id), ctx.plataforma);
   const grupos = [];
-  for (const m of lista) {
+  for (const m of modulosInstalados(ctx)) {
     let itens;
     try { itens = await m.verificar(ctx); } catch (e) { itens = [{ item: m.nome, ok: false, dica: e.message }]; }
     if (itens.length) grupos.push({ nome: i18n.traduzir(m.nomeCurto || m.nome), itens: itens.map((i) => ({ chave: i.item, item: i18n.traduzir(i.item), ok: !!i.ok, dica: i18n.traduzir(i.dica || '') })) });
@@ -656,8 +671,11 @@ ipcMain.on('concluir', () => comecarAula());
 ipcMain.on('guia-pronto', () => { guiaProntoJa = true; if (cenaGuia) mandarAoGuia({ tipo: 'cena', cena: cenaGuia }); });
 ipcMain.on('guia-altura', (_e, altura) => {
   if (!guia || guia.isDestroyed()) return;
-  const limite = screen.getPrimaryDisplay().workArea.height - 48;
-  guia.setSize(340, Math.min(limite, Math.max(140, Math.ceil(altura) + 2)));
+  const a = areaDoGuia();
+  const b = guia.getBounds();
+  const alt = Math.min(alturaMaxDoGuia(a), Math.max(84, Math.ceil(altura) + 2));
+  // Encostado embaixo, o guia cresce pra cima: a base dele não sai da tela.
+  guia.setBounds({ x: b.x, y: Math.max(a.y + 8, Math.min(b.y, a.y + a.height - alt - 8)), width: larguraDoGuia(a), height: alt });
 });
 ipcMain.on('guia-passo', (_e, i) => { passoAtual = i; apontarPasso(); });
 ipcMain.on('guia-acao', async (_e, acao) => { if (acao === 'tentar') (await importarSetuper('ui.js')).ui.marcarTentar?.(); });
@@ -712,7 +730,24 @@ async function comecarAula() {
       mostrar: (cena) => mostrarGuia(cena), esconder: esconderGuia, aoTerminar: () => app.quit(),
     });
   }
+  await marcarLigados();
   aula.iniciar();
+}
+// GitHub e Chrome agora entram na instalação. No fim da aula eles só aparecem pra ligar se ficaram pendentes.
+async function marcarLigados() {
+  try {
+    const { criarCtx } = await importarSetuper('ctx.js');
+    const { modulo } = await importarSetuper('modulos/index.js');
+    const ctx = criarCtx(flagsBase());
+    for (const id of ['github', 'chrome']) {
+      const itens = await modulo(id).verificar(ctx);
+      if (itens.length && itens.every((i) => i.ok)) aula.marcarFeito(id);
+    }
+    // Os conectores que a pessoa já ligou durante a instalação não voltam como pendência no fim da aula.
+    if (ctx.estado.conectores?.ligados) aula.marcarFeito('conectores');
+  } catch (e) {
+    fs.appendFileSync(path.join(PASTA, 'registro.log'), `[aula] ${e.stack || e.message}\n`);
+  }
 }
 // As opções do fim da aula rodam o mesmo módulo do Terminal, com o guia e as perguntas do app.
 async function ligarOpcional(id) {
@@ -724,12 +759,14 @@ async function ligarOpcional(id) {
     ctx.resp = ctx.estado.respostas || {};
     ctx.opcional = true;
     const m = modulo(id === 'conectores' ? 'mcps' : id);
-    if (id === 'conectores' && !(ctx.resp.mcps || []).length) ctx.resp = { ...ctx.resp, mcps: ['gmail', 'google-calendar'] };
+    // Quem não marcou nenhum conector nas perguntas e clica em Ligar aqui recebe os três do Google.
+    if (id === 'conectores' && !m.conectoresEscolhidos(ctx).length) ctx.resp = { ...ctx.resp, mcps: [...(ctx.resp.mcps || []), 'gmail', 'google-drive', 'google-agenda'] };
     await m.instalar(ctx);
     ctx.salvarEstado();
     // Com o GitHub ligado, o backup das notas passa a poder ser ligado também.
     if (id === 'github') await modulo('rotinas').instalar(ctx);
-    aula?.marcarFeito(id);
+    // "Deixar pra depois" nos conectores não vira "Ligado".
+    if (id !== 'conectores' || ctx.estado.conectores?.ligados) aula?.marcarFeito(id);
   } catch (e) {
     fs.appendFileSync(path.join(PASTA, 'registro.log'), `[opcional ${id}] ${e.stack || e.message}\n`);
   } finally {

@@ -8,6 +8,7 @@ export const nome = 'IA no Chrome (navegar na internet)';
 export const nomeCurto = 'Google Chrome';
 export const descricao = 'Extensão que deixa a IA usar o seu navegador';
 export const padrao = true;
+// Entra em toda instalação (SEMPRE, em modulos/index.js): não é mais uma escolha.
 
 const EXT_ID = 'fcoeoabgfenejglbffodgkkbkcdhcgfn';
 // Pelo caminho: logo depois de instalar, o Mac ainda não acha o app pelo nome ("Unable to find application").
@@ -44,11 +45,8 @@ export async function instalar(ctx) {
   const temChrome = chromeInstalado(ctx) || (await ctx.existeComando('google-chrome'));
   if (!temChrome) {
     if (ctx.semApps) return;
-    const quer = ctx.sim ? true : await ui.confirmar('Posso instalar o Google Chrome?', true, {
-      sim: 'Sim, pode instalar', nao: 'Agora não',
-      explicacao: 'O Chrome é o navegador que a IA sabe usar sozinha: ela abre sites, preenche formulários e pesquisa por você. Você continua usando o seu navegador de sempre no dia a dia.',
-    });
-    if (!quer) return ui.info(ctx.app ? 'Tudo bem, deixei o Chrome pra depois.' : 'Tudo bem, pulei o Chrome. Dá pra instalar depois com: claude-setuper --modulos chrome');
+    // Sem pergunta: a IA no Chrome entra sempre, e pra isso o Chrome precisa estar instalado.
+    ui.info('O Chrome é o navegador que a IA sabe usar sozinha: ela abre sites, preenche formulários e pesquisa por você. Você continua usando o seu navegador de sempre no dia a dia.');
     await ui.tarefa('Instalando o Google Chrome', 'Chrome instalado', async () => {
       if (ctx.plataforma === 'darwin') await (await import('./base.js')).brewInstalar(ctx, 'chrome', ['--cask', 'google-chrome']);
       else if (ctx.win) await (await import('./base.js')).winget(ctx, 'Google.Chrome');
@@ -58,9 +56,6 @@ export async function instalar(ctx) {
 
   if (extensaoInstalada(ctx)) return ui.ok('Extensão do Claude já está no Chrome');
   if (ctx.semApps || ctx.dryRun) return;
-  // No app a extensão fica pro fim da aula, como opcional: o navegador instala aqui e o resto segue.
-  if (ctx.app && !ctx.opcional) return;
-
   ui.pausa(ctx.app ? 'Clica em Usar no Chrome' : 'Agora é no Chrome: adicionar a extensão do Claude', ctx.app ? [
     'Depois clica em Adicionar extensão. Se ele pedir a conta Google, pode pular. Com isso a IA consegue usar o seu navegador.',
   ] : [

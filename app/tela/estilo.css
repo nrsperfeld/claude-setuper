@@ -84,7 +84,9 @@ p{margin:0}
 /* o guia flutuante */
 .guia{width:320px;border-radius:18px;background:#1B1B25;border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 60px rgba(0,0,0,.55);padding:14px 16px 16px;color:var(--texto);font:14px/20px var(--sans);text-align:left;display:flex;flex-direction:column}
 .g-topo{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ambar)}
-.g-topo span:last-child{margin-left:auto;color:var(--texto3);font-weight:400}
+.g-topo .g-cont{margin-left:auto;color:var(--texto3);font-weight:400}
+.g-topo .g-min{flex:none;border:0;background:rgba(255,255,255,.08);color:var(--texto2);font:500 12px/1 var(--sans);padding:6px 9px;border-radius:8px;cursor:pointer}
+.g-topo .g-min:hover{background:rgba(255,255,255,.16);color:var(--texto)}
 .g-ponto{width:8px;height:8px;border-radius:50%;background:var(--ambar);animation:vez 1.8s ease-in-out infinite}
 .g-print{margin:12px 0;height:158px;border-radius:10px;background:#D9D9DD;color:#1D1D1F;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding:12px;font-size:11px;line-height:15px;text-align:center}
 .g-print .b{display:inline-flex;min-height:22px;align-items:center;padding:0 9px;border-radius:5px;background:#fff;border:1px solid #bbb;font-size:11px;white-space:nowrap}
@@ -230,7 +232,24 @@ body.janela-setas{overflow:hidden}
 .seta-rotulo.discreta img{width:32px;height:32px;margin:0;flex:none}
 /* o código do login do Claude, no guia */
 .g-colar{margin-top:12px;padding:10px 12px;border-radius:10px;background:#0E0E14;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
-@media (prefers-reduced-motion:reduce){.seta-linha,.seta-alvo,.alvo::after{animation:none}}
+/* alvo que é a janela inteira: moldura em volta dela, que pulsa três vezes e sossega */
+.seta-moldura-sombra{fill:none;stroke:rgba(0,0,0,.45);stroke-width:9}
+.seta-moldura{fill:none;stroke:var(--ambar);stroke-width:4;opacity:.8;animation:moldura 1.3s ease-in-out 3}
+@keyframes moldura{50%{opacity:.3}}
+.seta-rotulo.larga{max-width:460px;font:600 16px/22px var(--sans);padding:9px 18px}
+/* o guia em tela pequena: sem o desenho da janela e com o cabeçalho menor, pra sobrar tela pra pessoa fazer o que ele pede */
+body.janela-guia{overflow-x:hidden;overflow-y:auto;scrollbar-width:thin}
+body.janela-guia.compacto .guia{padding:28px 13px 13px}
+body.janela-guia.compacto .g-print{display:none}
+body.janela-guia.compacto .g-app{margin-top:9px;padding:7px 10px;gap:9px}
+body.janela-guia.compacto .g-app img,body.janela-guia.compacto .g-app .g-letra{width:34px;height:34px;border-radius:8px}
+body.janela-guia.compacto .g-app b{font-size:14px;line-height:18px}
+body.janela-guia.compacto .g-app + .g-tit{margin-top:10px}
+body.janela-guia.compacto .g-tit{font-size:15px;line-height:20px}
+body.janela-guia.compacto .g-tela{min-height:0;margin:9px 0;padding:9px}
+/* o guia encolhido: só o nome do passo, pra não tapar nada */
+.guia.encolhido .g-tit{margin:8px 0 0;font-size:14px;line-height:19px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media (prefers-reduced-motion:reduce){.seta-linha,.seta-alvo,.alvo::after,.seta-moldura{animation:none}}
 .idioma span:not(.t3){color:var(--texto);font-weight:600}
 .conversa{display:flex;flex-direction:column;gap:10px;width:600px;max-width:100%;margin-top:24px;text-align:left}
 .balao{max-width:82%;padding:11px 16px;border-radius:18px;font-size:16px;line-height:23px}

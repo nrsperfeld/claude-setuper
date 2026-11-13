@@ -7,6 +7,8 @@ set "MARCADOR={{marcador}}"
 cd /d "%USERPROFILE%"
 if exist "%MARCADOR%" goto normal
 type nul > "%MARCADOR%"
+rem The first time, a second window (minimized) checks the installation while the AI introduces itself.
+if exist "{{conferencia}}" start "Claude Setuper" /min cmd /c ""{{conferencia}}""
 claude "{{apresentacao}}"
 goto fim
 :normal

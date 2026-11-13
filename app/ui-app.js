@@ -55,8 +55,8 @@ export function criarUiApp(enviar, pedir, traduzir = (s) => s) {
     pediuTentar() { const r = tentar; tentar = false; return r; },
     marcarTentar() { tentar = true; },
     // Ação fora do app com botão de concluir: fica no guia flutuante até a pessoa responder.
-    confirmarFora({ rotulo, passos, concluir, nao }) {
-      return pedir({ tipo: 'fora', rotulo: rotulo ? limpo(rotulo) : '', passos: passos.map((p) => ({ ...p, titulo: limpo(p.titulo), linhas: (p.linhas || []).map(limpo) })), concluir: limpo(concluir), nao: nao ? limpo(nao) : '' });
+    confirmarFora({ rotulo, passos, concluir, nao, acoes = [] }) {
+      return pedir({ tipo: 'fora', rotulo: rotulo ? limpo(rotulo) : '', passos: passos.map((p) => ({ ...p, titulo: limpo(p.titulo), linhas: (p.linhas || []).map(limpo) })), acoes: acoes.map((a) => ({ ...a, rotulo: limpo(a.rotulo) })), concluir: limpo(concluir), nao: nao ? limpo(nao) : '' });
     },
 
     async tarefa(fazendo, feito, fn, { demora } = {}) {

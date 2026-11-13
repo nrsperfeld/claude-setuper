@@ -8,9 +8,9 @@ export const nome = 'GitHub (guardar e versionar o trabalho)';
 export const nomeCurto = 'GitHub';
 export const descricao = 'Conecta a sua conta do GitHub (e uma segunda, se tiver)';
 export const padrao = true;
+// Entra em toda instalação (SEMPRE, em modulos/index.js): não é mais uma escolha.
 
 export async function verificar(ctx) {
-  if (ctx.estado.pulados?.github) return [];
   const temGh = await ctx.existeComando('gh');
   const status = temGh ? await ctx.run('gh', ['auth', 'status'], { ignorarErro: true, sempre: true }) : '';
   const contas = (status.match(/account (\S+)/g) || []).map((s) => s.replace('account ', ''));
@@ -23,20 +23,29 @@ export async function verificar(ctx) {
 }
 
 const LINK_LOGIN = /^https:\/\/github\.com\/login\/device/;
-const PRA_QUE = 'O GitHub guarda uma cópia de tudo que você e a IA criarem, com o histórico de cada mudança. Se algo der errado ou o computador quebrar, nada se perde, e dá pra voltar a qualquer versão. É opcional, mas é o que deixa o seu trabalho seguro.';
+const PRA_QUE = 'O GitHub guarda uma cópia de tudo que você e a IA criarem, com o histórico de cada mudança. Se algo der errado ou o computador quebrar, nada se perde, e dá pra voltar a qualquer versão. É ele que deixa o seu trabalho seguro.';
+
+// O login depende da pessoa. Se ela deixar pra depois, o passo fica pendente (e não quebra a instalação):
+// a conferência e a próxima rodada voltam nele.
+function ficouPraDepois(ctx) {
+  const e = new Error(ctx.app
+    ? 'a conta do GitHub ficou pra depois. Eu volto nela na próxima vez'
+    : 'a conta do GitHub não foi conectada. Rode claude-setuper verificar que eu volto nela');
+  e.continuar = true;
+  return e;
+}
 
 export async function instalar(ctx) {
-  // Pergunta antes de instalar qualquer coisa: quem pula não precisa nem da ferramenta.
+  // O GitHub entra sempre: a única pergunta é se a pessoa já tem conta.
   let escolha = 'tenho';
   if (!ctx.sim && !ctx.semApps && !ctx.dryRun && !(await logadoNoGh(ctx))) {
-    escolha = await ui.escolher('Quer ligar o GitHub?', [
-      { value: 'criar', label: 'Sim, e quero criar uma conta', hint: 'é de graça, leva 2 minutos' },
-      { value: 'tenho', label: 'Sim, já tenho conta' },
-      { value: 'pular', label: 'Agora não', hint: 'dá pra ligar depois, abrindo o Claude Setuper de novo' },
+    escolha = await ui.escolher('Você já tem conta no GitHub?', [
+      { value: 'criar', label: 'Ainda não, quero criar uma', hint: 'é de graça, leva 2 minutos' },
+      { value: 'tenho', label: 'Já tenho conta' },
     ], { padrao: 'criar', explicacao: PRA_QUE });
   }
-  ctx.estado.pulados = { ...ctx.estado.pulados, github: escolha === 'pular' };
-  if (escolha === 'pular') return ui.info('Tudo bem, deixei o GitHub pra depois.');
+  // Quem tinha pulado numa versão anterior não fica mais de fora.
+  if (ctx.estado.pulados?.github !== undefined) delete ctx.estado.pulados.github;
 
   if (!(await ctx.existeComando('gh'))) {
     if (ctx.semApps) return;
@@ -57,7 +66,7 @@ export async function instalar(ctx) {
         await ctx.abrirUrl('https://github.com/signup');
         if (ctx.app) {
           const criou = await ui.confirmarFora({ rotulo: 'Criar conta no GitHub', passos: [{ titulo: 'Cria a sua conta, é de graça', linhas: ['Usa o seu e-mail principal e escolhe um nome de usuário. Leva uns 2 minutos.'], figura: 'github-criar' }], concluir: 'Já criei', nao: 'Deixar pra depois' });
-          if (!criou) { ctx.estado.pulados = { ...ctx.estado.pulados, github: true }; return ui.info('Tudo bem, deixei o GitHub pra depois.'); }
+          if (!criou) throw ficouPraDepois(ctx);
         } else {
           ui.pausa('Vou abrir a página pra criar sua conta no GitHub', ['É de graça. Usa o seu e-mail principal e escolhe um nome de usuário.', 'Quando terminar de criar, volta aqui e aperta Enter.']);
           await ui.perguntar('Criou a conta? Aperta Enter pra continuar.', { padrao: 'ok' });
@@ -66,14 +75,14 @@ export async function instalar(ctx) {
     }
     await login(ctx, 'a sua conta');
     contas = await listarContas(ctx);
-    if (ctx.app && !contas.length) { ctx.estado.pulados = { ...ctx.estado.pulados, github: true }; return ui.info('Tudo bem, deixei o GitHub pra depois. Quando quiser, é só abrir o Claude Setuper de novo.'); }
+    if (!contas.length) throw ficouPraDepois(ctx);
   } else ui.ok(`Conta do GitHub já conectada: ${contas.join(', ')}`);
 
   await configurarGit(ctx, contas[0]);
   fs.mkdirSync(path.join(ctx.home, ctx.pasta('Projetos')), { recursive: true });
 
   // No app a segunda conta sai do caminho: quem precisa dela usa o comando claude-setuper.
-  if (!ctx.sim && !ctx.app && contas.length < 2) {
+  if (!ctx.sim && !ctx.app && !ctx.conferindo && contas.length < 2) {
     const segunda = await ui.confirmar('Quer conectar uma segunda conta do GitHub (por exemplo, a da empresa)?', false);
     if (segunda) {
       await login(ctx, 'a segunda conta');

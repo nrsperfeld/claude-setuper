@@ -21,6 +21,22 @@ export function modulo(id) {
   return MODULOS.find((m) => m.id === id);
 }
 
+// GitHub e a IA no Chrome entram sempre, seja qual for o perfil, o presente ou o que a pessoa marcou.
+export const SEMPRE = ['github', 'chrome'];
+
+// A lista de passos com os de sempre dentro, na ordem em que rodam.
+export function comSempre(ids = []) {
+  const quer = new Set([...ids, ...SEMPRE]);
+  return [...MODULOS.filter((m) => quer.has(m.id)).map((m) => m.id), ...ids.filter((id) => !modulo(id))];
+}
+
+// O que conferir nesta máquina: os passos que já rodaram aqui, mais os de sempre. Sem instalação nenhuma, o padrão.
+// (O que a pessoa escolheu mas fica pro fim da aula, como a Vercel no app, só entra depois de rodar.)
+export function modulosInstalados(ctx) {
+  const ids = Object.keys(ctx.estado.modulos || {});
+  return modulosParaPlataforma(comSempre(ids.length ? ids : MODULOS.filter((m) => m.padrao).map((m) => m.id)), ctx.plataforma);
+}
+
 export function modulosParaPlataforma(ids, plataforma) {
   return ids
     .map(modulo)

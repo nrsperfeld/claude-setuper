@@ -32,16 +32,56 @@ function colocar(r, s, curva, fim, guia) {
   r.style.top = `${p.y}px`;
 }
 
+function nome(s) {
+  const r = document.createElement('div');
+  r.className = s.dock ? 'seta-rotulo discreta' : 'seta-rotulo';
+  if (s.icone) {
+    const img = document.createElement('img');
+    img.src = s.icone;
+    img.alt = '';
+    r.append(img);
+  }
+  r.append(s.rotulo);
+  rotulos.append(r);
+  return r;
+}
+
+// Alvo que é a janela inteira: uma moldura em volta dela e o recado embaixo, por dentro, onde menos atrapalha.
+// Não tem ponto nem seta até um botão, porque ninguém sabe onde o botão está dentro de uma janela que muda de tamanho.
+function moldura(s, guia) {
+  const M = 5;
+  const x = Math.max(M, s.janela.x);
+  const y = Math.max(M, s.janela.y);
+  const x2 = Math.min(innerWidth - M, s.janela.x + s.janela.w);
+  const y2 = Math.min(innerHeight - M, s.janela.y + s.janela.h);
+  if (x2 - x < 80 || y2 - y < 80) return;
+  const quadro = { x, y, width: x2 - x, height: y2 - y, rx: 12 };
+  svg.append(el('rect', { ...quadro, class: 'seta-moldura-sombra' }), el('rect', { ...quadro, class: 'seta-moldura' }));
+  const r = nome(s);
+  r.classList.add('larga');
+  const larg = r.offsetWidth;
+  const alt = r.offsetHeight;
+  let cx = (x + x2) / 2;
+  let cy = y2 - alt / 2 - 18;
+  const noGuia = () => guia && cx + larg / 2 > guia.x - 12 && cx - larg / 2 < guia.x + guia.w + 12 && cy + alt / 2 > guia.y - 12 && cy - alt / 2 < guia.y + guia.h + 12;
+  if (noGuia()) {
+    // O recado não fica atrás do guia: vai pro lado livre da moldura ou, sem lado livre, pra cima do guia.
+    const esq = guia.x - 12 - larg / 2;
+    const dir = guia.x + guia.w + 12 + larg / 2;
+    if (esq - larg / 2 >= x) cx = esq; else if (dir + larg / 2 <= x2) cx = dir; else cy = Math.max(y + alt / 2 + 18, guia.y - 12 - alt / 2);
+  }
+  r.style.left = `${Math.max(larg / 2 + 12, Math.min(innerWidth - larg / 2 - 12, cx))}px`;
+  r.style.top = `${Math.max(alt / 2 + 12, Math.min(innerHeight - alt / 2 - 12, cy))}px`;
+}
+
 function desenhar({ setas, guia }) {
   svg.replaceChildren();
   rotulos.replaceChildren();
   for (const s of setas) {
-    // O sistema não diz onde cada ícone está no Dock: em vez de apontar pro ícone errado, acende a barra inteira.
-    const embaixo = s.dock && s.y > innerHeight - 40;
-    if (embaixo) {
-      s.y = innerHeight - 92;
-      svg.append(el('rect', { x: innerWidth * 0.08, y: innerHeight - 84, width: innerWidth * 0.84, height: 78, rx: 22, class: 'seta-faixa' }));
-    }
+    if (s.janela) { moldura(s, guia); continue; }
+    // O sistema não diz onde cada ícone está na barra: em vez de apontar pro ícone errado, acende a barra inteira,
+    // no lado da tela em que ela está de verdade.
+    if (s.dock && s.faixa) svg.append(el('rect', { x: s.faixa.x + 3, y: s.faixa.y + 3, width: Math.max(4, s.faixa.w - 6), height: Math.max(4, s.faixa.h - 6), rx: Math.min(22, Math.max(2, Math.min(s.faixa.w, s.faixa.h) / 2 - 3)), class: 'seta-faixa' }));
     const dx = s.x - s.de.x;
     const dy = s.y - s.de.y;
     const dist = Math.hypot(dx, dy) || 1;
@@ -60,17 +100,7 @@ function desenhar({ setas, guia }) {
       el('polygon', { points: `${ponta(ang, tam)} ${ponta(ang + 2.5, tam * 0.88)} ${ponta(ang - 2.5, tam * 0.88)}`, class: 'seta-ponta' }),
     );
     if (!s.dock) svg.append(el('circle', { cx: s.x, cy: s.y, r: 20, class: 'seta-alvo' }));
-    const r = document.createElement('div');
-    r.className = s.dock ? 'seta-rotulo discreta' : 'seta-rotulo';
-    if (s.icone) {
-      const img = document.createElement('img');
-      img.src = s.icone;
-      img.alt = '';
-      r.append(img);
-    }
-    r.append(s.rotulo);
-    rotulos.append(r);
-    colocar(r, s, curva, fim, guia);
+    colocar(nome(s), s, curva, fim, guia);
   }
 }
 window.setuper.aoSetas(desenhar);

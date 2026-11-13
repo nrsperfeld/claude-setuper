@@ -150,7 +150,7 @@ function telaInicio() {
     botao(t('Atualizar'), () => S.atualizar(), 'btn p'));
   if (temInstalacao && estado.inicio.tudoPronto) {
     return [faixaNova, portal('130px'), h('h1', { css: { 'margin-top': '30px' } }, nome ? t('Está tudo instalado, {nome}.', { nome }) : t('Está tudo instalado.')),
-      h('p', { class: 'lead' }, estado.plataforma === 'darwin' ? t('Posso abrir o Maestri de novo. Se a aula ficou pela metade, ela continua de onde parou, e no fim dela ficam os opcionais, como o GitHub e o Chrome.') : t('Posso abrir a IA de novo. Se a aula ficou pela metade, ela continua de onde parou, e no fim dela ficam os opcionais, como o GitHub e o Chrome.')),
+      h('p', { class: 'lead' }, estado.plataforma === 'darwin' ? t('Posso abrir o Maestri de novo. Se a aula ficou pela metade, ela continua de onde parou, e no fim dela ficam os opcionais, como a Vercel e os conectores.') : t('Posso abrir a IA de novo. Se a aula ficou pela metade, ela continua de onde parou, e no fim dela ficam os opcionais, como a Vercel e os conectores.')),
       h('div', { class: 'botoes' }, botao(estado.plataforma === 'darwin' ? t('Abrir o Maestri') : t('Abrir a IA'), () => S.concluir(), 'btn', { 'data-foco': true }), botao(t('Só conferir'), () => comecar('conferir'), 'btn2'))];
   }
   if (temInstalacao) {
@@ -161,8 +161,8 @@ function telaInicio() {
   }
   const primeira = estado.inicio?.primeiraAbertura !== false;
   return [faixaNova, portal(faixaNova ? '130px' : '230px', primeira ? 'nasce' : ''), h('div', { css: { height: faixaNova ? '36px' : '50px' } }),
-    h('h1', { class: primeira ? 'sobe d1' : '' }, t('Vamos preparar a IA pra trabalhar com você.')),
-    h('p', { class: `lead ${primeira ? 'sobe d2' : ''}` }, t('Daqui 20 minutos a IA está instalada no seu computador, lembrando do que você decidiu e fazendo o trabalho junto com você. O esforço é quase todo meu, só clica em começar e vem!')),
+    h('h1', { class: primeira ? 'sobe d1' : '' }, t('Você não precisa de um curso sobre IA')),
+    h('p', { class: `lead ${primeira ? 'sobe d2' : ''}` }, t('Tudo que você aprendeu na vida, aprendeu fazendo. Você só precisa da ferramenta certa pra começar hoje!')),
     h('div', { class: `botoes ${primeira ? 'sobe d3' : ''}` }, botao(t('Começar'), () => irPara('demo'), 'btn', { 'data-foco': true }))];
 }
 function telaDemo() {
@@ -186,7 +186,8 @@ function telaConfirma() {
         item(t('A IA'), t('Ela se chama Claude e vai trabalhar com você, direto no seu computador')),
         item('Obsidian', t('O caderno das suas notas e da memória da IA')),
         mac ? item('Maestri', t('A janela onde você conversa com ela')) : item(t('Atalho da IA'), t('Fica na sua Área de Trabalho')),
-        item('Google Chrome', t('Só se você ainda não tiver'))),
+        item('Google Chrome', t('Só se você ainda não tiver')),
+        item('GitHub', t('Guarda uma cópia do seu trabalho. A conta é de graça'))),
       h('div', { class: 'bloco' }, h('h3', { css: { 'margin-bottom': '4px' } }, t('O que você precisa deixar à mão')),
         item(t('Tomada e internet'), t('Leva uns 20 minutos')),
         mac ? item(t('A senha do computador'), t('Aquela que você digita na tela de bloqueio')) : item(t('Um Sim para o Windows'), t('Ele pode perguntar se pode instalar: é só clicar em Sim')),
@@ -347,10 +348,10 @@ function telaVideo() {
 const RESOLVER = () => t('O botão "Resolver o que falta" abre isso de novo pra você.');
 const DICAS_APP = () => [
   [/^Login no Claude/, t('Falta entrar na sua conta do Claude, a sua IA. Sem isso ela ainda não consegue conversar com você.')],
-  [/^Conta conectada|^Contas conectadas/, t('Falta entrar na sua conta do GitHub. É opcional.')],
+  [/^Conta conectada|^Contas conectadas/, t('Falta entrar na sua conta do GitHub. {resolver}', { resolver: RESOLVER() })],
   [/^git sabe/, t('Se resolve sozinho quando a conta do GitHub estiver conectada.')],
   [/^Login na Vercel/, t('Falta entrar na sua conta da Vercel. É opcional.')],
-  [/^Extensão Claude no Chrome/, t('Falta adicionar a extensão da IA no Chrome. É opcional.')],
+  [/^Extensão Claude no Chrome/, t('Falta adicionar a extensão da IA no Chrome. {resolver}', { resolver: RESOLVER() })],
   [/^Complementos do Obsidian ligados/, t('Falta clicar em "Trust author and enable plugins" no Obsidian. {resolver}', { resolver: RESOLVER() })],
 ];
 const TECNICO = /^rode:|^winget |claude-setuper|https?:\/\//;

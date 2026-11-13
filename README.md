@@ -47,16 +47,19 @@ Depois:
 
 ```
 claude-setuper doctor      # confere tudo e diz o que falta
+claude-setuper verificar   # confere e já instala ou conserta o que estiver faltando
 claude-setuper atualizar   # versão nova sem perder o que foi editado
 claude-setuper remover     # desfaz (as notas nunca são apagadas)
 claude-setuper exportar    # gera um perfil sem segredos a partir do setup atual
 ```
 
+GitHub e a extensão do Claude no Chrome entram em toda instalação, seja qual for o perfil ou o que a pessoa marcar. Na primeira vez que a IA abre e se apresenta, uma segunda janela de terminal roda o `claude-setuper verificar` sozinha: confere cada passo e, se faltar alguma coisa, chama o `instalar()` do próprio passo e confere de novo. Com tudo no lugar ela só mostra a lista e não vem pra frente da conversa.
+
 Opções úteis pra quem está ajudando alguém: `--assistido` grava um relatório em `~/Claude Setuper/relatorio.txt`; `--modulos obsidian,maestri` roda só esses; `--sim` aceita os defaults.
 
 ## Perfis (pra quem é)
 
-Logo depois do nome, o Setuper pergunta pra que a pessoa vai usar o Claude, a idade e como ela se dá com tecnologia e com IA. O perfil escolhido muda a pergunta sobre o trabalho, os pacotes que já vêm marcados, os passos que entram (o estudante não instala GitHub nem Vercel) e o que vai pro CLAUDE.md. A familiaridade define quanto o Claude explica. A pergunta de IA tem três níveis (nunca usou, usa o chat, já usa IA pra programar); quem já programa com IA recebe instruções técnicas e começa com a autonomia "faz tudo e me avisa". Abaixo de 18 anos some a opção "nunca pede licença" e entram cuidados com dados pessoais.
+Logo depois do nome, o Setuper pergunta pra que a pessoa vai usar o Claude, a idade e como ela se dá com tecnologia e com IA. O perfil escolhido muda a pergunta sobre o trabalho, os pacotes que já vêm marcados, os passos que entram (o estudante não instala a Vercel; GitHub e Chrome entram sempre) e o que vai pro CLAUDE.md. A familiaridade define quanto o Claude explica. A pergunta de IA tem três níveis (nunca usou, usa o chat, já usa IA pra programar); quem já programa com IA recebe instruções técnicas e começa com a autonomia "faz tudo e me avisa". Abaixo de 18 anos some a opção "nunca pede licença" e entram cuidados com dados pessoais.
 
 O perfil `estudante` existe pra que a IA não faça o trabalho no lugar de quem estuda. O Claude é instruído a nunca entregar a lição pronta e a treinar três habilidades: identificar padrões (perguntar o que a pessoa percebeu antes de explicar), usar padrões (exercício novo pra aplicar sozinho) e criar padrões (inventar exemplo, macete ou questão de prova). A skill `/estudar` segue esse ciclo.
 

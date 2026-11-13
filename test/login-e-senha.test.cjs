@@ -163,20 +163,56 @@ test('a ponte do app leva o código colado na tela até o login que está espera
 });
 
 test('a seta da barra de ícones é curta e fica na coluna do guia, no canto, e não atravessa a tela', async () => {
-  const { setaDoDock } = await app('setas.js');
+  const { setaDaBarra, ondeFicaABarra } = await app('setas.js');
   const tela = { x: 0, y: 0, width: 1512, height: 982 };
   const guia = { x: 1512 - 340 - 24, y: 24, width: 340, height: 420 };
-  const s = setaDoDock({ x: 756, y: 976, rotulo: 'Não achou a janela?', dock: true }, tela, guia);
+  const embaixo = ondeFicaABarra(tela, { x: 0, y: 33, width: 1512, height: 982 - 33 - 80 }, { plataforma: 'darwin' });
+  const s = setaDaBarra(embaixo, tela, guia);
   assert.strictEqual(s.x, guia.x + guia.width / 2); // embaixo do guia, no canto direito
   assert.strictEqual(s.de.x, s.x);
   assert.ok(s.y - s.de.y <= 220, `a seta tem ${s.y - s.de.y} px`);
   assert.ok(s.de.y > tela.height / 2, 'a seta começa na metade de baixo, longe do meio da tela');
+  assert.ok(s.y >= tela.height - 80, 'a ponta chega na barra');
   // Sem guia aberto, fica no canto direito também.
-  assert.ok(setaDoDock({ x: 756, y: 976, dock: true }, tela, null).x > tela.width * 0.75);
+  assert.ok(setaDaBarra(embaixo, tela, null).x > tela.width * 0.75);
   // Barra de ícones do lado esquerdo: seta curta, deitada.
-  const lado = setaDoDock({ x: 6, y: 491, dock: true }, tela, guia);
+  const lado = setaDaBarra(ondeFicaABarra(tela, { x: 70, y: 33, width: 1512 - 70, height: 982 - 33 }, { plataforma: 'darwin' }), tela, guia);
   assert.strictEqual(lado.de.y, lado.y);
-  assert.ok(lado.de.x - lado.x <= 150);
+  assert.ok(lado.de.x - lado.x <= 150 && lado.de.x > lado.x);
+  assert.ok(lado.x <= 70, 'a ponta fica na barra da esquerda');
+});
+
+test('a barra de ícones é achada no lado em que está: embaixo, do lado ou escondida', async () => {
+  const { ondeFicaABarra } = await app('setas.js');
+  const tela = { x: 0, y: 0, width: 1512, height: 982 };
+  const cheia = { x: 0, y: 33, width: 1512, height: 982 - 33 }; // só a barra de menus tira espaço: a de ícones está escondida
+  // Visível: vale a folga entre a tela e a área útil, e a faixa que acende tem a espessura da barra.
+  const embaixo = ondeFicaABarra(tela, { ...cheia, height: cheia.height - 80 }, { orientacao: 'left', plataforma: 'darwin' });
+  assert.deepStrictEqual([embaixo.lado, embaixo.oculta, embaixo.faixa.height, embaixo.faixa.y], ['baixo', false, 80, 982 - 80]);
+  const direita = ondeFicaABarra(tela, { ...cheia, width: 1512 - 64 }, { plataforma: 'darwin' });
+  assert.deepStrictEqual([direita.lado, direita.oculta, direita.faixa.x, direita.faixa.width], ['direita', false, 1512 - 64, 64]);
+  // Escondida: não sobra folga, então vale o lado escolhido nos ajustes do Mac. Antes a seta ia sempre pra baixo.
+  for (const [orientacao, lado] of [['left', 'esquerda'], ['right', 'direita'], ['bottom', 'baixo'], ['', 'baixo']]) {
+    const b = ondeFicaABarra(tela, cheia, { orientacao, plataforma: 'darwin' });
+    assert.deepStrictEqual([b.lado, b.oculta], [lado, true], `orientação ${orientacao || 'desconhecida'}`);
+  }
+  assert.strictEqual(ondeFicaABarra(tela, cheia, { orientacao: 'left', plataforma: 'darwin' }).faixa.x, 0);
+  // No Mac a folga de cima é a barra de menus. No Windows a barra de tarefas pode estar em cima.
+  assert.strictEqual(ondeFicaABarra(tela, cheia, { plataforma: 'darwin' }).oculta, true);
+  assert.strictEqual(ondeFicaABarra(tela, { x: 0, y: 48, width: 1512, height: 982 - 48 }, { plataforma: 'win32' }).lado, 'cima');
+});
+
+test('o guia vai pro canto que tapa menos a janela do passo, e fica quieto se não melhora', async () => {
+  const { cantoQueTapaMenos } = await app('setas.js');
+  const area = { x: 0, y: 33, width: 1512, height: 869 };
+  const guia = { x: 1512 - 300 - 24, y: 57, width: 300, height: 380 };
+  // Navegador ocupando a metade direita: o guia sai de cima dele e vai pra esquerda.
+  const canto = cantoQueTapaMenos(guia, area, [{ x: 756, y: 33, w: 756, h: 869 }]);
+  assert.ok(canto && canto.x < 100, JSON.stringify(canto));
+  // Navegador na tela inteira: nenhum canto resolve, então o guia não fica pulando.
+  assert.strictEqual(cantoQueTapaMenos(guia, area, [{ x: 0, y: 33, w: 1512, h: 869 }]), null);
+  // Já está fora da janela: não mexe.
+  assert.strictEqual(cantoQueTapaMenos(guia, area, [{ x: 0, y: 33, w: 700, h: 869 }]), null);
 });
 
 test('a janela de senha não tem seta pra barra de ícones: sem achar a janela, nenhuma seta', () => {

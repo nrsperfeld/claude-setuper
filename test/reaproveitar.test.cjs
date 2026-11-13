@@ -31,7 +31,8 @@ test('com respostas salvas, pergunta uma vez só e usa as mesmas', async () => {
     assert.strictEqual(perguntas.length, 1);
     assert.match(perguntas[0], /Ana/);
     assert.strictEqual(ctx.reaproveitou, true);
-    assert.deepStrictEqual(r.modulos, SALVO.modulos);
+    // As mesmas respostas, mais o GitHub e o Chrome, que agora entram sempre.
+    assert.deepStrictEqual(r.modulos, [...SALVO.modulos, 'github', 'chrome']);
   } finally {
     Object.assign(ui, original);
   }

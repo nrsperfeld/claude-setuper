@@ -51,6 +51,7 @@ Nada disto executou no sistema de verdade:
 - A listagem de janelas em `app/setas.js` (PowerShell e C#). **Desligada por padrão.** Nem o PowerShell nem o C# foram compilados.
 - `app.getFileIcon` para os ícones de programa, `shell.openPath` no `.cmd`, `focusable: false` no guia, `windowsHide` em todos os comandos.
 - Os módulos `src/modulos` no Windows: rodaram na VM em 24/10, pelo Terminal, mas mudaram desde então.
+- A segunda janela da conferência (12/11): na primeira abertura, o `Claude.cmd` roda `start "Claude Setuper" /min cmd /c "...\verificar.cmd"`. O `verificar.cmd` espera a instalação soltar a trava (`Claude Setuper\.instalando`), roda `claude-setuper verificar --segunda-janela` e, se faltar alguma coisa, o comando sai com código 3 e o `.cmd` se abre de novo numa janela normal (`--aberta`) pra consertar. Só os testes de texto passaram (`test/sempre-e-verificar.test.cjs`); o `start /min`, o `errorlevel` e as aspas não rodaram em Windows nenhum.
 
 ## O que precisa de um PC físico, por ordem de risco
 
