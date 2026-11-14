@@ -41,7 +41,13 @@ powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1" -
 
 Como ele se comporta: cada passo roda isolado (um erro não derruba o resto), as respostas e os passos concluídos ficam em `Claude Setuper\estado.json` (rodar de novo continua de onde parou), e no fim ele imprime a conferência completa. Parâmetros: `-Doctor` (só confere), `-Desde N`, `-Refazer`, `-Pacotes ...`, `-SemVercel -SemChrome -SemGitHub -SemRotinas`, `-Teste` (gera os arquivos numa pasta temporária sem instalar nada; roda até no Mac com `pwsh`). Erros das ferramentas (winget, npm, schtasks) aparecem em cinza na tela e ficam no `registro-fallback.log`.
 
-Por que não `irm | iex`: não aceita parâmetros, esconde a linha do erro e depende do cache do GitHub. Por isso os links apontam pra tag de versão, não pra `main`.
+Por que não `irm | iex`: não aceita parâmetros, esconde a linha do erro e depende do cache do GitHub. Por isso os links apontam pra tag de versão, não pra `main`. Mesmo assim o atalho funciona, porque tem gente que digita de cabeça:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/fallback-windows.ps1 | iex"
+```
+
+`install.ps1` e `fallback-windows.ps1` são ASCII puro, sem BOM (o teste `test/ps1-ascii.test.cjs` cobra). Acento dentro de texto se escreve `$([char]0x00E9)`. O motivo: pelo `irm | iex` a marca BOM vira caractere e quebra o primeiro comentário, e pelo `-File` o PowerShell 5.1 lê arquivo sem BOM como ANSI e estraga os acentos. ASCII é o único formato que serve aos dois.
 
 Depois:
 

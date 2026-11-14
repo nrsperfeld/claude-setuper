@@ -1,13 +1,13 @@
-﻿# Claude Setuper — instalador para Windows.
+# Claude Setuper - instalador para Windows.
 #   powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/install.ps1 | iex"
-# Garante o mínimo (winget, Git, Node), baixa o Setuper e entrega pro wizard em português.
+# Garante o minimo (winget, Git, Node), baixa o Setuper e entrega pro wizard em portugues.
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Repo = if ($env:CLAUDE_SETUPER_REPO) { $env:CLAUDE_SETUPER_REPO } else { 'nrsperfeld/claude-setuper' }
 $Dest = Join-Path $env:USERPROFILE 'Claude Setuper\app'
 
-function Passo($t) { Write-Host ""; Write-Host "▸ $t" -ForegroundColor Cyan }
-function Ok($t)    { Write-Host "✓ $t" -ForegroundColor Green }
+function Passo($t) { Write-Host ""; Write-Host "$([char]0x25B8) $t" -ForegroundColor Cyan }
+function Ok($t)    { Write-Host "$([char]0x2713) $t" -ForegroundColor Green }
 function AtualizarPath {
   $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
   foreach ($p in @("$env:ProgramFiles\nodejs", "$env:ProgramFiles\Git\cmd", "$env:ProgramFiles\GitHub CLI", "$env:APPDATA\npm", "$env:USERPROFILE\.local\bin", "$env:LOCALAPPDATA\Microsoft\WinGet\Links")) {
@@ -20,10 +20,10 @@ function GravarPathUsuario($pasta) {
 }
 function InstalarWinget($id) { & winget.exe install -e --id $id --source winget --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Null; AtualizarPath }
 
-# Se algo quebrar, explica em português em vez de só deixar o erro vermelho na tela.
+# Se algo quebrar, explica em portugues em vez de so deixar o erro vermelho na tela.
 trap {
   Write-Host ""
-  Write-Host "Não consegui terminar este passo: $($_.Exception.Message)" -ForegroundColor Red
+  Write-Host "N$([char]0x00E3)o consegui terminar este passo: $($_.Exception.Message)" -ForegroundColor Red
   Write-Host "Confere a internet e roda o instalador de novo, ele continua de onde parou. Se repetir, manda um print desta tela pra quem te passou o link." -ForegroundColor Yellow
   Read-Host "Aperta Enter pra fechar" | Out-Null
   exit 1
@@ -33,12 +33,12 @@ Clear-Host
 Write-Host "Claude Setuper" -ForegroundColor White
 try {
   if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "Esta janela está como Administrador. O instalador funciona melhor numa janela comum (instala tudo na sua conta)." -ForegroundColor Yellow
+    Write-Host "Esta janela est$([char]0x00E1) como Administrador. O instalador funciona melhor numa janela comum (instala tudo na sua conta)." -ForegroundColor Yellow
     Write-Host "Aperta Enter pra seguir assim mesmo, ou fecha e abre o PowerShell normal." -ForegroundColor Yellow
     Read-Host | Out-Null
   }
 } catch {}
-Write-Host "Vou preparar o seu computador. Leva alguns minutos e eu aviso sempre que precisar de você."
+Write-Host "Vou preparar o seu computador. Leva alguns minutos e eu aviso sempre que precisar de voc$([char]0x00EA)."
 
 if (-not (Tem 'winget.exe')) {
   Passo "Preciso do 'Instalador de Aplicativo' da Microsoft, que vem no Windows 10 e 11."
@@ -49,18 +49,18 @@ if (-not (Tem 'winget.exe')) {
 }
 Ok "winget pronto"
 
-if (-not (Tem 'git')) { Passo "Instalando o Git (uns 2 minutos, é normal)."; InstalarWinget 'Git.Git' }
+if (-not (Tem 'git')) { Passo "Instalando o Git (uns 2 minutos, $([char]0x00E9) normal)."; InstalarWinget 'Git.Git' }
 Ok "Git pronto"
 
-if (-not (Tem 'node')) { Passo "Instalando o Node (uns 2 minutos, é normal)."; InstalarWinget 'OpenJS.NodeJS.LTS' }
+if (-not (Tem 'node')) { Passo "Instalando o Node (uns 2 minutos, $([char]0x00E9) normal)."; InstalarWinget 'OpenJS.NodeJS.LTS' }
 AtualizarPath
-if (-not (Tem 'node')) { Write-Host "O Node não apareceu no caminho. Fecha esta janela, abre de novo e roda o instalador outra vez."; Read-Host "Enter pra fechar"; exit 1 }
+if (-not (Tem 'node')) { Write-Host "O Node n$([char]0x00E3)o apareceu no caminho. Fecha esta janela, abre de novo e roda o instalador outra vez."; Read-Host "Enter pra fechar"; exit 1 }
 Ok "Node $(node -v) pronto"
 
 Passo "Baixando o Claude Setuper."
 New-Item -ItemType Directory -Force -Path (Split-Path $Dest) | Out-Null
 if ($env:CLAUDE_SETUPER_LOCAL) {
-  # Só pra teste: usa uma cópia local do Setuper em vez de baixar do GitHub.
+  # So pra teste: usa uma copia local do Setuper em vez de baixar do GitHub.
   if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
   Copy-Item -Recurse $env:CLAUDE_SETUPER_LOCAL $Dest
 } elseif (Test-Path (Join-Path $Dest '.git')) {
@@ -76,7 +76,7 @@ Pop-Location
 foreach ($pasta in @("$env:USERPROFILE\.local\bin", "$env:APPDATA\npm")) { if (Test-Path $pasta) { GravarPathUsuario $pasta } }
 Ok "Claude Setuper baixado"
 
-# Windows Terminal mostra os acentos e os símbolos direito; o cmd antigo nem sempre.
+# Windows Terminal mostra os acentos e os simbolos direito; o cmd antigo nem sempre.
 $wt = Get-Command wt -ErrorAction SilentlyContinue
 if ($wt -and -not $env:WT_SESSION) {
   Start-Process wt -ArgumentList "node `"$Dest\bin\claude-setuper.js`" $args"

@@ -1,6 +1,6 @@
-﻿<#
-Claude Setuper — instalador para Windows num arquivo só (sem o wizard em Node).
-Faz a instalação inteira direto do PowerShell, passo a passo, e confere tudo no fim.
+<#
+Claude Setuper - instalador para Windows num arquivo so (sem o wizard em Node).
+Faz a instalacao inteira direto do PowerShell, passo a passo, e confere tudo no fim.
 
 Rodar (baixa e executa; pergunta nome, trabalho e autonomia na primeira vez):
   irm https://raw.githubusercontent.com/nrsperfeld/claude-setuper/main/fallback-windows.ps1 -OutFile "$env:USERPROFILE\claude-setuper.ps1"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1"
@@ -8,16 +8,16 @@ Rodar (baixa e executa; pergunta nome, trabalho e autonomia na primeira vez):
 Rodar sem perguntas:
   powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\claude-setuper.ps1" -Nome "Maria" -Trabalho "tenho uma loja de roupas" -Autonomia equilibrado
 
-Parâmetros:
+Parametros:
   -Nome, -Trabalho, -Autonomia (cauteloso | equilibrado | confiante | livre), -Pacotes (escrita,negocios,pesquisa,criador,dev)
   -SemVercel -SemChrome -SemGitHub -SemRotinas    pula essas partes
-  -SemLogin                                       não para no login do Claude (a pessoa faz depois com: claude auth login)
-  -Desde N                                        começa do passo N (1 a 9)
-  -Refazer                                        ignora o que já está marcado como feito e roda tudo de novo
-  -Doctor                                         só confere o que está instalado e sai
-  -Teste [-PastaTeste X]                          não instala nada; gera os arquivos numa pasta de teste
+  -SemLogin                                       nao para no login do Claude (a pessoa faz depois com: claude auth login)
+  -Desde N                                        comeca do passo N (1 a 9)
+  -Refazer                                        ignora o que ja esta marcado como feito e roda tudo de novo
+  -Doctor                                         so confere o que esta instalado e sai
+  -Teste [-PastaTeste X]                          nao instala nada; gera os arquivos numa pasta de teste
 
-Ele lembra das respostas e dos passos concluídos em "%USERPROFILE%\Claude Setuper\estado.json".
+Ele lembra das respostas e dos passos concluidos em "%USERPROFILE%\Claude Setuper\estado.json".
 Rodar de novo continua de onde parou. Registro completo em "%USERPROFILE%\Claude Setuper\registro-fallback.log".
 #>
 [CmdletBinding()]
@@ -34,7 +34,7 @@ param(
 $ErrorActionPreference = 'Continue'
 Set-StrictMode -Off
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
-$Versao = '1.1.3'
+$Versao = '1.1.4'
 $Repo = 'nrsperfeld/claude-setuper'
 $Utf8 = New-Object System.Text.UTF8Encoding $false
 
@@ -51,7 +51,7 @@ if ($Teste) {
 }
 $ClaudeDir = Join-Path $Home_ '.claude'
 $PastaSetuper = Join-Path $Home_ 'Claude Setuper'
-$Vault = Join-Path (Join-Path $Home_ 'Documents') 'Segundo Cérebro'
+$Vault = Join-Path (Join-Path $Home_ 'Documents') "Segundo C$([char]0x00E9)rebro"
 $Desktop = Join-Path $Home_ 'Desktop'
 $RotDir = Join-Path $PastaSetuper 'rotinas'
 $TplDir = Join-Path $PastaSetuper 'templates'
@@ -61,12 +61,12 @@ $Log = Join-Path $PastaSetuper 'registro-fallback.log'
 try { Start-Transcript -Path $Log -Append | Out-Null } catch {}
 
 # ============================================================ utilidades
-function Passo($t) { Write-Host ""; Write-Host "▸ $t" -ForegroundColor Cyan }
-function Ok($t)    { Write-Host "  ✓ $t" -ForegroundColor Green }
+function Passo($t) { Write-Host ""; Write-Host "$([char]0x25B8) $t" -ForegroundColor Cyan }
+function Ok($t)    { Write-Host "  $([char]0x2713) $t" -ForegroundColor Green }
 function Aviso($t) { Write-Host "  ! $t" -ForegroundColor Yellow }
 function Cinza($t) { Write-Host "    $t" -ForegroundColor DarkGray }
 function Pausa($titulo, $linhas) {
-  Write-Host ""; Write-Host "  ✋ $titulo" -ForegroundColor Yellow
+  Write-Host ""; Write-Host "  $([char]0x270B) $titulo" -ForegroundColor Yellow
   foreach ($l in $linhas) { Write-Host "     $l" }
 }
 function Tem($cmd) { return [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
@@ -80,15 +80,15 @@ function Json($obj) { return ($obj | ConvertTo-Json -Depth 20) }
 function Posix($p) { return ($p -replace '\\', '/') }
 function Ultimas($texto, $n) { return ((($texto -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -Last $n) -join ' | ') }
 
-# Roda um programa, guarda a saída e, se falhar, mostra as últimas linhas. Devolve $true/$false.
+# Roda um programa, guarda a saida e, se falhar, mostra as ultimas linhas. Devolve $true/$false.
 function Rodar($nome, $cmd, [string[]]$argumentos, [switch]$Mostrar) {
-  # ($args é variável automática do PowerShell; usar esse nome como parâmetro engolia os argumentos)
+  # ($args e variavel automatica do PowerShell; usar esse nome como parametro engolia os argumentos)
   if ($Teste) { return $true }
   try {
     $saida = (& $cmd @argumentos 2>&1 | Out-String)
     $codigo = $LASTEXITCODE
   } catch { $saida = $_.Exception.Message; $codigo = 1 }
-  if ($Mostrar -or $codigo -ne 0) { Cinza "$nome → código $codigo. $(Ultimas $saida 2)" }
+  if ($Mostrar -or $codigo -ne 0) { Cinza "$nome $([char]0x2192) c$([char]0x00F3)digo $codigo. $(Ultimas $saida 2)" }
   return ($codigo -eq 0)
 }
 function GravarPathUsuario($pasta) {
@@ -105,11 +105,11 @@ function AtualizarPath {
 }
 function InstalarWinget($id, $nome) {
   if ($Teste) { return $true }
-  Passo "Instalando $nome (pode levar uns minutos, é normal)."
+  Passo "Instalando $nome (pode levar uns minutos, $([char]0x00E9) normal)."
   $saida = (& winget.exe install -e --id $id --source winget --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-String)
   $codigo = $LASTEXITCODE
   AtualizarPath
-  if ($codigo -ne 0 -and $saida -notmatch 'already installed|já está instalado') { Aviso "winget não conseguiu ($codigo): $(Ultimas $saida 2)"; return $false }
+  if ($codigo -ne 0 -and $saida -notmatch "already installed|j$([char]0x00E1) est$([char]0x00E1) instalado") { Aviso "winget n$([char]0x00E3)o conseguiu ($codigo): $(Ultimas $saida 2)"; return $false }
   Cinza (Ultimas $saida 1)
   return $true
 }
@@ -123,7 +123,7 @@ function InstalarNodeDireto {
     $arq = Join-Path $PastaSetuper "node-$($lts.version)-$arch.msi"
     BaixarArquivo "https://nodejs.org/dist/$($lts.version)/node-$($lts.version)-$arch.msi" $arq
     $p = Start-Process msiexec.exe -ArgumentList "/i `"$arq`" /qn /norestart" -Wait -PassThru
-    if ($p.ExitCode -ne 0) { Cinza "msiexec → código $($p.ExitCode)" }
+    if ($p.ExitCode -ne 0) { Cinza "msiexec $([char]0x2192) c$([char]0x00F3)digo $($p.ExitCode)" }
     AtualizarPath
     return (Test-Path "$env:ProgramFiles\nodejs\node.exe")
   } catch { Aviso "Falhou o Node direto: $($_.Exception.Message)"; return $false }
@@ -138,7 +138,7 @@ function InstalarGitDireto {
     $arq = Join-Path $PastaSetuper $a.name
     BaixarArquivo $a.browser_download_url $arq
     $p = Start-Process $arq -ArgumentList '/VERYSILENT /NORESTART /NOCANCEL /SP-' -Wait -PassThru
-    if ($p.ExitCode -ne 0) { Cinza "instalador do Git → código $($p.ExitCode)" }
+    if ($p.ExitCode -ne 0) { Cinza "instalador do Git $([char]0x2192) c$([char]0x00F3)digo $($p.ExitCode)" }
     AtualizarPath
     return (Test-Path "$env:ProgramFiles\Git\cmd\git.exe")
   } catch { Aviso "Falhou o Git direto: $($_.Exception.Message)"; return $false }
@@ -203,7 +203,7 @@ function Tpl($rel, $extras) {
   return ($txt -replace '\{\{\w+\}\}', '')
 }
 
-# ============================================================ doctor (conferência)
+# ============================================================ doctor (conferencia)
 function Conferir {
   $itens = New-Object System.Collections.ArrayList
   function add($item, $ok, $dica) { [void]$itens.Add([pscustomobject]@{ item = $item; ok = [bool]$ok; dica = $dica }) }
@@ -214,7 +214,7 @@ function Conferir {
   add 'Claude Code' (Tem 'claude') 'rode: irm https://claude.ai/install.ps1 | iex'
   if (-not $SemLogin) { add 'Login no Claude' (Logado) 'rode: claude auth login' }
   $pathUser = [string][System.Environment]::GetEnvironmentVariable('Path', 'User')
-  add 'PATH do usuário tem .local\bin' (($pathUser -split ';') -contains "$env:USERPROFILE\.local\bin") 'rode o instalador de novo com -Desde 1 -Refazer'
+  add "PATH do usu$([char]0x00E1)rio tem .local\bin" (($pathUser -split ';') -contains "$env:USERPROFILE\.local\bin") 'rode o instalador de novo com -Desde 1 -Refazer'
   $md = Join-Path $ClaudeDir 'CLAUDE.md'
   add 'CLAUDE.md' ((Test-Path $md) -and ((Get-Content $md -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) -like '*claude-setuper*')) 'rode com -Desde 2 -Refazer'
   $settingsOk = $false
@@ -222,8 +222,8 @@ function Conferir {
   add 'settings.json com hooks e cofre' $settingsOk 'rode com -Desde 2 -Refazer'
   $hooksOk = $true
   foreach ($h in @('cerebro-inicio.cjs', 'cerebro-fim.cjs', 'cerebro-nota.cjs')) { if (-not (Test-Path (Join-Path (Join-Path $ClaudeDir 'hooks') $h))) { $hooksOk = $false } }
-  add 'Hooks do segundo cérebro' $hooksOk 'rode com -Desde 2 -Refazer'
-  add 'Skills do cérebro (/decisao, /retro...)' (Test-Path (Join-Path $ClaudeDir 'skills\retro\SKILL.md')) 'rode com -Desde 2 -Refazer'
+  add "Hooks do segundo c$([char]0x00E9)rebro" $hooksOk 'rode com -Desde 2 -Refazer'
+  add "Skills do c$([char]0x00E9)rebro (/decisao, /retro...)" (Test-Path (Join-Path $ClaudeDir 'skills\retro\SKILL.md')) 'rode com -Desde 2 -Refazer'
   add 'Obsidian instalado' ([bool](ObsidianExe)) 'rode: winget install -e --id Obsidian.Obsidian --source winget'
   add 'Cofre com pasta CLAUDE/' (Test-Path (Join-Path $Vault 'CLAUDE\projetos')) 'rode com -Desde 3 -Refazer'
   add 'Plugins Dataview e Templater baixados' ((Test-Path (Join-Path $Vault '.obsidian\plugins\dataview\main.js')) -and (Test-Path (Join-Path $Vault '.obsidian\plugins\templater-obsidian\main.js'))) 'rode com -Desde 3 -Refazer'
@@ -237,7 +237,7 @@ function Conferir {
   }
   if (-not $SemChrome) {
     add 'Google Chrome' ([bool](ChromeExe)) 'rode com -Desde 5 -Refazer'
-    add 'Extensão Claude no Chrome' (ExtensaoChrome) "instale em https://chromewebstore.google.com/detail/$ExtId"
+    add "Extens$([char]0x00E3)o Claude no Chrome" (ExtensaoChrome) "instale em https://chromewebstore.google.com/detail/$ExtId"
   }
   if (-not $SemVercel) {
     add 'Vercel CLI' (Tem 'vercel') 'rode com -Desde 6 -Refazer'
@@ -252,53 +252,53 @@ function Conferir {
       add "Tarefa agendada: $r" $t 'rode com -Desde 8 -Refazer'
     }
   }
-  add 'Atalho "Claude" na Área de Trabalho' (Test-Path (Join-Path $Desktop 'Claude.cmd')) 'rode com -Desde 9 -Refazer'
+  add "Atalho `"Claude`" na $([char]0x00C1)rea de Trabalho" (Test-Path (Join-Path $Desktop 'Claude.cmd')) 'rode com -Desde 9 -Refazer'
   return $itens
 }
 function MostrarDoctor {
-  Write-Host ""; Write-Host "Conferência final" -ForegroundColor White
+  Write-Host ""; Write-Host "Confer$([char]0x00EA)ncia final" -ForegroundColor White
   $itens = Conferir
   $faltam = 0
   foreach ($i in $itens) {
-    if ($i.ok) { Write-Host "  ✓ $($i.item)" -ForegroundColor Green }
-    else { $faltam++; Write-Host "  ✗ $($i.item)  → $($i.dica)" -ForegroundColor Red }
+    if ($i.ok) { Write-Host "  $([char]0x2713) $($i.item)" -ForegroundColor Green }
+    else { $faltam++; Write-Host "  $([char]0x2717) $($i.item)  $([char]0x2192) $($i.dica)" -ForegroundColor Red }
   }
   Write-Host ""
-  if ($faltam -eq 0) { Write-Host "Tudo no lugar." -ForegroundColor Green } else { Write-Host "$faltam item(ns) pedem atenção. A dica ao lado diz o que fazer." -ForegroundColor Yellow }
+  if ($faltam -eq 0) { Write-Host "Tudo no lugar." -ForegroundColor Green } else { Write-Host "$faltam item(ns) pedem aten$([char]0x00E7)$([char]0x00E3)o. A dica ao lado diz o que fazer." -ForegroundColor Yellow }
   return $faltam
 }
 
-# ============================================================ começo
+# ============================================================ comeco
 Clear-Host
 Write-Host "Claude Setuper $Versao (instalador para Windows)" -ForegroundColor White
-if ($Teste) { Write-Host "MODO DE TESTE: nada é instalado; arquivos vão para $Home_" -ForegroundColor Yellow }
+if ($Teste) { Write-Host "MODO DE TESTE: nada $([char]0x00E9) instalado; arquivos v$([char]0x00E3)o para $Home_" -ForegroundColor Yellow }
 
 if ($Doctor) { $n = MostrarDoctor; try { Stop-Transcript | Out-Null } catch {}; exit $n }
 
 if ((Elevado) -and -not $Teste) {
-  Pausa "Esta janela está como Administrador" @(
-    'O instalador funciona melhor numa janela comum, porque instala tudo na sua conta de usuário.',
+  Pausa "Esta janela est$([char]0x00E1) como Administrador" @(
+    "O instalador funciona melhor numa janela comum, porque instala tudo na sua conta de usu$([char]0x00E1)rio.",
     'Recomendo fechar, abrir o PowerShell normal (sem "Executar como administrador") e rodar de novo.',
     'Se quiser seguir assim mesmo, aperta Enter. Pra sair, fecha a janela.')
   Read-Host | Out-Null
 }
 
-Write-Host "Vou preparar o seu Claude. Leva uns 10 minutos e eu aviso toda vez que precisar de você."
+Write-Host "Vou preparar o seu Claude. Leva uns 10 minutos e eu aviso toda vez que precisar de voc$([char]0x00EA)."
 Write-Host ""
 
-# respostas: parâmetro > estado salvo > pergunta
+# respostas: parametro > estado salvo > pergunta
 if ($Nome) { $Resp.nome = $Nome }
-if (-not $Resp.nome) { $Resp.nome = Read-Host "Como você quer que o Claude te chame?" }
+if (-not $Resp.nome) { $Resp.nome = Read-Host "Como voc$([char]0x00EA) quer que o Claude te chame?" }
 if (-not $Resp.nome) { $Resp.nome = $env:USERNAME }
 if ($Trabalho) { $Resp.trabalho = $Trabalho }
-if (-not $Resp.trabalho) { $Resp.trabalho = Read-Host "Com o que você trabalha? Conta em uma frase" }
+if (-not $Resp.trabalho) { $Resp.trabalho = Read-Host "Com o que voc$([char]0x00EA) trabalha? Conta em uma frase" }
 if ($Autonomia) { $Resp.autonomia = $Autonomia }
 if (-not $Resp.autonomia) {
-  Write-Host "Como você prefere que o Claude trabalhe?"
+  Write-Host "Como voc$([char]0x00EA) prefere que o Claude trabalhe?"
   Write-Host "  1) Me pergunta antes de cada coisa"
-  Write-Host "  2) Faz o básico sozinho e me pergunta no que importa"
+  Write-Host "  2) Faz o b$([char]0x00E1)sico sozinho e me pergunta no que importa"
   Write-Host "  3) Faz tudo e me avisa no fim"
-  Write-Host "  4) Nunca me pede licença pra nada (recomendado)"
+  Write-Host "  4) Nunca me pede licen$([char]0x00E7)a pra nada (recomendado)"
   $op = Read-Host "Digite 1, 2, 3 ou 4"
   $Resp.autonomia = @{ '1' = 'cauteloso'; '2' = 'equilibrado'; '3' = 'confiante'; '4' = 'livre' }[$op]
   if (-not $Resp.autonomia) { $Resp.autonomia = 'livre' }
@@ -309,58 +309,58 @@ $Resp.vault = $Vault
 SalvarEstado
 
 $AutonomiaTexto = @{
-  cauteloso   = 'Pergunte antes de qualquer ação que altere arquivos ou rode comandos. Prefira explicar o que vai fazer e esperar o ok.'
-  equilibrado = 'Faça o básico sozinho (ler, escrever, organizar) e pergunte só no que for difícil de desfazer ou que mude a direção do trabalho.'
-  confiante   = 'Faça o trabalho inteiro sem pedir confirmação, e no fim conte o que fez, em linguagem simples.'
-  livre       = 'Faça o trabalho inteiro sem pedir confirmação, e no fim conte o que fez, em linguagem simples. Antes de apagar qualquer coisa, faça uma cópia.'
+  cauteloso   = "Pergunte antes de qualquer a$([char]0x00E7)$([char]0x00E3)o que altere arquivos ou rode comandos. Prefira explicar o que vai fazer e esperar o ok."
+  equilibrado = "Fa$([char]0x00E7)a o b$([char]0x00E1)sico sozinho (ler, escrever, organizar) e pergunte s$([char]0x00F3) no que for dif$([char]0x00ED)cil de desfazer ou que mude a dire$([char]0x00E7)$([char]0x00E3)o do trabalho."
+  confiante   = "Fa$([char]0x00E7)a o trabalho inteiro sem pedir confirma$([char]0x00E7)$([char]0x00E3)o, e no fim conte o que fez, em linguagem simples."
+  livre       = "Fa$([char]0x00E7)a o trabalho inteiro sem pedir confirma$([char]0x00E7)$([char]0x00E3)o, e no fim conte o que fez, em linguagem simples. Antes de apagar qualquer coisa, fa$([char]0x00E7)a uma c$([char]0x00F3)pia."
 }[$Resp.autonomia]
 $TrabalhoSeguro = (($Resp.trabalho -replace '["''`$%&|<>^!\\]', ' ') -replace '\s+', ' ').Trim()
 if (-not $TrabalhoSeguro) { $TrabalhoSeguro = 'o meu trabalho do dia a dia' }
 $Vars = @{
   nome = $Resp.nome; trabalho = $Resp.trabalho; trabalhoSeguro = $TrabalhoSeguro; autonomia = $Resp.autonomia; autonomiaTexto = $AutonomiaTexto
-  vault = $Vault; data = (Get-Date).ToString('dd/MM/yyyy'); comoAbrir = 'pelo atalho "Claude" na sua Área de Trabalho'
+  vault = $Vault; data = (Get-Date).ToString('dd/MM/yyyy'); comoAbrir = "pelo atalho `"Claude`" na sua $([char]0x00C1)rea de Trabalho"
 }
-Ok "Pronto, $($Resp.nome). Agora é comigo."
+Ok "Pronto, $($Resp.nome). Agora $([char]0x00E9) comigo."
 
 # ============================================================ os passos
 $Passos = @()
 
-$Passos += @{ id = 'base'; n = 1; nome = 'Base da máquina'; acao = {
+$Passos += @{ id = 'base'; n = 1; nome = "Base da m$([char]0x00E1)quina"; acao = {
   if ($Teste) { return }
   if (-not (Tem 'winget.exe')) {
     Pausa "Preciso do 'Instalador de Aplicativo' da Microsoft" @('Vou abrir a Microsoft Store. Clica em Instalar (ou Atualizar), fecha a loja e roda este script de novo.')
     Start-Process 'ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1'
-    throw 'winget não está disponível'
+    throw "winget n$([char]0x00E3)o est$([char]0x00E1) dispon$([char]0x00ED)vel"
   }
   AtualizarPath
   if (-not (Tem 'git')) { $null = InstalarWinget 'Git.Git' 'o Git'; if (-not (Tem 'git')) { $null = InstalarGitDireto } }
-  if (-not (Tem 'git')) { throw 'não consegui instalar o Git, que o Claude Code exige' }
+  if (-not (Tem 'git')) { throw "n$([char]0x00E3)o consegui instalar o Git, que o Claude Code exige" }
   Ok "Git pronto ($(git --version))"
   if (-not (Tem 'node')) { $null = InstalarWinget 'OpenJS.NodeJS.LTS' 'o Node'; if (-not (Tem 'node') -and -not (Test-Path "$env:ProgramFiles\nodejs\node.exe")) { $null = InstalarNodeDireto } }
   AtualizarPath
-  if (-not (Tem 'node')) { throw 'o Node foi instalado mas esta janela ainda não o enxerga: fecha a janela, abre de novo e roda o mesmo comando' }
+  if (-not (Tem 'node')) { throw "o Node foi instalado mas esta janela ainda n$([char]0x00E3)o o enxerga: fecha a janela, abre de novo e roda o mesmo comando" }
   Ok "Node pronto ($(node -v))"
   if (-not (Tem 'claude')) {
     Passo "Instalando o Claude Code."
-    # Em processo separado: o instalador oficial liga Set-StrictMode e isso não pode vazar pra cá.
+    # Em processo separado: o instalador oficial liga Set-StrictMode e isso nao pode vazar pra ca.
     $null = Rodar 'instalador do Claude' 'powershell.exe' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'irm https://claude.ai/install.ps1 | iex')
     Set-StrictMode -Off
     AtualizarPath
-    if (-not (Tem 'claude')) { Aviso "Instalador oficial não deixou o claude no caminho; tentando pelo npm."; $null = Rodar 'npm' 'npm.cmd' @('install', '-g', '@anthropic-ai/claude-code'); AtualizarPath }
+    if (-not (Tem 'claude')) { Aviso "Instalador oficial n$([char]0x00E3)o deixou o claude no caminho; tentando pelo npm."; $null = Rodar 'npm' 'npm.cmd' @('install', '-g', '@anthropic-ai/claude-code'); AtualizarPath }
   }
   foreach ($pasta in @("$env:USERPROFILE\.local\bin", "$env:APPDATA\npm")) { if (Test-Path $pasta) { GravarPathUsuario $pasta } }
-  if (-not (Tem 'claude')) { throw 'não consegui instalar o Claude Code' }
+  if (-not (Tem 'claude')) { throw "n$([char]0x00E3)o consegui instalar o Claude Code" }
   Ok "Claude Code pronto ($(claude --version 2>$null))"
-  if (Logado) { Ok "Você já está logado no Claude" }
+  if (Logado) { Ok "Voc$([char]0x00EA) j$([char]0x00E1) est$([char]0x00E1) logado no Claude" }
   elseif ($SemLogin) { Aviso "Login do Claude pulado (-SemLogin). Depois: claude auth login" }
   else {
-    Pausa "Vou abrir o navegador pra você entrar na sua conta do Claude" @('Entra com o e-mail que você usa no Claude. Se não tem conta, cria ali mesmo.', 'Depois volta pra cá, eu continuo sozinho.')
+    Pausa "Vou abrir o navegador pra voc$([char]0x00EA) entrar na sua conta do Claude" @("Entra com o e-mail que voc$([char]0x00EA) usa no Claude. Se n$([char]0x00E3)o tem conta, cria ali mesmo.", "Depois volta pra c$([char]0x00E1), eu continuo sozinho.")
     claude auth login
-    if (Esperar { Logado } 600) { Ok "Login no Claude feito" } else { throw 'o login no Claude não foi concluído (rode depois: claude auth login)' }
+    if (Esperar { Logado } 600) { Ok "Login no Claude feito" } else { throw "o login no Claude n$([char]0x00E3)o foi conclu$([char]0x00ED)do (rode depois: claude auth login)" }
   }
 } }
 
-$Passos += @{ id = 'nucleo'; n = 2; nome = 'Ensinando o Claude quem você é'; acao = {
+$Passos += @{ id = 'nucleo'; n = 2; nome = "Ensinando o Claude quem voc$([char]0x00EA) $([char]0x00E9)"; acao = {
   BaixarTemplates
   $claudeMd = Join-Path $ClaudeDir 'CLAUDE.md'
   if (Test-Path $claudeMd) {
@@ -399,25 +399,25 @@ $Passos += @{ id = 'nucleo'; n = 2; nome = 'Ensinando o Claude quem você é'; a
   Escrever $settingsPath (Json $novo)
   foreach ($s in @('decisao', 'padrao', 'feedback', 'descoberta', 'retro', 'lembrar')) { Escrever (Join-Path (Join-Path (Join-Path $ClaudeDir 'skills') $s) 'SKILL.md') (Tpl "skills/$s.md") }
   EscreverSeFaltar (Join-Path (Join-Path $ClaudeDir 'memoria') 'MEMORIA.md') (Tpl 'memoria/MEMORIA.md')
-  Ok "CLAUDE.md, permissões, hooks e comandos do segundo cérebro no lugar"
+  Ok "CLAUDE.md, permiss$([char]0x00F5)es, hooks e comandos do segundo c$([char]0x00E9)rebro no lugar"
 } }
 
-$Passos += @{ id = 'obsidian'; n = 3; nome = 'Segundo cérebro (Obsidian)'; acao = {
+$Passos += @{ id = 'obsidian'; n = 3; nome = "Segundo c$([char]0x00E9)rebro (Obsidian)"; acao = {
   BaixarTemplates
-  if (ObsidianExe) { Ok "Obsidian já está instalado" } elseif (-not $Teste) { if (-not (InstalarWinget 'Obsidian.Obsidian' 'o Obsidian, o seu segundo cérebro')) { Aviso "O app não instalou agora; o cofre fica pronto mesmo assim" } }
+  if (ObsidianExe) { Ok "Obsidian j$([char]0x00E1) est$([char]0x00E1) instalado" } elseif (-not $Teste) { if (-not (InstalarWinget 'Obsidian.Obsidian' "o Obsidian, o seu segundo c$([char]0x00E9)rebro")) { Aviso "O app n$([char]0x00E3)o instalou agora; o cofre fica pronto mesmo assim" } }
   # O instalador abre o Obsidian sozinho e ele reescreveria o obsidian.json por cima do nosso registro.
   if (-not $Teste) { Start-Sleep -Seconds 3; Get-Process Obsidian -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue }
-  $pastas = [ordered]@{ feedback = 'feedback'; 'decisões' = 'decisão'; 'padrões' = 'padrão'; descobertas = 'descoberta'; projetos = 'projeto' }
+  $pastas = [ordered]@{ feedback = 'feedback'; "decis$([char]0x00F5)es" = "decis$([char]0x00E3)o"; "padr$([char]0x00F5)es" = "padr$([char]0x00E3)o"; descobertas = 'descoberta'; projetos = 'projeto' }
   foreach ($p in $pastas.Keys) {
     $d = Join-Path (Join-Path $Vault 'CLAUDE') $p
     New-Item -ItemType Directory -Force -Path $d | Out-Null
     EscreverSeFaltar (Join-Path $d 'README.md') (Tpl 'vault/README-pasta.md' @{ pasta = $p; tag = $pastas[$p] })
   }
-  foreach ($p in @('1. PROJETOS', '2. ÁREAS', '3. RECURSOS', '4. ARQUIVO', 'TEMPLATES', '_anexos')) { New-Item -ItemType Directory -Force -Path (Join-Path $Vault $p) | Out-Null }
+  foreach ($p in @('1. PROJETOS', "2. $([char]0x00C1)REAS", '3. RECURSOS', '4. ARQUIVO', 'TEMPLATES', '_anexos')) { New-Item -ItemType Directory -Force -Path (Join-Path $Vault $p) | Out-Null }
   EscreverSeFaltar (Join-Path $Vault 'Comece aqui.md') (Tpl 'vault/Comece aqui.md')
   EscreverSeFaltar (Join-Path $Vault 'Painel do Claude.md') (Tpl 'vault/Painel do Claude.md')
   EscreverSeFaltar (Join-Path (Join-Path $Vault 'TEMPLATES') 'Nota do Claude.md') (Tpl 'vault/template-nota.md')
-  EscreverSeFaltar (Join-Path (Join-Path (Join-Path $Vault 'CLAUDE') 'padrões') 'Como falar comigo.md') (Tpl 'vault/padrao-inicial.md')
+  EscreverSeFaltar (Join-Path (Join-Path (Join-Path $Vault 'CLAUDE') "padr$([char]0x00F5)es") 'Como falar comigo.md') (Tpl 'vault/padrao-inicial.md')
   $obs = Join-Path $Vault '.obsidian'
   EscreverSeFaltar (Join-Path $obs 'app.json') (Json @{ attachmentFolderPath = '_anexos'; newFileLocation = 'root'; useMarkdownLinks = $false; alwaysUpdateLinks = $true; showUnsupportedFiles = $false })
   EscreverSeFaltar (Join-Path $obs 'appearance.json') (Json @{ theme = 'obsidian'; baseFontSize = 16; accentColor = '#c8873c'; showViewHeader = $true })
@@ -437,7 +437,7 @@ $Passos += @{ id = 'obsidian'; n = 3; nome = 'Segundo cérebro (Obsidian)'; acao
         if ($a) { BaixarArquivo $a.browser_download_url (Join-Path $dest $f) }
       }
       Ok "Plugin $($pl.id) baixado"
-    } catch { Aviso "Não consegui baixar o plugin $($pl.id): $($_.Exception.Message)" }
+    } catch { Aviso "N$([char]0x00E3)o consegui baixar o plugin $($pl.id): $($_.Exception.Message)" }
   }
   $cfgObs = Join-Path (Join-Path $AppData 'obsidian') 'obsidian.json'
   $reg = $null
@@ -461,18 +461,18 @@ $Passos += @{ id = 'obsidian'; n = 3; nome = 'Segundo cérebro (Obsidian)'; acao
 
 $Passos += @{ id = 'github'; n = 4; nome = 'GitHub'; pular = $SemGitHub; acao = {
   if ($Teste) { return }
-  if (-not (Tem 'gh')) { if (-not (InstalarWinget 'GitHub.cli' 'a ferramenta do GitHub')) { throw 'não consegui instalar o gh' } }
+  if (-not (Tem 'gh')) { if (-not (InstalarWinget 'GitHub.cli' 'a ferramenta do GitHub')) { throw "n$([char]0x00E3)o consegui instalar o gh" } }
   $status = (gh auth status 2>&1 | Out-String)
   if ($status -notmatch 'Logged in') {
-    $tem = Read-Host "Você já tem uma conta no GitHub? (s/n)"
+    $tem = Read-Host "Voc$([char]0x00EA) j$([char]0x00E1) tem uma conta no GitHub? (s/n)"
     if ($tem -notmatch '^[sS]') {
-      Pausa "Vou abrir a página pra criar sua conta no GitHub" @('É de graça. Usa o seu e-mail principal.', 'Quando terminar de criar, volta aqui e aperta Enter.')
+      Pausa "Vou abrir a p$([char]0x00E1)gina pra criar sua conta no GitHub" @("$([char]0x00C9) de gra$([char]0x00E7)a. Usa o seu e-mail principal.", 'Quando terminar de criar, volta aqui e aperta Enter.')
       Start-Process 'https://github.com/signup'; Read-Host "Criou? Aperta Enter" | Out-Null
     }
-    Pausa "Vou abrir o navegador pra conectar o GitHub" @('Vai aparecer um código de 8 letras aqui. Copia ele.', 'No navegador, cola o código, Continuar, Autorizar. Depois volta pra cá.')
+    Pausa "Vou abrir o navegador pra conectar o GitHub" @("Vai aparecer um c$([char]0x00F3)digo de 8 letras aqui. Copia ele.", "No navegador, cola o c$([char]0x00F3)digo, Continuar, Autorizar. Depois volta pra c$([char]0x00E1).")
     gh auth login --hostname github.com --git-protocol https --web --skip-ssh-key
-    if ((gh auth status 2>&1 | Out-String) -notmatch 'Logged in') { throw 'o login no GitHub não foi concluído (rode depois: gh auth login --web)' }
-  } else { Ok "GitHub já conectado" }
+    if ((gh auth status 2>&1 | Out-String) -notmatch 'Logged in') { throw "o login no GitHub n$([char]0x00E3)o foi conclu$([char]0x00ED)do (rode depois: gh auth login --web)" }
+  } else { Ok "GitHub j$([char]0x00E1) conectado" }
   $login = (gh api user --jq '.login' 2>$null)
   if ($login -and -not (git config --global user.name)) {
     $u = gh api user | ConvertFrom-Json
@@ -488,25 +488,25 @@ $Passos += @{ id = 'github'; n = 4; nome = 'GitHub'; pular = $SemGitHub; acao = 
 
 $Passos += @{ id = 'chrome'; n = 5; nome = 'Claude no Chrome'; pular = $SemChrome; acao = {
   if ($Teste) { return }
-  if (-not (ChromeExe)) { if (-not (InstalarWinget 'Google.Chrome' 'o Google Chrome')) { throw 'não consegui instalar o Chrome' } } else { Ok "Chrome já está instalado" }
-  if (ExtensaoChrome) { Ok "Extensão do Claude já está no Chrome"; return }
-  Pausa "O Chrome vai abrir na página da extensão do Claude" @('Clica em "Usar no Chrome" (ou "Adicionar ao Chrome") e confirma.', 'Depois clica no ícone do Claude na barra do Chrome e entra com a sua conta. Eu espero até 10 minutos.')
+  if (-not (ChromeExe)) { if (-not (InstalarWinget 'Google.Chrome' 'o Google Chrome')) { throw "n$([char]0x00E3)o consegui instalar o Chrome" } } else { Ok "Chrome j$([char]0x00E1) est$([char]0x00E1) instalado" }
+  if (ExtensaoChrome) { Ok "Extens$([char]0x00E3)o do Claude j$([char]0x00E1) est$([char]0x00E1) no Chrome"; return }
+  Pausa "O Chrome vai abrir na p$([char]0x00E1)gina da extens$([char]0x00E3)o do Claude" @('Clica em "Usar no Chrome" (ou "Adicionar ao Chrome") e confirma.', "Depois clica no $([char]0x00ED)cone do Claude na barra do Chrome e entra com a sua conta. Eu espero at$([char]0x00E9) 10 minutos.")
   Start-Process "https://chromewebstore.google.com/detail/$ExtId"
-  if (Esperar { ExtensaoChrome } 600) { Ok "Extensão instalada" } else { Aviso "Não vi a extensão aparecer. Dá pra instalar depois pelo mesmo link; não trava o resto." }
+  if (Esperar { ExtensaoChrome } 600) { Ok "Extens$([char]0x00E3)o instalada" } else { Aviso "N$([char]0x00E3)o vi a extens$([char]0x00E3)o aparecer. D$([char]0x00E1) pra instalar depois pelo mesmo link; n$([char]0x00E3)o trava o resto." }
 } }
 
 $Passos += @{ id = 'vercel'; n = 6; nome = 'Vercel (publicar sites)'; pular = $SemVercel; acao = {
   BaixarTemplates
   Escrever (Join-Path (Join-Path (Join-Path $ClaudeDir 'skills') 'publicar') 'SKILL.md') (Tpl 'skills/publicar.md')
   if ($Teste) { return }
-  if (-not (Tem 'vercel')) { Passo "Instalando a ferramenta da Vercel."; if (-not (Rodar 'npm' 'npm.cmd' @('install', '-g', 'vercel'))) { throw 'não consegui instalar a Vercel pelo npm' }; AtualizarPath }
+  if (-not (Tem 'vercel')) { Passo "Instalando a ferramenta da Vercel."; if (-not (Rodar 'npm' 'npm.cmd' @('install', '-g', 'vercel'))) { throw "n$([char]0x00E3)o consegui instalar a Vercel pelo npm" }; AtualizarPath }
   $quem = (vercel whoami 2>&1 | Out-String)
   if ($quem -match 'Error|not') {
-    Pausa "Vou abrir o navegador pra conectar a Vercel" @('Escolhe "Continue with GitHub" e autoriza (cria a conta ali se não tiver).', 'Depois volta pra cá.')
+    Pausa "Vou abrir o navegador pra conectar a Vercel" @("Escolhe `"Continue with GitHub`" e autoriza (cria a conta ali se n$([char]0x00E3)o tiver).", "Depois volta pra c$([char]0x00E1).")
     vercel login
     $quem = (vercel whoami 2>&1 | Out-String)
-    if ($quem -match 'Error|not') { Aviso "Login na Vercel não confirmado. Dá pra fazer depois com: vercel login" } else { Ok "Vercel conectada" }
-  } else { Ok "Vercel já conectada ($(Ultimas $quem 1))" }
+    if ($quem -match 'Error|not') { Aviso "Login na Vercel n$([char]0x00E3)o confirmado. D$([char]0x00E1) pra fazer depois com: vercel login" } else { Ok "Vercel conectada" }
+  } else { Ok "Vercel j$([char]0x00E1) conectada ($(Ultimas $quem 1))" }
 } }
 
 $Passos += @{ id = 'pacotes'; n = 7; nome = 'Comandos do seu tipo de trabalho'; acao = {
@@ -517,20 +517,20 @@ $Passos += @{ id = 'pacotes'; n = 7; nome = 'Comandos do seu tipo de trabalho'; 
   Ok ("Pacotes: " + ($escolhidos -join ', '))
 } }
 
-$Passos += @{ id = 'rotinas'; n = 8; nome = 'Rotinas (revisão semanal e backup diário)'; pular = $SemRotinas; acao = {
+$Passos += @{ id = 'rotinas'; n = 8; nome = "Rotinas (revis$([char]0x00E3)o semanal e backup di$([char]0x00E1)rio)"; pular = $SemRotinas; acao = {
   BaixarTemplates
-  # A revisão semanal lê o pedido pro Claude de um arquivo ao lado do script (linha de comando comprida não cabe no cmd).
+  # A revisao semanal le o pedido pro Claude de um arquivo ao lado do script (linha de comando comprida nao cabe no cmd).
   foreach ($pr in @('prompt-revisao.md', 'prompt-ingest.md')) { if (Test-Path (Join-Path $TplDir "rotinas/$pr")) { Escrever (Join-Path $RotDir $pr) (Tpl "rotinas/$pr" @{ vault = $Vault }) } }
   foreach ($r in @(@{ id = 'revisao-semanal'; hora = '09:00'; sc = @('/SC', 'WEEKLY', '/D', 'MON') }, @{ id = 'backup-diario'; hora = '21:00'; sc = @('/SC', 'DAILY') })) {
     $script = Join-Path $RotDir "$($r.id).cmd"
     Escrever $script (Tpl "rotinas/$($r.id).cmd" @{ vault = $Vault; logs = $RotDir })
-    if (-not $Teste) { if (-not (Rodar "schtasks $($r.id)" 'schtasks' (@('/Create', '/F', '/TN', "Claude Setuper\$($r.id)", '/TR', "`"$script`"", '/ST', $r.hora) + $r.sc))) { $falhouAgenda = $true; Aviso "Não consegui agendar $($r.id); o arquivo ficou em $script" } }
+    if (-not $Teste) { if (-not (Rodar "schtasks $($r.id)" 'schtasks' (@('/Create', '/F', '/TN', "Claude Setuper\$($r.id)", '/TR', "`"$script`"", '/ST', $r.hora) + $r.sc))) { $falhouAgenda = $true; Aviso "N$([char]0x00E3)o consegui agendar $($r.id); o arquivo ficou em $script" } }
   }
-  if ($falhouAgenda) { throw 'uma das tarefas não foi agendada (veja a linha em cinza acima)' }
+  if ($falhouAgenda) { throw "uma das tarefas n$([char]0x00E3)o foi agendada (veja a linha em cinza acima)" }
   Ok "Rotinas agendadas"
 } }
 
-$Passos += @{ id = 'atalho'; n = 9; nome = 'Atalho do Claude na Área de Trabalho'; acao = {
+$Passos += @{ id = 'atalho'; n = 9; nome = "Atalho do Claude na $([char]0x00C1)rea de Trabalho"; acao = {
   BaixarTemplates
   New-Item -ItemType Directory -Force -Path $Desktop | Out-Null
   $atalho = Join-Path $Desktop 'Claude.cmd'
@@ -538,13 +538,13 @@ $Passos += @{ id = 'atalho'; n = 9; nome = 'Atalho do Claude na Área de Trabalh
   Ok "Atalho criado: $atalho"
 } }
 
-# ============================================================ execução
+# ============================================================ execucao
 $falhas = @()
 foreach ($p in $Passos) {
   Passo "$($p.n)/9  $($p.nome)"
   if ($p.pular) { Aviso "Pulado a pedido"; continue }
   if ($p.n -lt $Desde) { Aviso "Pulado (-Desde $Desde)"; continue }
-  if (-not $Refazer -and $Feitos[$p.id] -and $Feitos[$p.id].ok) { Ok "Já feito antes; pulando (use -Refazer pra repetir)"; continue }
+  if (-not $Refazer -and $Feitos[$p.id] -and $Feitos[$p.id].ok) { Ok "J$([char]0x00E1) feito antes; pulando (use -Refazer pra repetir)"; continue }
   try {
     if ($SimularErro -eq $p.id) { throw 'erro simulado pra teste' }
     & $p.acao
@@ -553,7 +553,7 @@ foreach ($p in $Passos) {
     $msg = $_.Exception.Message
     $Feitos[$p.id] = @{ ok = $false; em = (Get-Date).ToString('o'); erro = $msg }
     $falhas += "$($p.nome): $msg"
-    Aviso "Não deu certo agora: $msg"
+    Aviso "N$([char]0x00E3)o deu certo agora: $msg"
     Aviso "Sigo com o resto. No fim eu mostro o que ficou pendente."
   }
   SalvarEstado
@@ -563,25 +563,25 @@ foreach ($p in $Passos) {
 $baseFalhou = ($falhas | Where-Object { $_ -like 'Base*' }).Count -gt 0
 if (-not $Teste -and -not $baseFalhou) {
   if (ObsidianExe) {
-    Pausa "O Obsidian vai abrir e perguntar se você confia nos plugins" @('Clica em "Confiar no autor e habilitar plugins". São o Dataview e o Templater, os dois mais usados. Pode confiar.')
+    Pausa "O Obsidian vai abrir e perguntar se voc$([char]0x00EA) confia nos plugins" @("Clica em `"Confiar no autor e habilitar plugins`". S$([char]0x00E3)o o Dataview e o Templater, os dois mais usados. Pode confiar.")
     Get-Process Obsidian -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
     try { Start-Process "obsidian://open?path=$([uri]::EscapeDataString($Vault))&file=$([uri]::EscapeDataString('Comece aqui'))" -ErrorAction Stop } catch {}
     Start-Sleep -Seconds 4
   }
   $atalho = Join-Path $Desktop 'Claude.cmd'
-  if (Test-Path $atalho) { try { Start-Process $atalho -ErrorAction Stop } catch { Aviso "Não consegui abrir o Claude daqui (sessão sem área de trabalho). Dois cliques no atalho da Área de Trabalho resolvem." } }
+  if (Test-Path $atalho) { try { Start-Process $atalho -ErrorAction Stop } catch { Aviso "N$([char]0x00E3)o consegui abrir o Claude daqui (sess$([char]0x00E3)o sem $([char]0x00E1)rea de trabalho). Dois cliques no atalho da $([char]0x00C1)rea de Trabalho resolvem." } }
 }
 
 $faltam = MostrarDoctor
 Write-Host ""
 if ($falhas.Count) {
   Write-Host "Ficou pendente:" -ForegroundColor Yellow
-  foreach ($f in $falhas) { Write-Host "  • $f" -ForegroundColor Yellow }
-  Write-Host "Rode o mesmo comando de novo: ele pula o que já está feito e tenta só o que faltou." -ForegroundColor Yellow
+  foreach ($f in $falhas) { Write-Host "  $([char]0x2022) $f" -ForegroundColor Yellow }
+  Write-Host "Rode o mesmo comando de novo: ele pula o que j$([char]0x00E1) est$([char]0x00E1) feito e tenta s$([char]0x00F3) o que faltou." -ForegroundColor Yellow
 } else {
-  Write-Host "Pronto, $($Resp.nome). O Claude está abrindo numa janela nova e o seu segundo cérebro está no Obsidian." -ForegroundColor Green
-  Write-Host "Da próxima vez, dois cliques no 'Claude' da Área de Trabalho."
+  Write-Host "Pronto, $($Resp.nome). O Claude est$([char]0x00E1) abrindo numa janela nova e o seu segundo c$([char]0x00E9)rebro est$([char]0x00E1) no Obsidian." -ForegroundColor Green
+  Write-Host "Da pr$([char]0x00F3)xima vez, dois cliques no 'Claude' da $([char]0x00C1)rea de Trabalho."
 }
 Write-Host "Registro: $Log"
 try { Stop-Transcript | Out-Null } catch {}
