@@ -861,5 +861,7 @@
   "{nomes}: ficou pra depois. No fim da aula tem um botão pra ligar.": "{nomes}: left for later. There is a button to connect them at the end of the lesson.",
   "{nomes}: ficou pra depois. É só voltar em claude.ai > Configurações > Conectores.": "{nomes}: left for later. Just go back to claude.ai > Settings > Connectors.",
   "Esperando o clique em Instalar e em Concordo, na janela da Apple. Depois disso leva de 3 a 10 minutos. Já faz {quanto}.": "Waiting for the click on Install and on Agree, in the Apple window. After that it takes 3 to 10 minutes. It has been {quanto}.",
-  "Está tudo instalado. Ficou pendente só o que depende de você: {nomes}. Quando quiser terminar, abre o Claude Setuper de novo. Pode fechar esta janela.": "Everything is installed. Only what depends on you is still pending: {nomes}. When you want to finish, open Claude Setuper again. You can close this window."
+  "Está tudo instalado. Ficou pendente só o que depende de você: {nomes}. Quando quiser terminar, abre o Claude Setuper de novo. Pode fechar esta janela.": "Everything is installed. Only what depends on you is still pending: {nomes}. When you want to finish, open Claude Setuper again. You can close this window.",
+  "Computer Use do Maestri ligado": "Maestri Computer Use turned on",
+  "A IA já pode usar os outros apps do Mac (Computer Use do Maestri ligado)": "Your AI can already use the other apps on your Mac (Maestri Computer Use is on)"
 }

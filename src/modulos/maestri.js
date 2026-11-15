@@ -9,6 +9,7 @@ import { t } from '../i18n.js';
 import { escreverConferencia } from '../segundaJanela.js';
 
 const NOMES_PAINEL = ['Minha IA', 'My AI', 'Meu Claude'];
+const DOMINIO = 'com.evercraftlabs.Maestro';
 
 export const id = 'maestri';
 export const nome = 'Maestri (o seu painel com a IA)';
@@ -30,7 +31,25 @@ export async function verificar(ctx) {
   return [
     { item: 'Maestri instalado', ok: ctx.existe('/Applications/Maestri.app') || ctx.existe('/Applications/Setapp/Maestri.app') },
     { item: 'Painel da IA montado', ok: !!m?.workspaces?.some((w) => NOMES_PAINEL.includes(w.name)) },
+    // Chave ausente = nunca configurado. Se a pessoa desligou, a chave existe e conta como ok: não religamos.
+    ...(ctx.semApps ? [] : [{ item: 'Computer Use do Maestri ligado', ok: (await lerComputerUse(ctx)) !== null }]),
   ];
+}
+
+async function lerComputerUse(ctx) {
+  const v = await ctx.run('defaults', ['read', DOMINIO, 'ComputerUseEnabled'], { ignorarErro: true, sempre: true });
+  return v === '' || v == null ? null : v === '1';
+}
+
+// Computer Use já ligado desde o começo: a IA consegue usar outros apps do Mac em segundo plano.
+// Só grava quando nunca foi configurado. As permissões de Acessibilidade e Gravação de Tela ficam com o
+// auxiliar "Maestri Computer Use" e são do macOS: a pessoa ativa na primeira vez, o Maestri mostra onde.
+// O "Bypass Permissions" fica desligado: a IA pede licença antes de usar cada app.
+export async function ligarComputerUse(ctx) {
+  if (ctx.semApps || ctx.plataforma !== 'darwin') return false;
+  if ((await lerComputerUse(ctx)) !== null) return false;
+  await ctx.run('defaults', ['write', DOMINIO, 'ComputerUseEnabled', '-bool', 'true'], { ignorarErro: true });
+  return true;
 }
 
 export async function instalar(ctx) {
@@ -50,6 +69,7 @@ export async function instalar(ctx) {
   await ui.tarefa('Preparando o painel com a IA e as suas notas', 'Painel pronto', async () => {
     montarWorkspace(ctx);
   });
+  if (await ligarComputerUse(ctx)) ui.ok('A IA já pode usar os outros apps do Mac (Computer Use do Maestri ligado)');
 
   // Na conferência a pessoa está conversando com a IA dentro do Maestri: fechar e abrir de novo cortava a conversa.
   if (ctx.semApps || ctx.dryRun || ctx.conferindo) return;
